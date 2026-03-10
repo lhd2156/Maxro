@@ -1,0 +1,288 @@
+@use '@angular/material' as mat;
+
+$maxro-primary: mat.define-palette(mat.$gray-palette, 900, 800, 50);
+$maxro-accent: (
+  50: #f5fce4, 100: #e8f7bb, 200: #d9f28e, 300: #caed61, 400: #c8f135,
+  500: #b8e300, 600: #a5cc00, 700: #8db100, 800: #769700, 900: #4f6b00,
+  contrast: (50: rgba(0,0,0,.87), 100: rgba(0,0,0,.87), 200: rgba(0,0,0,.87),
+    300: rgba(0,0,0,.87), 400: rgba(0,0,0,.87), 500: rgba(0,0,0,.87),
+    600: rgba(0,0,0,.87), 700: #fff, 800: #fff, 900: #fff)
+);
+$maxro-accent-palette: mat.define-palette($maxro-accent, 400, 200, 700);
+$maxro-warn: mat.define-palette(mat.$red-palette);
+$maxro-theme: mat.define-dark-theme((
+  color: (primary: $maxro-primary, accent: $maxro-accent-palette, warn: $maxro-warn),
+  typography: mat.define-typography-config(
+    $font-family: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  ),
+  density: 0,
+));
+
+@include mat.core();
+@include mat.all-component-themes($maxro-theme);
+
+:root {
+  --bg-primary: #0D0D0D;
+  --bg-surface: #141414;
+  --text-primary: #FFFFFF;
+  --accent: #C8F135;
+  --text-muted: #888888;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+// Material overrides for dark theme
+.mat-mdc-card {
+  --mdc-elevated-card-container-color: var(--bg-surface);
+  box-shadow: none !important;
+}
+
+.mat-mdc-form-field {
+  .mdc-text-field--outlined .mdc-notched-outline__leading,
+  .mdc-text-field--outlined .mdc-notched-outline__notch,
+  .mdc-text-field--outlined .mdc-notched-outline__trailing {
+    border-color: rgba(255,255,255,0.12) !important;
+  }
+  .mdc-text-field--outlined:hover .mdc-notched-outline__leading,
+  .mdc-text-field--outlined:hover .mdc-notched-outline__notch,
+  .mdc-text-field--outlined:hover .mdc-notched-outline__trailing {
+    border-color: rgba(255,255,255,0.24) !important;
+  }
+  .mdc-text-field--outlined.mdc-text-field--focused .mdc-notched-outline__leading,
+  .mdc-text-field--outlined.mdc-text-field--focused .mdc-notched-outline__notch,
+  .mdc-text-field--outlined.mdc-text-field--focused .mdc-notched-outline__trailing {
+    border-color: var(--accent) !important;
+  }
+  .mat-mdc-input-element { color: var(--text-primary); }
+  .mat-mdc-floating-label { color: var(--text-muted) !important; }
+  .mdc-text-field--focused .mat-mdc-floating-label { color: var(--accent) !important; }
+}
+
+.mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-color: var(--bg-surface);
+  --mdc-snackbar-supporting-text-color: var(--text-primary);
+  --mat-snack-bar-button-color: var(--accent);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px !important;
+}
+
+.mat-mdc-select-panel {
+  background: var(--bg-surface) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 8px !important;
+}
+
+.mat-mdc-option {
+  color: var(--text-primary) !important;
+}
+.mat-mdc-option .mdc-list-item__primary-text {
+  color: inherit !important;
+}
+
+.mat-mdc-option:hover {
+  background: rgba(255,255,255,0.04) !important;
+}
+
+.mat-mdc-option.mdc-list-item--selected {
+  background: rgba(200,241,53,0.08) !important;
+  color: var(--accent) !important;
+}
+
+.mat-mdc-paginator {
+  background: transparent !important;
+  color: var(--text-muted) !important;
+}
+
+.mat-mdc-icon-button {
+  color: var(--text-muted);
+}
+
+// Datepicker toggle - match calendar button styling (dashboard, analytics, etc.)
+.mat-datepicker-toggle {
+  color: var(--text-muted) !important;
+  .mat-icon { color: inherit !important; }
+}
+.mat-datepicker-toggle:hover {
+  color: var(--accent) !important;
+}
+
+// Profile dropdown menu styling
+.mat-mdc-menu-panel {
+  background: var(--bg-surface) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 12px !important;
+  min-width: 220px !important;
+}
+
+.menu-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.menu-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(200,241,53,0.15);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.menu-user-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.menu-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu-email {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 4px 0;
+}
+.logout-item {
+  color: #ff5252 !important;
+}
+
+.mat-mdc-chip {
+  --mdc-chip-elevated-container-color: rgba(255,255,255,0.06);
+  --mdc-chip-label-text-color: var(--text-muted);
+}
+
+// Invalid field: red outline on the box, normal (white) caret so the blinking pipe isn't red
+.mat-mdc-form-field.field-error {
+  .mdc-text-field--outlined .mdc-notched-outline__leading,
+  .mdc-text-field--outlined .mdc-notched-outline__notch,
+  .mdc-text-field--outlined .mdc-notched-outline__trailing {
+    border-color: #ff5252 !important;
+  }
+  .mat-mdc-floating-label { color: #ff5252 !important; }
+  .mat-mdc-input-element,
+  input {
+    caret-color: var(--text-primary) !important;
+  }
+}
+
+// Datepicker dark theme
+.mat-datepicker-content {
+  background: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px !important;
+
+  .mat-calendar-body-cell-content {
+    color: var(--text-primary);
+  }
+  .mat-calendar-body-selected {
+    background-color: var(--accent) !important;
+    color: #0D0D0D !important;
+  }
+  .mat-calendar-body-today:not(.mat-calendar-body-selected) {
+    border-color: var(--accent) !important;
+  }
+  .mat-calendar-table-header,
+  .mat-calendar-body-label {
+    color: var(--text-muted) !important;
+  }
+  .mat-calendar-arrow {
+    fill: var(--text-primary);
+  }
+  .mat-calendar-previous-button,
+  .mat-calendar-next-button {
+    color: var(--text-primary);
+  }
+  .mat-calendar-period-button {
+    color: var(--text-primary) !important;
+  }
+}
+.mat-datepicker-toggle {
+  color: var(--text-muted) !important;
+}
+
+// Custom number input spinners — hides native arrows and uses styled buttons
+input[type="number"] {
+  -moz-appearance: textfield;
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+// Confetti burst animation
+@keyframes confetti-fall {
+  0% { transform: translateY(-100%) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+.confetti-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 99999;
+  overflow: hidden;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -10px;
+  width: 10px;
+  height: 10px;
+  animation: confetti-fall 2.5s ease-in forwards;
+
+  &:nth-child(odd) { border-radius: 50%; }
+  &:nth-child(even) { border-radius: 2px; }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.2);
+}

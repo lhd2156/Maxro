@@ -1,0 +1,79 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - maxro-frontend/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: maxro-secrets
+  - name: appName
+    value: 'maxro-frontend'
+
+stages:
+  - stage: Build
+    displayName: 'Build & Test'
+    jobs:
+      - job: BuildAndTest
+        displayName: 'Build and Test Angular'
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '20.x'
+            displayName: 'Install Node.js'
+
+          - script: npm ci
+            displayName: 'Install Dependencies'
+            workingDirectory: 'maxro-frontend'
+
+          - script: npm run build -- --configuration=production
+            displayName: 'Build Production'
+            workingDirectory: 'maxro-frontend'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Build Artifacts'
+            inputs:
+              pathToPublish: 'maxro-frontend/dist/maxro-frontend/browser'
+              artifactName: 'frontend-build'
+
+  - stage: Deploy
+    displayName: 'Deploy to Azure Static Web Apps'
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - deployment: DeployFrontend
+        displayName: 'Deploy Frontend'
+        environment: 'production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: frontend-build
+
+                - task: AzureStaticWebApp@0
+                  displayName: 'Deploy to Static Web Apps'
+                  inputs:
+                    azure_static_web_apps_api_token: '$(SWA_DEPLOYMENT_TOKEN)'
+                    app_location: '$(Pipeline.Workspace)/frontend-build'
+                    skip_app_build: true
+
+                - script: |
+                    SWA_URL="https://$(SWA_HOSTNAME)"
+                    echo "Checking health at $SWA_URL"
+                    for i in {1..10}; do
+                      STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SWA_URL")
+                      if [ "$STATUS" = "200" ]; then
+                        echo "Health check passed"
+                        exit 0
+                      fi
+                      echo "Attempt $i: status $STATUS, retrying..."
+                      sleep 5
+                    done
+                    echo "Health check failed"
+                    exit 1
+                  displayName: 'Health Check'

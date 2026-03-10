@@ -1,0 +1,311 @@
+type Query {
+    me: UserProfile!
+    getWorkout(id: ID!): Workout
+    getWorkouts(startDate: String, endDate: String, page: Int, size: Int): WorkoutPage!
+    getWorkoutsByExercise(exerciseName: String!, page: Int, size: Int): WorkoutPage!
+    getPersonalRecords: [PersonalRecord!]!
+    getPersonalRecordsByExercise(exerciseName: String!): [PersonalRecord!]!
+    getNutritionLog(date: String!): NutritionLog
+    getNutritionLogs(startDate: String!, endDate: String!): [NutritionLog!]!
+    searchFood(query: String!): [FoodSearchResult!]!
+    getWaterIntake(date: String!): WaterIntake
+    getWaterIntakeLogs(startDate: String!, endDate: String!): [WaterIntake!]!
+    getWorkoutStreak: StreakInfo!
+    getStrengthProgress(exerciseName: String!, days: Int): [StrengthDataPoint!]!
+    getMacroTrends(days: Int, endDate: String): [MacroTrendPoint!]!
+    getWaterTrends(days: Int, endDate: String): [WaterTrendPoint!]!
+    getDashboardSummary(date: String!): DashboardSummary!
+    getExerciseNames: [String!]!
+    getMuscleGroups: [String!]!
+    getPopularExercises(muscleGroup: String): [String!]!
+}
+
+type Mutation {
+    register(input: RegisterInput!): AuthPayload!
+    login(input: LoginInput!): AuthPayload!
+    googleSignIn(idToken: String!): AuthPayload!
+    refreshToken(token: String!): AuthPayload!
+    logout: Boolean!
+    updateProfile(input: UserProfileInput!): UserProfile!
+    logWorkout(input: WorkoutInput!): WorkoutResult!
+    deleteWorkout(id: ID!): Boolean!
+    logNutrition(input: NutritionLogInput!): NutritionLog!
+    addFoodEntry(date: String!, input: FoodEntryInput!): NutritionLog!
+    removeFoodEntry(date: String!, entryId: ID!): NutritionLog!
+    logWaterIntake(input: WaterIntakeInput!): WaterIntake!
+    updateDailyWaterGoal(goalOz: Float!): UserProfile!
+    deleteAccount: Boolean!
+}
+
+# ── Auth ──
+
+input RegisterInput {
+    email: String!
+    password: String!
+    firstName: String!
+    lastName: String!
+    dateOfBirth: String
+    gender: String
+    agreedToTerms: Boolean
+    dailyCalorieTarget: Int
+    dailyProteinTarget: Int
+    dailyCarbTarget: Int
+    dailyFatTarget: Int
+    dailyWaterGoalOz: Float
+}
+
+input LoginInput {
+    email: String!
+    password: String!
+}
+
+type AuthPayload {
+    accessToken: String!
+    refreshToken: String!
+    user: UserProfile!
+}
+
+# ── User ──
+
+input UserProfileInput {
+    displayName: String
+    firstName: String
+    lastName: String
+    bodyWeightLbs: Float
+    heightInches: Float
+    fitnessGoal: String
+    dailyCalorieTarget: Int
+    dailyProteinTarget: Int
+    dailyCarbTarget: Int
+    dailyFatTarget: Int
+    dailyWaterGoalOz: Float
+    dateOfBirth: String
+    gender: String
+    agreedToTerms: Boolean
+}
+
+type UserProfile {
+    id: ID!
+    email: String!
+    displayName: String!
+    firstName: String
+    lastName: String
+    bodyWeightLbs: Float
+    heightInches: Float
+    fitnessGoal: String
+    dailyCalorieTarget: Int
+    dailyProteinTarget: Int
+    dailyCarbTarget: Int
+    dailyFatTarget: Int
+    dailyWaterGoalOz: Float
+    dateOfBirth: String
+    gender: String
+    agreedToTerms: Boolean
+    profileComplete: Boolean
+    createdAt: String!
+}
+
+# ── Workouts ──
+
+input WorkoutInput {
+    date: String!
+    notes: String
+    exercises: [ExerciseInput!]!
+}
+
+input ExerciseInput {
+    name: String!
+    muscleGroup: String!
+    sets: [SetInput!]!
+}
+
+input SetInput {
+    reps: Int!
+    weightLbs: Float!
+}
+
+type Workout {
+    id: ID!
+    userId: ID!
+    date: String!
+    notes: String
+    exercises: [Exercise!]!
+    createdAt: String!
+}
+
+type Exercise {
+    name: String!
+    muscleGroup: String!
+    sets: [ExerciseSet!]!
+}
+
+type ExerciseSet {
+    reps: Int!
+    weightLbs: Float!
+}
+
+type WorkoutPage {
+    content: [Workout!]!
+    totalElements: Int!
+    totalPages: Int!
+    currentPage: Int!
+}
+
+type WorkoutResult {
+    workout: Workout!
+    newPersonalRecords: [PersonalRecord!]!
+}
+
+# ── Personal Records ──
+
+type PersonalRecord {
+    id: ID!
+    userId: ID!
+    exerciseName: String!
+    weightLbs: Float!
+    reps: Int!
+    oneRepMaxLbs: Float!
+    achievedAt: String!
+}
+
+# ── Nutrition ──
+
+input NutritionLogInput {
+    date: String!
+    entries: [FoodEntryInput!]!
+}
+
+input FoodEntryInput {
+    foodName: String!
+    brandName: String
+    mealType: String!
+    servingQty: Float!
+    servingUnit: String!
+    calories: Float!
+    proteinG: Float!
+    carbsG: Float!
+    fatG: Float!
+    fiberG: Float
+    sugarG: Float
+    sodiumMg: Float
+    cholesterolMg: Float
+    saturatedFatG: Float
+    potassiumMg: Float
+    thumbnailUrl: String
+}
+
+type NutritionLog {
+    id: ID!
+    userId: ID!
+    date: String!
+    entries: [FoodEntry!]!
+    totalCalories: Float!
+    totalProteinG: Float!
+    totalCarbsG: Float!
+    totalFatG: Float!
+    totalFiberG: Float!
+    totalSugarG: Float!
+    totalSodiumMg: Float!
+    totalCholesterolMg: Float!
+    totalSaturatedFatG: Float!
+    totalPotassiumMg: Float!
+}
+
+type FoodEntry {
+    id: ID!
+    foodName: String!
+    brandName: String
+    mealType: String!
+    servingQty: Float!
+    servingUnit: String!
+    calories: Float!
+    proteinG: Float!
+    carbsG: Float!
+    fatG: Float!
+    fiberG: Float!
+    sugarG: Float!
+    sodiumMg: Float!
+    cholesterolMg: Float!
+    saturatedFatG: Float!
+    potassiumMg: Float!
+    thumbnailUrl: String
+}
+
+type FoodSearchResult {
+    foodName: String!
+    brandName: String
+    servingQty: Float!
+    servingUnit: String!
+    calories: Float!
+    proteinG: Float!
+    carbsG: Float!
+    fatG: Float!
+    fiberG: Float!
+    sugarG: Float!
+    sodiumMg: Float!
+    cholesterolMg: Float!
+    saturatedFatG: Float!
+    potassiumMg: Float!
+    thumbnailUrl: String
+}
+
+# ── Water Intake ──
+
+input WaterIntakeInput {
+    date: String!
+    amountOz: Float!
+}
+
+type WaterIntake {
+    id: ID!
+    userId: ID!
+    date: String!
+    totalOz: Float!
+    goalOz: Float!
+    entries: [WaterEntry!]!
+    goalMet: Boolean!
+}
+
+type WaterEntry {
+    amountOz: Float!
+    loggedAt: String!
+}
+
+# ── Analytics & Dashboard ──
+
+type StreakInfo {
+    currentStreak: Int!
+    longestStreak: Int!
+    totalWorkouts: Int!
+}
+
+type StrengthDataPoint {
+    date: String!
+    maxWeightLbs: Float!
+    estimatedOneRepMax: Float!
+    totalVolume: Float!
+}
+
+type MacroTrendPoint {
+    date: String!
+    calories: Float!
+    proteinG: Float!
+    carbsG: Float!
+    fatG: Float!
+}
+
+type WaterTrendPoint {
+    date: String!
+    totalOz: Float!
+    goalOz: Float!
+    goalMet: Boolean!
+}
+
+type DashboardSummary {
+    date: String!
+    workoutToday: Workout
+    nutritionToday: NutritionLog
+    waterToday: WaterIntake
+    streak: StreakInfo!
+    recentPRs: [PersonalRecord!]!
+}

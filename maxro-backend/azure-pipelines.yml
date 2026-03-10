@@ -1,0 +1,116 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - maxro-backend/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: maxro-secrets
+  - name: imageName
+    value: 'maxro-backend'
+  - name: containerRegistry
+    value: '$(ACR_NAME).azurecr.io'
+
+stages:
+  - stage: Build
+    displayName: 'Build & Test'
+    jobs:
+      - job: BuildAndTest
+        displayName: 'Build and Test Spring Boot'
+        steps:
+          - task: JavaToolInstaller@0
+            inputs:
+              versionSpec: '21'
+              jdkArchitectureOption: 'x64'
+              jdkSourceOption: 'PreInstalled'
+
+          - task: Maven@4
+            displayName: 'Run Tests'
+            inputs:
+              mavenPomFile: 'maxro-backend/pom.xml'
+              goals: 'test'
+              options: '-B'
+              publishJUnitResults: true
+              testResultsFiles: '**/surefire-reports/TEST-*.xml'
+
+          - task: Maven@4
+            displayName: 'Build JAR'
+            inputs:
+              mavenPomFile: 'maxro-backend/pom.xml'
+              goals: 'package'
+              options: '-B -DskipTests'
+
+          - task: Docker@2
+            displayName: 'Build Docker Image'
+            inputs:
+              containerRegistry: '$(DOCKER_SERVICE_CONNECTION)'
+              repository: '$(imageName)'
+              command: 'build'
+              Dockerfile: 'maxro-backend/Dockerfile'
+              buildContext: 'maxro-backend'
+              tags: |
+                $(Build.BuildId)
+                latest
+
+          - task: Docker@2
+            displayName: 'Push to ACR'
+            inputs:
+              containerRegistry: '$(DOCKER_SERVICE_CONNECTION)'
+              repository: '$(imageName)'
+              command: 'push'
+              tags: |
+                $(Build.BuildId)
+                latest
+
+  - stage: Deploy
+    displayName: 'Deploy to Azure Container Apps'
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - deployment: DeployBackend
+        displayName: 'Deploy Backend'
+        environment: 'production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: 'Deploy to Container Apps'
+                  inputs:
+                    azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      az containerapp update \
+                        --name maxro-backend \
+                        --resource-group $(RESOURCE_GROUP) \
+                        --image $(containerRegistry)/$(imageName):$(Build.BuildId)
+
+                - task: AzureCLI@2
+                  displayName: 'Health Check'
+                  inputs:
+                    azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      FQDN=$(az containerapp show \
+                        --name maxro-backend \
+                        --resource-group $(RESOURCE_GROUP) \
+                        --query properties.configuration.ingress.fqdn -o tsv)
+                      echo "Checking health at https://$FQDN/actuator/health"
+                      for i in {1..10}; do
+                        STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$FQDN/actuator/health")
+                        if [ "$STATUS" = "200" ]; then
+                          echo "Health check passed"
+                          exit 0
+                        fi
+                        echo "Attempt $i: status $STATUS, retrying..."
+                        sleep 10
+                      done
+                      echo "Health check failed"
+                      exit 1
