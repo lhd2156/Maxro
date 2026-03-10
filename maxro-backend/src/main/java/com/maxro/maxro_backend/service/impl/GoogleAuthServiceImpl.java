@@ -90,8 +90,9 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
                     newUser.setEmail(email.toLowerCase().trim());
                     newUser.setPassword("");
                     newUser.setDisplayName(name != null ? name : email.split("@")[0]);
-                    newUser.setAgreedToTerms(false);
+                    newUser.setAgreedToTerms(true);
                     newUser.setProfileComplete(false);
+                    newUser.setGender("Prefer not to say");
                     newUser.setCreatedAt(Instant.now());
                     return userRepository.save(newUser);
                 });

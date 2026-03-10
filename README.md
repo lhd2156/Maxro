@@ -7,7 +7,7 @@ Full-stack fitness tracking platform — a Strava x MyFitnessPal hybrid for logg
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Angular 17, TypeScript, Angular Material, ngx-charts |
-| Backend | Spring Boot 3.5.11, Java 21 |
+| Backend | Spring Boot 3.5.11, Java 17+ |
 | API | GraphQL (Spring for GraphQL + Apollo Angular) |
 | Database | MongoDB |
 | Food Data | Nutritionix API |
@@ -29,7 +29,7 @@ Full-stack fitness tracking platform — a Strava x MyFitnessPal hybrid for logg
 
 ## Prerequisites
 
-- Java 21
+- Java 17+
 - Node.js 20+
 - Docker & Docker Compose
 - MongoDB (or use Docker Compose)
@@ -104,11 +104,18 @@ Maxro/
 └── README.md
 ```
 
+## Troubleshooting
+
+**"Http failure response: 0 Unknown Error"** — Backend or MongoDB isn't running. Start MongoDB first (`docker-compose up -d mongodb`), then the backend. See [docs/SETUP.md](docs/SETUP.md) for details.
+
+**"Google Sign-In requires a Client ID"** — Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com/apis/credentials) and add the Client ID to both frontend (`environment.ts`) and backend (`GOOGLE_CLIENT_ID` env var). Full step-by-step: [docs/SETUP.md](docs/SETUP.md).
+
 ## Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/maxro` |
+| `GOOGLE_CLIENT_ID` | Google OAuth Client ID (for Sign-In) | — |
 | `JWT_SECRET` | JWT signing secret (min 256 bits) | dev default |
 | `JWT_ACCESS_EXPIRATION` | Access token TTL (ms) | `900000` (15 min) |
 | `JWT_REFRESH_EXPIRATION` | Refresh token TTL (ms) | `604800000` (7 days) |
