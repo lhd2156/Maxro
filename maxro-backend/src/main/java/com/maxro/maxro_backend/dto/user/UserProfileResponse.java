@@ -19,6 +19,7 @@ public record UserProfileResponse(
         String dateOfBirth,
         String gender,
         Boolean agreedToTerms,
+        Boolean hasPassword,
         Boolean profileComplete,
         String createdAt
 ) {
@@ -40,6 +41,7 @@ public record UserProfileResponse(
                 user.getDateOfBirth(),
                 user.getGender(),
                 user.getAgreedToTerms() != null ? user.getAgreedToTerms() : true,
+                user.getPassword() != null && !user.getPassword().isBlank(),
                 user.getProfileComplete() != null ? user.getProfileComplete() : true,
                 user.getCreatedAt() != null ? user.getCreatedAt().toString() : null
         );

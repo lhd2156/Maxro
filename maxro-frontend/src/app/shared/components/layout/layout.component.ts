@@ -1,4 +1,4 @@
-import { Component, HostListener, ElementRef, ViewChild } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -241,14 +241,19 @@ import { AuthService } from '../../../core/services/auth.service';
       to { opacity: 1; }
     }
 
+    @media (max-width: 1200px) {
+      .topbar { padding: 0 16px; }
+      .content { padding: 20px; }
+    }
     @media (max-width: 768px) {
       .content { padding: 16px; }
     }
   `],
 })
-export class LayoutComponent {
+export class LayoutComponent implements OnInit {
   sidenavWidth = 240;
   private resizing = false;
+  private userSized = false;
 
   readonly navItems = [
     { route: '/dashboard', icon: 'mx-grid', label: 'Dashboard', exact: true },
@@ -260,6 +265,10 @@ export class LayoutComponent {
   ];
 
   constructor(private readonly authService: AuthService) {}
+
+  ngOnInit(): void {
+    this.applyResponsiveSidebar(window.innerWidth);
+  }
 
   get avatarUrl(): string | null {
     return localStorage.getItem('avatarUrl');
@@ -293,10 +302,16 @@ export class LayoutComponent {
     this.sidenavWidth = newWidth;
   }
 
+  @HostListener('window:resize', ['$event'])
+  onWindowResize(event: UIEvent): void {
+    this.applyResponsiveSidebar((event.target as Window).innerWidth);
+  }
+
   @HostListener('document:mouseup')
   onMouseUp(): void {
     if (!this.resizing) return;
     this.resizing = false;
+    this.userSized = true;
     if (this.sidenavWidth < 120) {
       this.sidenavWidth = 64;
     } else if (this.sidenavWidth < 200) {
@@ -306,5 +321,21 @@ export class LayoutComponent {
 
   logout(): void {
     this.authService.logout();
+  }
+
+  private applyResponsiveSidebar(viewportWidth: number): void {
+    if (viewportWidth <= 900) {
+      this.sidenavWidth = 64;
+      return;
+    }
+
+    if (viewportWidth <= 1200) {
+      this.sidenavWidth = 88;
+      return;
+    }
+
+    if (!this.userSized) {
+      this.sidenavWidth = 240;
+    }
   }
 }

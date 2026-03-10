@@ -1,5 +1,6 @@
 package com.maxro.maxro_backend.service;
 
+import com.maxro.maxro_backend.dto.user.ChangePasswordInput;
 import com.maxro.maxro_backend.dto.user.UserProfileInput;
 import com.maxro.maxro_backend.dto.user.UserProfileResponse;
 
@@ -10,6 +11,8 @@ public interface UserService {
     UserProfileResponse updateProfile(String userId, UserProfileInput input);
 
     UserProfileResponse updateDailyWaterGoal(String userId, double goalOz);
+
+    UserProfileResponse changePassword(String userId, ChangePasswordInput input);
 
     boolean deleteAccount(String userId);
 }

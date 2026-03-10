@@ -178,6 +178,41 @@ export class IconRegistryService {
         <circle cx="6" cy="18" r="3"/>
         <circle cx="18" cy="16" r="3"/>
       </svg>`,
+    'mx-play': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+        <path d="M8 5.5v13l10-6.5z"/>
+      </svg>`,
+    'mx-pause': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+        <rect x="7" y="5" width="4" height="14" rx="1"/>
+        <rect x="13" y="5" width="4" height="14" rx="1"/>
+      </svg>`,
+    'mx-skip-forward': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+        <path d="M5 6l8 6-8 6z"/>
+        <path d="M12 6l8 6-8 6z"/>
+      </svg>`,
+    'mx-skip-back': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+        <path d="M19 6l-8 6 8 6z"/>
+        <path d="M12 6L4 12l8 6z"/>
+      </svg>`,
+    'mx-repeat': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 2l4 4-4 4"/>
+        <path d="M3 11V9a3 3 0 013-3h15"/>
+        <path d="M7 22l-4-4 4-4"/>
+        <path d="M21 13v2a3 3 0 01-3 3H3"/>
+      </svg>`,
+    'mx-shuffle': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 3h5v5"/>
+        <path d="M4 20l7-7"/>
+        <path d="M21 3l-8.5 8.5"/>
+        <path d="M16 16h5v5"/>
+        <path d="M21 21l-8.5-8.5"/>
+        <path d="M4 4l5 5"/>
+      </svg>`,
     'mx-ai': `
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 2L14.5 9.5 22 12 14.5 14.5 12 22 9.5 14.5 2 12 9.5 9.5z"/>

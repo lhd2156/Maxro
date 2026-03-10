@@ -27,6 +27,7 @@ type Mutation {
     refreshToken(token: String!): AuthPayload!
     logout: Boolean!
     updateProfile(input: UserProfileInput!): UserProfile!
+    changePassword(input: ChangePasswordInput!): UserProfile!
     logWorkout(input: WorkoutInput!): WorkoutResult!
     deleteWorkout(id: ID!): Boolean!
     logNutrition(input: NutritionLogInput!): NutritionLog!
@@ -84,12 +85,18 @@ input UserProfileInput {
     agreedToTerms: Boolean
 }
 
+input ChangePasswordInput {
+    currentPassword: String
+    newPassword: String!
+}
+
 type UserProfile {
     id: ID!
     email: String!
     displayName: String!
     firstName: String
     lastName: String
+    hasPassword: Boolean
     bodyWeightLbs: Float
     heightInches: Float
     fitnessGoal: String
@@ -309,3 +316,5 @@ type DashboardSummary {
     streak: StreakInfo!
     recentPRs: [PersonalRecord!]!
 }
+
+

@@ -2,6 +2,7 @@ package com.maxro.maxro_backend.dto.auth;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record RegisterInput(
@@ -15,10 +16,12 @@ public record RegisterInput(
 
         @NotBlank(message = "First name is required")
         @Size(min = 1, max = 50, message = "First name must be between 1 and 50 characters")
+        @Pattern(regexp = "^[A-Za-z]+(?:[ '-][A-Za-z]+)*$", message = "First name can only contain letters")
         String firstName,
 
         @NotBlank(message = "Last name is required")
         @Size(min = 1, max = 50, message = "Last name must be between 1 and 50 characters")
+        @Pattern(regexp = "^[A-Za-z]+(?:[ '-][A-Za-z]+)*$", message = "Last name can only contain letters")
         String lastName,
 
         String dateOfBirth,

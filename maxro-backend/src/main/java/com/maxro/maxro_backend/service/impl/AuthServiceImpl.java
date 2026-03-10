@@ -81,6 +81,10 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(input.email().toLowerCase().trim())
                 .orElseThrow(() -> new AuthenticationException("Invalid email or password"));
 
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            throw new AuthenticationException("This account uses Google sign-in. Use Continue with Google or set a password in Settings.");
+        }
+
         if (!passwordEncoder.matches(input.password(), user.getPassword())) {
             throw new AuthenticationException("Invalid email or password");
         }
