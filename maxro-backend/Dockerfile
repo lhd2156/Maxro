@@ -1,0 +1,16 @@
+FROM eclipse-temurin:21-jdk-alpine AS build
+WORKDIR /app
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
+RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
+COPY src/ src/
+RUN ./mvnw package -DskipTests -B
+
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+RUN addgroup -S maxro && adduser -S maxro -G maxro
+COPY --from=build /app/target/*.jar app.jar
+USER maxro
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=3s CMD wget -q --spider http://localhost:8080/actuator/health || exit 1
+ENTRYPOINT ["java", "-jar", "app.jar"]
