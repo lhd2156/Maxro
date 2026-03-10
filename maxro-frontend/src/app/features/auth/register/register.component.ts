@@ -1,6 +1,6 @@
 import { Component, DestroyRef, AfterViewInit, inject, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { AbstractControl, ReactiveFormsModule, FormBuilder, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -46,77 +46,144 @@ import { environment } from '../../../../environments/environment';
           </div>
 
           <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form" novalidate>
-            <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('firstName')" class="auth-field">
-              <mat-label>First Name</mat-label>
-              <input matInput formControlName="firstName" autocomplete="given-name">
-            </mat-form-field>
+            <div class="split-row">
+              <div class="field-stack">
+                <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('firstName')" class="auth-field">
+                  <mat-label>First Name</mat-label>
+                  <input matInput formControlName="firstName" autocomplete="given-name">
+                </mat-form-field>
+                @if (fieldErrorMessage('firstName')) {
+                  <div class="field-note error">{{ fieldErrorMessage('firstName') }}</div>
+                }
+              </div>
 
-            <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('lastName')" class="auth-field">
-              <mat-label>Last Name</mat-label>
-              <input matInput formControlName="lastName" autocomplete="family-name">
-            </mat-form-field>
+              <div class="field-stack">
+                <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('lastName')" class="auth-field">
+                  <mat-label>Last Name</mat-label>
+                  <input matInput formControlName="lastName" autocomplete="family-name">
+                </mat-form-field>
+                @if (fieldErrorMessage('lastName')) {
+                  <div class="field-note error">{{ fieldErrorMessage('lastName') }}</div>
+                }
+              </div>
+            </div>
 
-            <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('email')" class="auth-field">
-              <mat-label>Email</mat-label>
-              <input matInput formControlName="email" type="email" autocomplete="email">
-            </mat-form-field>
+            <div class="field-stack">
+              <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('email')" class="auth-field">
+                <mat-label>Email</mat-label>
+                <input matInput formControlName="email" type="text" inputmode="email" autocomplete="email">
+              </mat-form-field>
+              @if (fieldErrorMessage('email')) {
+                <div class="field-note error">{{ fieldErrorMessage('email') }}</div>
+              }
+            </div>
 
-            <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('password')" class="auth-field">
-              <mat-label>Password</mat-label>
-              <input matInput formControlName="password" [type]="hidePassword ? 'password' : 'text'" autocomplete="new-password">
-              <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
-                <mat-icon [svgIcon]="hidePassword ? 'mx-eye-off' : 'mx-eye'"></mat-icon>
-              </button>
-            </mat-form-field>
+            <div class="password-row">
+              <div class="password-field-grid">
+                <div class="field-stack">
+                  <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('password')" class="auth-field">
+                    <mat-label>Password</mat-label>
+                    <input matInput formControlName="password" [type]="hidePassword ? 'password' : 'text'" autocomplete="new-password">
+                    <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
+                      <mat-icon [svgIcon]="hidePassword ? 'mx-eye-off' : 'mx-eye'"></mat-icon>
+                    </button>
+                  </mat-form-field>
+                  @if (fieldErrorMessage('password')) {
+                    <div class="field-note error">{{ fieldErrorMessage('password') }}</div>
+                  }
+                </div>
 
-            <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('dateOfBirth')" class="auth-field">
-              <mat-label>Date of Birth</mat-label>
-              <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth" [max]="maxDate" readonly (click)="dobPicker.open()">
-              <mat-datepicker-toggle matSuffix [for]="dobPicker"><mat-icon svgIcon="mx-calendar"></mat-icon></mat-datepicker-toggle>
-              <mat-datepicker #dobPicker startView="multi-year" [startAt]="startDate"></mat-datepicker>
-            </mat-form-field>
+                <div class="field-stack">
+                  <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('confirmPassword')" class="auth-field">
+                    <mat-label>Confirm Password</mat-label>
+                    <input matInput formControlName="confirmPassword" [type]="hideConfirmPassword ? 'password' : 'text'" autocomplete="new-password">
+                    <button mat-icon-button matSuffix type="button" (click)="hideConfirmPassword = !hideConfirmPassword">
+                      <mat-icon [svgIcon]="hideConfirmPassword ? 'mx-eye-off' : 'mx-eye'"></mat-icon>
+                    </button>
+                  </mat-form-field>
+                  @if (fieldErrorMessage('confirmPassword')) {
+                    <div class="field-note error">{{ fieldErrorMessage('confirmPassword') }}</div>
+                  }
+                </div>
+              </div>
 
-            <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('gender')" class="auth-field">
-              <mat-label>Gender</mat-label>
-              <mat-select formControlName="gender">
-                <mat-option value="Male">Male</mat-option>
-                <mat-option value="Female">Female</mat-option>
-                <mat-option value="Non-binary">Non-binary</mat-option>
-                <mat-option value="Prefer not to say">Prefer not to say</mat-option>
-              </mat-select>
-            </mat-form-field>
+              <div class="password-popover">
+                <span class="popover-title">Password guide</span>
+                <span class="popover-rule" [class.pass]="passwordLengthMet">
+                  <span class="rule-dot"></span>
+                  At least 8 characters
+                </span>
+                <span class="popover-rule">
+                  <span class="rule-dot"></span>
+                  Letters, numbers, and symbols are all okay
+                </span>
+                <span class="popover-rule muted">
+                  <span class="rule-dot"></span>
+                  Avoid obvious passwords like your name or email
+                </span>
+              </div>
+            </div>
+
+            <div class="split-row">
+              <div class="field-stack">
+                <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('dateOfBirth')" class="auth-field">
+                  <mat-label>Date of Birth</mat-label>
+                  <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth" [max]="maxDate" placeholder="MM/DD/YYYY" autocomplete="bday">
+                  <mat-datepicker-toggle matSuffix [for]="dobPicker"><mat-icon svgIcon="mx-calendar"></mat-icon></mat-datepicker-toggle>
+                  <mat-datepicker #dobPicker startView="multi-year" [startAt]="startDate"></mat-datepicker>
+                </mat-form-field>
+                @if (fieldErrorMessage('dateOfBirth')) {
+                  <div class="field-note error">{{ fieldErrorMessage('dateOfBirth') }}</div>
+                }
+              </div>
+
+              <div class="field-stack">
+                <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('gender')" class="auth-field">
+                  <mat-label>Gender</mat-label>
+                  <mat-select formControlName="gender">
+                    <mat-option value="Male">Male</mat-option>
+                    <mat-option value="Female">Female</mat-option>
+                    <mat-option value="Non-binary">Non-binary</mat-option>
+                    <mat-option value="Prefer not to say">Prefer not to say</mat-option>
+                  </mat-select>
+                </mat-form-field>
+                @if (fieldErrorMessage('gender')) {
+                  <div class="field-note error">{{ fieldErrorMessage('gender') }}</div>
+                }
+              </div>
+            </div>
 
             <div class="goals-section">
               <p class="goals-label">Daily Goals (optional)</p>
-            <div class="goals-row">
-              <mat-form-field appearance="outline" class="goal-field auth-field">
-                <mat-label>Calories</mat-label>
-                <input matInput formControlName="dailyCalorieTarget" type="number">
-                <span matSuffix class="goal-unit">kcal</span>
+              <div class="goals-row">
+                <mat-form-field appearance="outline" class="goal-field auth-field">
+                  <mat-label>Calories</mat-label>
+                  <input matInput formControlName="dailyCalorieTarget" type="number">
+                  <span matSuffix class="goal-unit">kcal</span>
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="goal-field auth-field">
+                  <mat-label>Protein</mat-label>
+                  <input matInput formControlName="dailyProteinTarget" type="number">
+                  <span matSuffix class="goal-unit">g</span>
+                </mat-form-field>
+              </div>
+              <div class="goals-row">
+                <mat-form-field appearance="outline" class="goal-field auth-field">
+                  <mat-label>Carbs</mat-label>
+                  <input matInput formControlName="dailyCarbTarget" type="number">
+                  <span matSuffix class="goal-unit">g</span>
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="goal-field auth-field">
+                  <mat-label>Fat</mat-label>
+                  <input matInput formControlName="dailyFatTarget" type="number">
+                  <span matSuffix class="goal-unit">g</span>
+                </mat-form-field>
+              </div>
+              <mat-form-field appearance="outline" class="auth-field">
+                <mat-label>Daily Water Goal</mat-label>
+                <input matInput formControlName="dailyWaterTarget" type="number">
+                <span matSuffix class="goal-unit">oz</span>
               </mat-form-field>
-              <mat-form-field appearance="outline" class="goal-field auth-field">
-                <mat-label>Protein</mat-label>
-                <input matInput formControlName="dailyProteinTarget" type="number">
-                <span matSuffix class="goal-unit">g</span>
-              </mat-form-field>
-            </div>
-            <div class="goals-row">
-              <mat-form-field appearance="outline" class="goal-field auth-field">
-                <mat-label>Carbs</mat-label>
-                <input matInput formControlName="dailyCarbTarget" type="number">
-                <span matSuffix class="goal-unit">g</span>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="goal-field auth-field">
-                <mat-label>Fat</mat-label>
-                <input matInput formControlName="dailyFatTarget" type="number">
-                <span matSuffix class="goal-unit">g</span>
-              </mat-form-field>
-            </div>
-            <mat-form-field appearance="outline" class="auth-field">
-              <mat-label>Daily Water Goal</mat-label>
-              <input matInput formControlName="dailyWaterTarget" type="number">
-              <span matSuffix class="goal-unit">oz</span>
-            </mat-form-field>
             </div>
 
             <div class="terms-row" [class.terms-invalid]="isFieldInvalid('agreedToTerms')">
@@ -132,7 +199,7 @@ import { environment } from '../../../../environments/environment';
               <button mat-flat-button class="auth-btn submit-btn" type="submit" [disabled]="loading">
                 {{ loading ? 'Creating...' : 'Create Account' }}
               </button>
-              @if (!useGisButton) {
+              <div class="google-btn-shell">
                 <button type="button" class="auth-btn custom-google-btn" (click)="onCustomGoogleClick()">
                   <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -142,13 +209,12 @@ import { environment } from '../../../../environments/environment';
                   </svg>
                   Sign up with Google
                 </button>
-              }
+                @if (useGisButton) {
+                  <div id="google-signup-btn" class="google-btn-wrapper" aria-hidden="true"></div>
+                }
+              </div>
             </div>
           </form>
-
-          @if (useGisButton) {
-            <div id="google-signup-btn" class="google-btn-wrapper"></div>
-          }
 
           <p class="auth-switch">
             Already have an account? <a routerLink="/login">Sign in</a>
@@ -181,7 +247,7 @@ import { environment } from '../../../../environments/environment';
     .fade-in { animation: fade-in 0.6s ease-out; }
     .slide-up { animation: slide-up 0.5s ease-out 0.2s both; }
 
-    .auth-container { width: 100%; max-width: 420px; position: relative; z-index: 1; }
+    .auth-container { width: 100%; max-width: 760px; position: relative; z-index: 1; }
     .brand { text-align: center; margin-bottom: 20px; }
     .brand-link { text-decoration: none; }
     .brand-text { font-size: 26px; font-weight: 800; letter-spacing: 6px; color: var(--accent); }
@@ -189,7 +255,7 @@ import { environment } from '../../../../environments/environment';
     .auth-card {
       background: var(--bg-surface);
       border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px; padding: 28px 32px;
+      border-radius: 14px; padding: 24px 28px;
       max-height: 90vh; overflow-y: auto;
       position: relative; z-index: 2;
     }
@@ -200,16 +266,37 @@ import { environment } from '../../../../environments/environment';
       color: var(--text-primary); font-size: 20px; font-weight: 700;
       margin: 0 0 4px; letter-spacing: -0.3px;
     }
-    .auth-subtitle {
-      color: var(--text-muted); font-size: 14px; margin: 0;
-    }
+    .auth-subtitle { color: var(--text-muted); font-size: 14px; margin: 0; }
 
-    .auth-form {
-      display: flex; flex-direction: column; gap: 0;
+    .auth-form { display: flex; flex-direction: column; gap: 0; }
+    .split-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
     }
-    .auth-field { margin-bottom: 10px; }
+    .field-stack {
+      min-width: 0;
+    }
+    .auth-field { margin-bottom: 0; }
     mat-form-field { width: 100%; }
-    /* Never show error text - keep layout fixed. Invalid = gray outline only */
+    :host ::ng-deep .auth-form .mat-mdc-text-field-wrapper {
+      align-items: center;
+      min-height: 58px;
+    }
+    :host ::ng-deep .auth-form .mat-mdc-form-field-infix {
+      min-height: 24px;
+      padding-top: 16px !important;
+      padding-bottom: 16px !important;
+    }
+    :host ::ng-deep .auth-form .mat-mdc-input-element {
+      margin: 0 !important;
+      line-height: 1.3;
+    }
+    :host ::ng-deep .auth-form .mat-mdc-form-field-icon-suffix,
+    :host ::ng-deep .auth-form .mat-mdc-form-field-icon-prefix {
+      align-self: center;
+      padding-right: 4px;
+    }
     :host ::ng-deep .mat-mdc-form-field-subscript-wrapper {
       display: none !important;
       min-height: 0 !important;
@@ -224,7 +311,6 @@ import { environment } from '../../../../environments/environment';
     :host ::ng-deep [class*="form-field-error"] {
       display: none !important;
     }
-    /* Invalid = red outline so user sees which fields to fix */
     :host ::ng-deep .mat-mdc-form-field.field-error .mdc-notched-outline .mdc-notched-outline__leading,
     :host ::ng-deep .mat-mdc-form-field.field-error .mdc-notched-outline .mdc-notched-outline__notch,
     :host ::ng-deep .mat-mdc-form-field.field-error .mdc-notched-outline .mdc-notched-outline__trailing {
@@ -242,16 +328,93 @@ import { environment } from '../../../../environments/environment';
     :host ::ng-deep .mat-mdc-form-field.field-error input {
       caret-color: var(--text-primary) !important;
     }
-    :host ::ng-deep .auth-form .mat-mdc-form-field {
-      margin-bottom: 10px;
+    :host ::ng-deep .auth-form input:-webkit-autofill,
+    :host ::ng-deep .auth-form input:-webkit-autofill:hover,
+    :host ::ng-deep .auth-form input:-webkit-autofill:focus,
+    :host ::ng-deep .auth-form input:-webkit-autofill:active {
+      -webkit-text-fill-color: var(--text-primary) !important;
+      caret-color: var(--text-primary) !important;
+      transition: background-color 9999s ease-in-out 0s;
+      box-shadow: 0 0 0 1000px #111214 inset !important;
+      -webkit-box-shadow: 0 0 0 1000px #111214 inset !important;
+      border-radius: inherit;
+    }
+    :host ::ng-deep .auth-form .mat-mdc-form-field { margin-bottom: 0; }
+    .field-note {
+      margin: 4px 0 10px 4px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .field-note.error {
+      color: #ff6f61;
+    }
+    .password-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      gap: 14px;
+      align-items: start;
+    }
+    .password-field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      min-width: 0;
+    }
+    .password-popover {
+      display: flex;
+      min-height: 58px;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(14,16,18,0.96);
+      box-shadow: inset 0 0 0 1px rgba(155,240,180,0.05), 0 12px 24px rgba(0,0,0,0.22);
+      opacity: 0;
+      transform: translateX(-10px);
+      pointer-events: none;
+      z-index: 3;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .password-row:hover .password-popover,
+    .password-row:focus-within .password-popover {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+    .popover-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .popover-rule {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .popover-rule.pass {
+      color: #9bf0b4;
+    }
+    .popover-rule.muted {
+      color: rgba(255,255,255,0.52);
+    }
+    .rule-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      flex-shrink: 0;
+    }
+    .popover-rule.pass .rule-dot {
+      background: #1db954;
     }
 
-    .auth-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 8px;
-    }
+    .auth-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
     .auth-btn {
       width: 100% !important;
       min-width: 0 !important;
@@ -262,11 +425,17 @@ import { environment } from '../../../../environments/environment';
       font-weight: 700;
       box-sizing: border-box;
     }
-    .submit-btn {
-      background: var(--accent) !important;
-      color: #0D0D0D !important;
-    }
+    .submit-btn { background: var(--accent) !important; color: #0D0D0D !important; }
     .submit-btn:disabled { opacity: 0.5; }
+    .google-btn-shell { position: relative; }
+    .google-btn-wrapper {
+      position: absolute; inset: 0; z-index: 2;
+      opacity: 0.01; overflow: hidden; border-radius: 10px;
+    }
+    :host ::ng-deep #google-signup-btn > div {
+      width: 100% !important;
+      min-width: 100% !important;
+    }
     .custom-google-btn {
       display: flex;
       align-items: center;
@@ -280,11 +449,9 @@ import { environment } from '../../../../environments/environment';
       font-family: 'Roboto', sans-serif;
       cursor: pointer;
       transition: box-shadow 0.2s, background 0.2s;
+      position: relative; z-index: 1;
     }
-    .custom-google-btn:hover {
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      background: #f7f8f8;
-    }
+    .custom-google-btn:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.3); background: #f7f8f8; }
 
     .goals-section { margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.06); }
     .goals-label {
@@ -303,10 +470,19 @@ import { environment } from '../../../../environments/environment';
     .terms-invalid mat-checkbox { color: #ff5252 !important; }
 
     .google-icon { flex-shrink: 0; }
-    .google-btn-wrapper { display: flex; justify-content: center; margin-top: 12px; }
-
     .auth-switch { text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 14px; }
     .auth-switch a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    @media (max-width: 860px) {
+      .split-row,
+      .password-row,
+      .password-field-grid {
+        grid-template-columns: 1fr;
+      }
+      .password-popover {
+        padding: 12px;
+        min-height: 0;
+      }
+    }
   `],
 })
 export class RegisterComponent implements AfterViewInit {
@@ -315,9 +491,19 @@ export class RegisterComponent implements AfterViewInit {
   form: FormGroup;
   loading = false;
   hidePassword = true;
+  hideConfirmPassword = true;
   submitted = false;
   gridDots = Array.from({ length: 96 }, (_, i) => i);
   useGisButton = false;
+  private readonly namePattern = /^[A-Za-z]+(?:[ '-][A-Za-z]+)*$/;
+  private readonly passwordMatchValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+    const password = control.get('password')?.value ?? '';
+    const confirmPassword = control.get('confirmPassword')?.value ?? '';
+    if (!password || !confirmPassword) {
+      return null;
+    }
+    return password === confirmPassword ? null : { passwordMismatch: true };
+  };
 
   maxDate = new Date();
   startDate = new Date(2000, 0, 1);
@@ -330,10 +516,11 @@ export class RegisterComponent implements AfterViewInit {
     private readonly snackBar: MatSnackBar,
   ) {
     this.form = this.fb.group({
-      firstName: ['', [Validators.required, Validators.minLength(1)]],
-      lastName: ['', [Validators.required, Validators.minLength(1)]],
-      email: ['', [Validators.required, Validators.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+[^.]$/)]],
+      firstName: ['', [Validators.required, Validators.minLength(1), Validators.pattern(this.namePattern)]],
+      lastName: ['', [Validators.required, Validators.minLength(1), Validators.pattern(this.namePattern)]],
+      email: ['', [Validators.required, Validators.pattern(/^[^\s@]+@(?!\.)[^\s@]+$/)]],
       password: ['', [Validators.required, Validators.minLength(8)]],
+      confirmPassword: ['', Validators.required],
       dateOfBirth: [null, Validators.required],
       gender: ['', Validators.required],
       dailyCalorieTarget: [2000],
@@ -342,12 +529,70 @@ export class RegisterComponent implements AfterViewInit {
       dailyFatTarget: [65],
       dailyWaterTarget: [64],
       agreedToTerms: [false, Validators.requiredTrue],
+    }, {
+      validators: this.passwordMatchValidator,
     });
   }
 
   isFieldInvalid(field: string): boolean {
     const ctrl = this.form.controls[field];
-    return ctrl.invalid && (ctrl.touched || this.submitted);
+    const interacted = ctrl.touched || this.submitted;
+    if (field === 'confirmPassword') {
+      return interacted && (ctrl.invalid || this.form.hasError('passwordMismatch'));
+    }
+    return ctrl.invalid && interacted;
+  }
+
+  get passwordLengthMet(): boolean {
+    return (this.form.controls['password'].value || '').length >= 8;
+  }
+
+  fieldErrorMessage(field: string): string {
+    const control = this.form.controls[field];
+    if (!this.isFieldInvalid(field)) {
+      return '';
+    }
+
+    if (control.hasError('required')) {
+      switch (field) {
+        case 'firstName': return 'First name is required';
+        case 'lastName': return 'Last name is required';
+        case 'email': return 'Email is required';
+        case 'password': return 'Password is required';
+        case 'confirmPassword': return 'Confirm your password';
+        case 'dateOfBirth': return 'Date of birth is required';
+        case 'gender': return 'Gender is required';
+        default: return 'This field is required';
+      }
+    }
+
+    if ((field === 'firstName' || field === 'lastName') && control.hasError('pattern')) {
+      return field === 'firstName'
+        ? 'First name can only use letters'
+        : 'Last name can only use letters';
+    }
+
+    if (field === 'email' && control.hasError('pattern')) {
+      return 'Enter a valid email';
+    }
+
+    if (field === 'password' && control.hasError('minlength')) {
+      return 'Password must be at least 8 characters';
+    }
+
+    if (field === 'confirmPassword' && this.form.hasError('passwordMismatch')) {
+      return 'Passwords do not match';
+    }
+
+    if (field === 'dateOfBirth' && control.hasError('matDatepickerParse')) {
+      return 'Enter a valid date';
+    }
+
+    if (field === 'dateOfBirth' && control.hasError('matDatepickerMax')) {
+      return 'Date of birth cannot be in the future';
+    }
+
+    return '';
   }
 
   ngAfterViewInit(): void {
@@ -360,13 +605,14 @@ export class RegisterComponent implements AfterViewInit {
       this.useGisButton = true;
       setTimeout(() => {
         const google = (window as any).google;
-        if (google?.accounts?.id?.initialize) {
+        const el = document.getElementById('google-signup-btn');
+        if (google?.accounts?.id?.initialize && el) {
           google.accounts.id.initialize({
             client_id: environment.googleClientId,
             callback: (response: any) => this.handleGoogleResponse(response),
           });
-          const el = document.getElementById('google-signup-btn');
-          if (el) google.accounts.id.renderButton(el, { theme: 'filled_black', size: 'large', width: 356, text: 'signup_with', shape: 'pill' });
+          const width = Math.max(Math.round(el.getBoundingClientRect().width || 320), 280);
+          google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', width, text: 'signup_with', shape: 'pill' });
         }
       });
       return;
@@ -377,11 +623,35 @@ export class RegisterComponent implements AfterViewInit {
   }
 
   onCustomGoogleClick(): void {
+    if (this.useGisButton && this.clickGoogleButton('google-signup-btn')) {
+      return;
+    }
     if (environment.googleClientId && typeof (window as any).google !== 'undefined') {
       this.waitForGoogleAndInit();
+      setTimeout(() => {
+        if (!this.clickGoogleButton('google-signup-btn')) {
+          this.promptGoogleFallback();
+        }
+      }, 150);
       return;
     }
     this.snackBar.open('Google Sign-In requires a Client ID. Add it to environment.ts and .env (GOOGLE_CLIENT_ID).', 'Close', { duration: 5000 });
+  }
+
+  private clickGoogleButton(containerId: string): boolean {
+    const host = document.getElementById(containerId);
+    const clickable = host?.querySelector('div[role="button"], button, iframe') as HTMLElement | null;
+    clickable?.click();
+    return !!clickable;
+  }
+
+  private promptGoogleFallback(): void {
+    const google = (window as any).google;
+    if (google?.accounts?.id?.prompt) {
+      google.accounts.id.prompt();
+      return;
+    }
+    this.snackBar.open('Google Sign-In is still loading. Try again in a second.', 'Close', { duration: 3000 });
   }
 
   handleGoogleResponse(response: any): void {
@@ -391,7 +661,6 @@ export class RegisterComponent implements AfterViewInit {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (payload) => {
-            // Google sign-up bypasses register form and auto-creates account; go to complete-profile or dashboard
             if (!payload.user.profileComplete) {
               this.router.navigate(['/complete-profile']);
             } else {
@@ -419,11 +688,11 @@ export class RegisterComponent implements AfterViewInit {
       ? v.dateOfBirth.toISOString().split('T')[0]
       : v.dateOfBirth;
 
-    // Send only fields the server's RegisterInput accepts (displayName, not firstName/lastName)
     this.authService.register({
       email: v.email,
       password: v.password,
-      displayName: ((v.firstName || '').trim() + ' ' + (v.lastName || '').trim()).trim(),
+      firstName: (v.firstName || '').trim(),
+      lastName: (v.lastName || '').trim(),
       dateOfBirth: dob,
       gender: v.gender,
       agreedToTerms: true,
@@ -436,9 +705,7 @@ export class RegisterComponent implements AfterViewInit {
           dailyFatTarget: v.dailyFatTarget || 65,
           dailyWaterGoalOz: v.dailyWaterTarget || 64,
         };
-        return this.userService.updateProfile(goals).pipe(
-          catchError(() => of(null)), // still navigate if update fails
-        );
+        return this.userService.updateProfile(goals).pipe(catchError(() => of(null)));
       }),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe({
@@ -451,3 +718,20 @@ export class RegisterComponent implements AfterViewInit {
     });
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

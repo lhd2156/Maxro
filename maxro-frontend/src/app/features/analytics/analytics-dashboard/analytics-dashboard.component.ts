@@ -62,102 +62,102 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
         </div>
       </div>
 
-      <mat-card class="chart-card strength-card">
-        <div class="chart-card-header">
-          <h3>Strength Progress</h3>
-          <mat-form-field appearance="outline" class="exercise-select">
-            <mat-label>Exercise</mat-label>
-            <mat-select [(value)]="selectedExercise" (selectionChange)="loadStrengthData()" [disabled]="exerciseNames.length === 0">
-              @for (name of exerciseNames; track name) {
-                <mat-option [value]="name">{{ name }}</mat-option>
+      <div class="analytics-grid">
+        <mat-card class="chart-card strength-card">
+          <div class="chart-card-header">
+            <h3>Strength Progress</h3>
+            <mat-form-field appearance="outline" class="exercise-select">
+              <mat-label>Exercise</mat-label>
+              <mat-select [(value)]="selectedExercise" (selectionChange)="loadStrengthData()" [disabled]="exerciseNames.length === 0">
+                @for (name of exerciseNames; track name) {
+                  <mat-option [value]="name">{{ name }}</mat-option>
+                }
+              </mat-select>
+              @if (exerciseNames.length === 0) {
+                <mat-hint>Log workouts to see your exercises</mat-hint>
               }
-            </mat-select>
-            @if (exerciseNames.length === 0) {
-              <mat-hint>Log workouts to see your exercises</mat-hint>
-            }
-          </mat-form-field>
-        </div>
-        @if (strengthChartLoading) {
-          <div class="chart-loading" [style.width.px]="chartWidth" style="height: 280px;">
-            <app-loading-spinner></app-loading-spinner>
+            </mat-form-field>
           </div>
-        } @else if (strengthChartData.length > 0 && strengthChartData[0].series.length > 0) {
-          <div class="chart-container">
-            <ngx-charts-line-chart
-              [results]="strengthChartData"
-              [view]="[chartWidth, 280]"
-              [scheme]="$any(chartScheme)"
-              [xAxis]="true"
-              [yAxis]="true"
-              [showXAxisLabel]="false"
-              [showYAxisLabel]="true"
-              yAxisLabel="Weight (lbs)"
-              [yAxisTickFormatting]="formatYAxis"
-              [autoScale]="true"
-              [roundDomains]="false"
-              [yScaleMax]="strengthYMax"
-              [xScaleMin]="$any(xAxisMin)"
-              [xScaleMax]="$any(xAxisMax)"
-              [xAxisTicks]="xAxisTicks"
-              [xAxisTickFormatting]="formatDateAxis"
-              [timeline]="false"
-              [animations]="false">
-              <ng-template #tooltipTemplate let-model="model">
-                <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
-                <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Weight') }}: {{ tooltipValue(model) }} lbs</span>
-              </ng-template>
-              <ng-template #seriesTooltipTemplate let-model="model">
-                <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
-                <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Weight') }}: {{ tooltipValue(model) }} lbs</span>
-              </ng-template>
-            </ngx-charts-line-chart>
-          </div>
-        } @else {
-          <app-empty-state
-            svgIcon="mx-chart-line"
-            title="No data yet"
-            message="Log workouts to see strength progress." />
-        }
-      </mat-card>
+          @if (strengthChartLoading) {
+            <div class="chart-loading" [style.width.px]="gridChartWidth" style="height: 280px;">
+              <app-loading-spinner></app-loading-spinner>
+            </div>
+          } @else if (strengthChartData.length > 0 && strengthChartData[0].series.length > 0) {
+            <div class="chart-container">
+              <ngx-charts-line-chart
+                [results]="strengthChartData"
+                [view]="[gridChartWidth, 280]"
+                [scheme]="$any(chartScheme)"
+                [xAxis]="true"
+                [yAxis]="true"
+                [showXAxisLabel]="false"
+                [showYAxisLabel]="true"
+                yAxisLabel="Weight (lbs)"
+                [yAxisTickFormatting]="formatYAxis"
+                [autoScale]="true"
+                [roundDomains]="false"
+                [yScaleMax]="strengthYMax"
+                [xScaleMin]="$any(xAxisMin)"
+                [xScaleMax]="$any(xAxisMax)"
+                [xAxisTicks]="xAxisTicks"
+                [xAxisTickFormatting]="formatDateAxis"
+                [timeline]="false"
+                [animations]="false">
+                <ng-template #tooltipTemplate let-model="model">
+                  <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
+                  <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Weight') }}: {{ tooltipValue(model) }} lbs</span>
+                </ng-template>
+                <ng-template #seriesTooltipTemplate let-model="model">
+                  <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
+                  <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Weight') }}: {{ tooltipValue(model) }} lbs</span>
+                </ng-template>
+              </ngx-charts-line-chart>
+            </div>
+          } @else {
+            <app-empty-state
+              svgIcon="mx-chart-line"
+              title="No data yet"
+              message="Log workouts to see strength progress." />
+          }
+        </mat-card>
 
-      <div class="chart-grid">
-        <mat-card class="chart-card">
+        <mat-card class="chart-card calorie-card">
           <h3>Calorie Trends</h3>
           @if (macroChartLoading) {
-            <div class="chart-loading" [style.width.px]="chartHalfWidth" style="height: 240px;">
+            <div class="chart-loading" [style.width.px]="gridChartWidth" style="height: 240px;">
               <app-loading-spinner></app-loading-spinner>
             </div>
           } @else if (calorieChartData.length > 0 && calorieChartData[0].series.length >= 1) {
-          <div class="chart-container chart-container-half">
-          <ngx-charts-line-chart
-            [results]="calorieChartData"
-            [view]="[chartHalfWidth, 240]"
-            [scheme]="$any(calorieScheme)"
-            [xAxis]="true"
-            [yAxis]="true"
-            [showXAxisLabel]="false"
-            [showYAxisLabel]="true"
-            yAxisLabel="Calories"
-            [autoScale]="true"
-            [roundDomains]="false"
-            [yScaleMax]="calorieYMax"
-            [xScaleMin]="$any(xAxisMin)"
-            [xScaleMax]="$any(xAxisMax)"
-            [xAxisTicks]="xAxisTicks"
-            [xAxisTickFormatting]="formatDateAxis"
-            [yAxisTickFormatting]="formatCalories"
-            [timeline]="false"
-            [animations]="false">
-            <ng-template #tooltipTemplate let-model="model">
-              <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
-              <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Calories') }}: {{ tooltipValue(model) }} cal</span>
-            </ng-template>
-            <ng-template #seriesTooltipTemplate let-model="model">
-              <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
-              <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Calories') }}: {{ tooltipValue(model) }} cal</span>
-            </ng-template>
-          </ngx-charts-line-chart>
-          </div>
+            <div class="chart-container chart-container-half">
+              <ngx-charts-line-chart
+                [results]="calorieChartData"
+                [view]="[gridChartWidth, 240]"
+                [scheme]="$any(calorieScheme)"
+                [xAxis]="true"
+                [yAxis]="true"
+                [showXAxisLabel]="false"
+                [showYAxisLabel]="true"
+                yAxisLabel="Calories"
+                [autoScale]="true"
+                [roundDomains]="false"
+                [yScaleMax]="calorieYMax"
+                [xScaleMin]="$any(xAxisMin)"
+                [xScaleMax]="$any(xAxisMax)"
+                [xAxisTicks]="xAxisTicks"
+                [xAxisTickFormatting]="formatDateAxis"
+                [yAxisTickFormatting]="formatCalories"
+                [timeline]="false"
+                [animations]="false">
+                <ng-template #tooltipTemplate let-model="model">
+                  <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
+                  <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Calories') }}: {{ tooltipValue(model) }} cal</span>
+                </ng-template>
+                <ng-template #seriesTooltipTemplate let-model="model">
+                  <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
+                  <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Calories') }}: {{ tooltipValue(model) }} cal</span>
+                </ng-template>
+              </ngx-charts-line-chart>
+            </div>
           } @else if (!macroChartLoading) {
             <app-empty-state
               svgIcon="mx-utensils"
@@ -166,43 +166,43 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
           }
         </mat-card>
 
-        <mat-card class="chart-card">
+        <mat-card class="chart-card protein-card">
           <h3>Protein Intake</h3>
           @if (macroChartLoading) {
-            <div class="chart-loading" [style.width.px]="chartHalfWidth" style="height: 240px;">
+            <div class="chart-loading" [style.width.px]="gridChartWidth" style="height: 240px;">
               <app-loading-spinner></app-loading-spinner>
             </div>
           } @else if (proteinChartData.length > 0 && proteinChartData[0].series.length >= 1) {
-          <div class="chart-container chart-container-half">
-          <ngx-charts-line-chart
-            [results]="proteinChartData"
-            [activeEntries]="proteinChartData"
-            [view]="[chartHalfWidth, 240]"
-            [scheme]="$any(proteinScheme)"
-            [xAxis]="true"
-            [yAxis]="true"
-            [showXAxisLabel]="false"
-            [showYAxisLabel]="true"
-            yAxisLabel="Grams"
-            [autoScale]="true"
-            [roundDomains]="false"
-            [yScaleMax]="proteinYMax"
-            [xScaleMin]="$any(xAxisMin)"
-            [xScaleMax]="$any(xAxisMax)"
-            [xAxisTicks]="xAxisTicks"
-            [xAxisTickFormatting]="formatDateAxis"
-            [timeline]="false"
-            [animations]="false">
-            <ng-template #tooltipTemplate let-model="model">
-              <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
-              <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Protein') }}: {{ tooltipValue(model) }}g</span>
-            </ng-template>
-            <ng-template #seriesTooltipTemplate let-model="model">
-              <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
-              <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Protein') }}: {{ tooltipValue(model) }}g</span>
-            </ng-template>
-          </ngx-charts-line-chart>
-          </div>
+            <div class="chart-container chart-container-half">
+              <ngx-charts-line-chart
+                [results]="proteinChartData"
+                [activeEntries]="proteinChartData"
+                [view]="[gridChartWidth, 240]"
+                [scheme]="$any(proteinScheme)"
+                [xAxis]="true"
+                [yAxis]="true"
+                [showXAxisLabel]="false"
+                [showYAxisLabel]="true"
+                yAxisLabel="Grams"
+                [autoScale]="true"
+                [roundDomains]="false"
+                [yScaleMax]="proteinYMax"
+                [xScaleMin]="$any(xAxisMin)"
+                [xScaleMax]="$any(xAxisMax)"
+                [xAxisTicks]="xAxisTicks"
+                [xAxisTickFormatting]="formatDateAxis"
+                [timeline]="false"
+                [animations]="false">
+                <ng-template #tooltipTemplate let-model="model">
+                  <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
+                  <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Protein') }}: {{ tooltipValue(model) }}g</span>
+                </ng-template>
+                <ng-template #seriesTooltipTemplate let-model="model">
+                  <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
+                  <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Protein') }}: {{ tooltipValue(model) }}g</span>
+                </ng-template>
+              </ngx-charts-line-chart>
+            </div>
           } @else if (!macroChartLoading) {
             <app-empty-state
               svgIcon="mx-utensils"
@@ -210,57 +210,57 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
               message="Log nutrition to see protein trends." />
           }
         </mat-card>
-      </div>
 
-      <mat-card class="chart-card">
-        <h3>Water Consistency</h3>
-        @if (waterChartLoading) {
-          <div class="chart-loading" [style.width.px]="chartWidth" style="height: 280px;">
-            <app-loading-spinner></app-loading-spinner>
-          </div>
-        } @else if (waterChartData.length > 0 && waterChartData[0].series.length >= 1) {
-          <div class="chart-container">
-            <ngx-charts-line-chart
-              [results]="waterChartData"
-              [activeEntries]="waterChartData"
-              [view]="[chartWidth, 280]"
-              [scheme]="$any(waterScheme)"
-              [xAxis]="true"
-              [yAxis]="true"
-              [showXAxisLabel]="false"
-              [showYAxisLabel]="true"
-              yAxisLabel="Ounces"
-              [yAxisTickFormatting]="formatYAxis"
-              [autoScale]="true"
-              [roundDomains]="false"
-              [yScaleMax]="waterYMax"
-              [xScaleMin]="$any(xAxisMin)"
-              [xScaleMax]="$any(xAxisMax)"
-              [xAxisTicks]="xAxisTicks"
-              [xAxisTickFormatting]="formatDateAxis"
-              [timeline]="false"
-              [animations]="false">
-              <ng-template #tooltipTemplate let-model="model">
-                <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
-                <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Water') }}: {{ tooltipValue(model) }} oz</span>
-              </ng-template>
-              <ng-template #seriesTooltipTemplate let-model="model">
-                <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
-                <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Water') }}: {{ tooltipValue(model) }} oz</span>
-              </ng-template>
-            </ngx-charts-line-chart>
-          </div>
-        } @else if (!waterChartLoading) {
-          <app-empty-state
-            svgIcon="mx-droplet"
-            title="No data yet"
-            message="Log water intake to see consistency trends." />
-        }
-      </mat-card>
+        <mat-card class="chart-card water-card">
+          <h3>Water Consistency</h3>
+          @if (waterChartLoading) {
+            <div class="chart-loading" [style.width.px]="gridChartWidth" style="height: 280px;">
+              <app-loading-spinner></app-loading-spinner>
+            </div>
+          } @else if (waterChartData.length > 0 && waterChartData[0].series.length >= 1) {
+            <div class="chart-container">
+              <ngx-charts-line-chart
+                [results]="waterChartData"
+                [activeEntries]="waterChartData"
+                [view]="[gridChartWidth, 280]"
+                [scheme]="$any(waterScheme)"
+                [xAxis]="true"
+                [yAxis]="true"
+                [showXAxisLabel]="false"
+                [showYAxisLabel]="true"
+                yAxisLabel="Ounces"
+                [yAxisTickFormatting]="formatYAxis"
+                [autoScale]="true"
+                [roundDomains]="false"
+                [yScaleMax]="waterYMax"
+                [xScaleMin]="$any(xAxisMin)"
+                [xScaleMax]="$any(xAxisMax)"
+                [xAxisTicks]="xAxisTicks"
+                [xAxisTickFormatting]="formatDateAxis"
+                [timeline]="false"
+                [animations]="false">
+                <ng-template #tooltipTemplate let-model="model">
+                  <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
+                  <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Water') }}: {{ tooltipValue(model) }} oz</span>
+                </ng-template>
+                <ng-template #seriesTooltipTemplate let-model="model">
+                  <span class="chart-tooltip-date">{{ tooltipDate(model) }}</span>
+                  <span class="chart-tooltip-value">{{ tooltipSeriesName(model, 'Water') }}: {{ tooltipValue(model) }} oz</span>
+                </ng-template>
+              </ngx-charts-line-chart>
+            </div>
+          } @else if (!waterChartLoading) {
+            <app-empty-state
+              svgIcon="mx-droplet"
+              title="No data yet"
+              message="Log water intake to see consistency trends." />
+          }
+        </mat-card>
+      </div>
     </div>
   `,
   styles: [`
-    .page { max-width: 1000px; margin: 0 auto; }
+    .page { width: 100%; max-width: 1120px; margin: 0 auto; }
     .page-header {
       display: flex;
       justify-content: space-between;
@@ -354,7 +354,11 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
       border: 1px solid rgba(255,255,255,0.06);
       border-radius: 12px;
       padding: 20px;
-      margin-bottom: 16px;
+      margin-bottom: 0;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      height: 100%;
     }
     .chart-loading {
       display: flex;
@@ -414,10 +418,11 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
     .exercise-select { width: 200px; flex-shrink: 0; }
     ::ng-deep .exercise-select .mat-mdc-form-field-focus-overlay { background: rgba(255,255,255,0.04) !important; }
     ::ng-deep .exercise-select .mat-mdc-select-arrow-wrapper .mat-mdc-select-arrow { color: var(--text-muted) !important; }
-    .chart-grid {
+    .analytics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
+      align-items: stretch;
     }
     ::ng-deep .ngx-charts {
       display: block;
@@ -435,8 +440,14 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
       stroke-width: 3px !important;
       transition: none !important;
     }
+    @media (max-width: 900px) {
+      .controls-row,
+      .custom-range-field,
+      .exercise-select { width: 100%; }
+      .analytics-grid { grid-template-columns: 1fr; }
+    }
     @media (max-width: 768px) {
-      .chart-grid { grid-template-columns: 1fr; }
+      .page-header { align-items: flex-start; }
     }
   `],
 })
@@ -466,6 +477,7 @@ export class AnalyticsDashboardComponent implements OnInit, OnDestroy, AfterView
   proteinChartData: any[] = [];
   waterChartData: any[] = [];
 
+  pageWidth = 1000;
   chartWidth = 700;
   chartHalfWidth = 440;
   private waterRequestId = 0;
@@ -477,6 +489,10 @@ export class AnalyticsDashboardComponent implements OnInit, OnDestroy, AfterView
   readonly calorieScheme: any = { domain: ['#9C27B0'] };
   readonly proteinScheme: any = { domain: ['#FF9800'] };
   readonly waterScheme: any = { domain: ['#00BCD4'] };
+
+  get gridChartWidth(): number {
+    return this.pageWidth <= 900 ? this.chartWidth : this.chartHalfWidth;
+  }
 
   constructor(
     private readonly analyticsService: AnalyticsService,
@@ -539,8 +555,9 @@ export class AnalyticsDashboardComponent implements OnInit, OnDestroy, AfterView
   private updateChartWidthFromElement(el: HTMLElement): void {
     const w = el.clientWidth || el.offsetWidth || 0;
     if (w > 0) {
+      this.pageWidth = w;
       this.chartWidth = Math.max(300, Math.min(w - 40, 960));
-      this.chartHalfWidth = Math.max(200, Math.min((w - 56) / 2, 480));
+      this.chartHalfWidth = Math.max(220, Math.min((w - 72) / 2, 500));
     }
   }
 
@@ -877,3 +894,5 @@ export class AnalyticsDashboardComponent implements OnInit, OnDestroy, AfterView
     console.error('Analytics: getWaterTrends failed', err);
   }
 }
+
+

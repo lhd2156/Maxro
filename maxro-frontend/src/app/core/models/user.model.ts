@@ -4,6 +4,7 @@ export interface UserProfile {
   displayName: string;
   firstName: string | null;
   lastName: string | null;
+  hasPassword: boolean;
   bodyWeightLbs: number | null;
   heightInches: number | null;
   fitnessGoal: string | null;
@@ -34,6 +35,11 @@ export interface UserProfileInput {
   dateOfBirth?: string;
   gender?: string;
   agreedToTerms?: boolean;
+}
+
+export interface ChangePasswordInput {
+  currentPassword?: string;
+  newPassword: string;
 }
 
 export interface AuthPayload {

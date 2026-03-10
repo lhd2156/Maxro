@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
 import { Apollo, gql } from 'apollo-angular';
 import { Observable, map, tap } from 'rxjs';
-import { UserProfile, UserProfileInput } from '../models/user.model';
+import { ChangePasswordInput, UserProfile, UserProfileInput } from '../models/user.model';
 import { AuthService } from './auth.service';
 
 const USER_FIELDS = `
-  id email displayName bodyWeightLbs heightInches fitnessGoal
+  id email displayName firstName lastName hasPassword bodyWeightLbs heightInches fitnessGoal
   dailyCalorieTarget dailyProteinTarget dailyCarbTarget dailyFatTarget
   dailyWaterGoalOz dateOfBirth gender agreedToTerms profileComplete createdAt
 `;
@@ -22,6 +22,12 @@ const UPDATE_PROFILE = gql`
 
 const DELETE_ACCOUNT = gql`
   mutation DeleteAccount { deleteAccount }
+`;
+
+const CHANGE_PASSWORD = gql`
+  mutation ChangePassword($input: ChangePasswordInput!) {
+    changePassword(input: $input) { ${USER_FIELDS} }
+  }
 `;
 
 @Injectable({ providedIn: 'root' })
@@ -43,6 +49,16 @@ export class UserService {
       variables: { input },
     }).pipe(
       map(r => r.data!.updateProfile),
+      tap(user => this.authService.updateCurrentUser(user)),
+    );
+  }
+
+  changePassword(input: ChangePasswordInput): Observable<UserProfile> {
+    return this.apollo.mutate<{ changePassword: UserProfile }>({
+      mutation: CHANGE_PASSWORD,
+      variables: { input },
+    }).pipe(
+      map(r => r.data!.changePassword),
       tap(user => this.authService.updateCurrentUser(user)),
     );
   }

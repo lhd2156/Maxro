@@ -38,36 +38,30 @@ import { environment } from '../../../../environments/environment';
             <p class="auth-subtitle">Welcome back to your fitness journey</p>
           </div>
 
-          <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
+          <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form" novalidate>
             <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('email')">
               <mat-label>Email</mat-label>
-              <input matInput formControlName="email" type="email" autocomplete="email">
-              @if (isFieldInvalid('email')) {
-                @if (form.controls['email'].hasError('required')) {
-                  <mat-error>Email is required</mat-error>
-                } @else if (form.controls['email'].hasError('pattern')) {
-                  <mat-error>Invalid email format</mat-error>
-                }
-              }
+              <input matInput formControlName="email" type="text" inputmode="email" autocomplete="email">
             </mat-form-field>
+            @if (emailErrorMessage) {
+              <div class="field-note error">{{ emailErrorMessage }}</div>
+            }
             <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('password')">
               <mat-label>Password</mat-label>
               <input matInput formControlName="password" [type]="hidePassword ? 'password' : 'text'" autocomplete="current-password">
               <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
                 <mat-icon [svgIcon]="hidePassword ? 'mx-eye-off' : 'mx-eye'"></mat-icon>
               </button>
-              @if (isFieldInvalid('password')) {
-                <mat-error>Password is required</mat-error>
-              }
             </mat-form-field>
+            @if (passwordErrorMessage) {
+              <div class="field-note error">{{ passwordErrorMessage }}</div>
+            }
             <button mat-flat-button class="submit-btn" type="submit" [disabled]="loading">
               {{ loading ? 'Signing in...' : 'Sign In' }}
             </button>
           </form>
 
-          @if (useGisButton) {
-            <div id="google-signin-btn" class="google-btn-wrapper"></div>
-          } @else {
+          <div class="google-btn-shell">
             <button type="button" class="custom-google-btn" (click)="onCustomGoogleClick()">
               <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -77,7 +71,10 @@ import { environment } from '../../../../environments/environment';
               </svg>
               Continue with Google
             </button>
-          }
+            @if (useGisButton) {
+              <div id="google-signin-btn" class="google-btn-wrapper" aria-hidden="true"></div>
+            }
+          </div>
 
           <p class="auth-switch">
             Don't have an account? <a routerLink="/register">Create one</a>
@@ -130,6 +127,23 @@ import { environment } from '../../../../environments/environment';
     .auth-form { display: flex; flex-direction: column; gap: 0; }
     :host ::ng-deep .auth-form .mat-mdc-form-field { margin-bottom: 20px; }
     mat-form-field { width: 100%; }
+    :host ::ng-deep .auth-form .mat-mdc-text-field-wrapper {
+      align-items: center;
+      min-height: 58px;
+    }
+    :host ::ng-deep .auth-form .mat-mdc-form-field-infix {
+      min-height: 24px;
+      padding-top: 16px !important;
+      padding-bottom: 16px !important;
+    }
+    :host ::ng-deep .auth-form .mat-mdc-input-element {
+      margin: 0 !important;
+      line-height: 1.3;
+    }
+    :host ::ng-deep .auth-form .mat-mdc-form-field-icon-suffix {
+      align-self: center;
+      padding-right: 4px;
+    }
     :host ::ng-deep .mat-mdc-form-field-subscript-wrapper {
       min-height: 0 !important;
     }
@@ -140,6 +154,25 @@ import { environment } from '../../../../environments/environment';
     :host ::ng-deep .mat-mdc-form-field.field-error input {
       caret-color: var(--text-primary) !important;
     }
+    :host ::ng-deep .auth-form input:-webkit-autofill,
+    :host ::ng-deep .auth-form input:-webkit-autofill:hover,
+    :host ::ng-deep .auth-form input:-webkit-autofill:focus,
+    :host ::ng-deep .auth-form input:-webkit-autofill:active {
+      -webkit-text-fill-color: var(--text-primary) !important;
+      caret-color: var(--text-primary) !important;
+      transition: background-color 9999s ease-in-out 0s;
+      box-shadow: 0 0 0 1000px #111214 inset !important;
+      -webkit-box-shadow: 0 0 0 1000px #111214 inset !important;
+      border-radius: inherit;
+    }
+    .field-note {
+      margin: -14px 0 14px 4px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .field-note.error {
+      color: #ff6f61;
+    }
     .submit-btn {
       width: 100%; height: 40px;
       background: var(--accent) !important; color: #0D0D0D !important;
@@ -147,14 +180,24 @@ import { environment } from '../../../../environments/environment';
     }
     .submit-btn:disabled { opacity: 0.5; }
 
-    .google-btn-wrapper { display: flex; justify-content: center; margin-top: 12px; }
+    .google-btn-shell { position: relative; margin-top: 12px; }
+    .google-btn-wrapper {
+      position: absolute; inset: 0; z-index: 1;
+      opacity: 0; overflow: hidden; border-radius: 20px;
+      pointer-events: none;
+    }
+    :host ::ng-deep #google-signin-btn > div {
+      width: 100% !important;
+      min-width: 100% !important;
+    }
     .custom-google-btn {
-      width: 100%; height: 40px; margin-top: 12px;
+      width: 100%; height: 40px;
       display: flex; align-items: center; justify-content: center; gap: 10px;
       background: #fff; color: #3c4043;
       border: none; border-radius: 20px;
       font-size: 13px; font-weight: 500; font-family: 'Roboto', sans-serif;
       cursor: pointer; transition: box-shadow 0.2s, background 0.2s;
+      position: relative; z-index: 2;
     }
     .custom-google-btn:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.3); background: #f7f8f8; }
     .google-icon { flex-shrink: 0; }
@@ -181,7 +224,7 @@ export class LoginComponent implements AfterViewInit {
     private readonly snackBar: MatSnackBar,
   ) {
     this.form = this.fb.group({
-      email: ['', [Validators.required, Validators.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+[^.]$/)]],
+      email: ['', [Validators.required, Validators.pattern(/^[^\s@]+@(?!\.)[^\s@]+$/)]],
       password: ['', Validators.required],
     });
   }
@@ -189,6 +232,19 @@ export class LoginComponent implements AfterViewInit {
   isFieldInvalid(field: string): boolean {
     const ctrl = this.form.controls[field];
     return ctrl.invalid && (ctrl.touched || this.submitted);
+  }
+
+  get emailErrorMessage(): string {
+    const control = this.form.controls['email'];
+    if (!this.isFieldInvalid('email')) return '';
+    if (control.hasError('required')) return 'Email is required';
+    if (control.hasError('pattern')) return 'Enter a valid email';
+    return '';
+  }
+
+  get passwordErrorMessage(): string {
+    if (!this.isFieldInvalid('password')) return '';
+    return 'Password is required';
   }
 
   ngAfterViewInit(): void {
@@ -201,13 +257,14 @@ export class LoginComponent implements AfterViewInit {
       this.useGisButton = true;
       setTimeout(() => {
         const google = (window as any).google;
-        if (google?.accounts?.id?.initialize) {
+        const el = document.getElementById('google-signin-btn');
+        if (google?.accounts?.id?.initialize && el) {
           google.accounts.id.initialize({
             client_id: environment.googleClientId,
             callback: (response: any) => this.handleGoogleResponse(response),
           });
-          const el = document.getElementById('google-signin-btn');
-          if (el) google.accounts.id.renderButton(el, { theme: 'filled_black', size: 'large', width: 356, text: 'continue_with', shape: 'pill' });
+          const width = Math.max(Math.round(el.getBoundingClientRect().width || 320), 280);
+          google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', width, text: 'signin_with', shape: 'pill' });
         }
       });
       return;
@@ -218,11 +275,35 @@ export class LoginComponent implements AfterViewInit {
   }
 
   onCustomGoogleClick(): void {
-    if (environment.googleClientId && typeof (window as any).google !== 'undefined') {
-      this.waitForGoogleAndInit();
+    if (!environment.googleClientId) {
+      this.snackBar.open('Google Sign-In requires a Client ID. Add it to environment.ts and .env (GOOGLE_CLIENT_ID).', 'Close', { duration: 5000 });
       return;
     }
-    this.snackBar.open('Google Sign-In requires a Client ID. Add it to environment.ts and .env (GOOGLE_CLIENT_ID).', 'Close', { duration: 5000 });
+    this.waitForGoogleAndInit();
+    setTimeout(() => {
+      if (!this.clickGoogleButton('google-signin-btn')) {
+        this.promptGoogleFallback();
+      }
+    }, 150);
+  }
+
+  private clickGoogleButton(containerId: string): boolean {
+    const host = document.getElementById(containerId);
+    const clickable = host?.querySelector('div[role="button"], button') as HTMLElement | null;
+    if (!clickable) {
+      return false;
+    }
+    clickable.click();
+    return true;
+  }
+
+  private promptGoogleFallback(): void {
+    const google = (window as any).google;
+    if (google?.accounts?.id?.prompt) {
+      google.accounts.id.prompt();
+      return;
+    }
+    this.snackBar.open('Google Sign-In is still loading. Try again in a second.', 'Close', { duration: 3000 });
   }
 
   handleGoogleResponse(response: any): void {
@@ -272,3 +353,9 @@ export class LoginComponent implements AfterViewInit {
       });
   }
 }
+
+
+
+
+
+

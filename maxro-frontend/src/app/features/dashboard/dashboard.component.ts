@@ -12,8 +12,8 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable, catchError, interval, of, switchMap, timer } from 'rxjs';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
-import { MacroBarComponent } from '../../shared/components/macro-bar/macro-bar.component';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner/loading-spinner.component';
 import { WorkoutQuickAddComponent } from '@app/shared/components/workout-quick-add/workout-quick-add.component';
 import { AnalyticsService } from '../../core/services/analytics.service';
@@ -22,6 +22,7 @@ import { WaterService } from '../../core/services/water.service';
 import { ConfettiService } from '../../core/services/confetti.service';
 import { DashboardSummary } from '../../core/models/analytics.model';
 import { UserProfile } from '../../core/models/user.model';
+import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack } from '../../core/services/spotify.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -30,8 +31,7 @@ import { UserProfile } from '../../core/models/user.model';
     CommonModule, RouterLink, FormsModule,
     MatCardModule, MatButtonModule, MatIconModule, MatSnackBarModule, MatTooltipModule,
     MatFormFieldModule, MatInputModule, MatDatepickerModule, MatNativeDateModule,
-    StatCardComponent, MacroBarComponent, LoadingSpinnerComponent,
-    WorkoutQuickAddComponent,
+    StatCardComponent, LoadingSpinnerComponent, WorkoutQuickAddComponent,
   ],
   template: `
     @if (loading) {
@@ -82,8 +82,7 @@ import { UserProfile } from '../../core/models/user.model';
             [highlight]="summary.waterToday?.goalMet || false" />
         </div>
 
-        <div class="dashboard-body">
-          <div class="content-grid">
+        <div class="content-grid">
           <mat-card class="section-card">
             <div class="section-header">
               <h3>Today's Workout</h3>
@@ -94,7 +93,7 @@ import { UserProfile } from '../../core/models/user.model';
                 @for (ex of summary.workoutToday.exercises; track ex.name) {
                   <div class="exercise-row">
                     <span class="exercise-name">{{ ex.name }}</span>
-                    <span class="exercise-detail">{{ ex.sets.length }} sets &middot; {{ ex.muscleGroup }}</span>
+                    <span class="exercise-detail">{{ ex.sets.length }} sets - {{ ex.muscleGroup }}</span>
                   </div>
                 }
               </div>
@@ -152,7 +151,7 @@ import { UserProfile } from '../../core/models/user.model';
                 </div>
               </div>
               <div class="water-quick-row">
-                <button class="water-step-btn minus" (click)="quickAddWater(-8)" [disabled]="addingWater || (summary.waterToday?.totalOz || 0) <= 0" aria-label="Remove 8oz">
+                <button class="water-step-btn" (click)="quickAddWater(-8)" [disabled]="addingWater || (summary.waterToday?.totalOz || 0) <= 0" aria-label="Remove 8oz">
                   <mat-icon svgIcon="mx-minus"></mat-icon>
                 </button>
                 @for (amt of waterQuickAmounts; track amt) {
@@ -160,7 +159,7 @@ import { UserProfile } from '../../core/models/user.model';
                     {{ amt }}oz
                   </button>
                 }
-                <button class="water-step-btn plus" (click)="quickAddWater(8)" [disabled]="addingWater" aria-label="Add 8oz">
+                <button class="water-step-btn" (click)="quickAddWater(8)" [disabled]="addingWater" aria-label="Add 8oz">
                   <mat-icon svgIcon="mx-plus"></mat-icon>
                 </button>
               </div>
@@ -169,7 +168,6 @@ import { UserProfile } from '../../core/models/user.model';
               }
             </div>
           </mat-card>
-          </div>
         </div>
 
         <div class="bottom-grid">
@@ -194,7 +192,7 @@ import { UserProfile } from '../../core/models/user.model';
             } @else {
               <div class="empty-section">
                 <mat-icon svgIcon="mx-trophy"></mat-icon>
-                <p>No PRs yet — log workouts to track personal records here.</p>
+                <p>No PRs yet. Log workouts to track personal records here.</p>
               </div>
             }
           </mat-card>
@@ -202,448 +200,299 @@ import { UserProfile } from '../../core/models/user.model';
           <mat-card class="section-card spotify-card">
             <div class="section-header">
               <h3>Now Playing</h3>
-              <div class="music-service-toggle">
-                <button class="svc-btn" [class.active]="musicService === 'spotify'" (click)="musicService = 'spotify'">
-                  <svg viewBox="0 0 24 24" width="14" height="14"><path fill="#1DB954" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
-                  Spotify
+              @if (spotifyConnected) {
+                <button class="spotify-status-btn connected" (click)="disconnectSpotify()">
+                  <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+                  <span class="spotify-status-label-wrap">
+                    <span class="spotify-status-label spotify-status-label-default">Connected</span>
+                    <span class="spotify-status-label spotify-status-label-hover">Disconnect</span>
+                  </span>
                 </button>
-                <button class="svc-btn" [class.active]="musicService === 'apple'" (click)="musicService = 'apple'">
-                  <svg viewBox="0 0 20 20" width="14" height="14">
-                    <defs><linearGradient id="am-sm" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FA233B"/><stop offset="100%" stop-color="#FB5C74"/></linearGradient></defs>
-                    <rect width="20" height="20" rx="4.5" fill="url(#am-sm)"/>
-                    <path fill="#fff" d="M14 4.5a.5.5 0 0 0-.58-.49l-5 1A.5.5 0 0 0 8 5.5V12a2 2 0 1 0 1 1.73V7.36l4-.8V11a2 2 0 1 0 1 1.73Z"/>
-                  </svg>
-                  Apple Music
+              } @else {
+                <button class="spotify-status-btn connect" (click)="connectSpotify()">
+                  <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+                  Connect Spotify
                 </button>
-              </div>
+              }
             </div>
+
             @if (spotifyConnected) {
-              <div class="spotify-player">
-                <div class="track-info">
-                  <div class="album-art-placeholder">
-                    <mat-icon svgIcon="mx-music"></mat-icon>
-                  </div>
-                  <div class="track-details">
-                    <span class="track-name">{{ currentTrack }}</span>
-                    <span class="track-artist">{{ currentArtist }}</span>
-                  </div>
+              @if (spotifyTrack) {
+                <div class="spotify-player">
+                <div class="spotify-hero">
+                  @if (spotifyTrack.albumImageUrl) {
+                    <img [src]="spotifyTrack.albumImageUrl" alt="Album art" class="album-art-image" />
+                  } @else {
+                    <div class="album-art-placeholder">
+                      <mat-icon svgIcon="mx-music"></mat-icon>
+                    </div>
+                  }
+                  <span class="track-label">{{ spotifyPlayback?.isPlaying ? 'Now Playing' : 'Spotify Connected' }}</span>
+                  <span class="track-name">{{ spotifyTrack.name || 'Ready when your music is.' }}</span>
+                  <span class="track-meta">{{ spotifyTrack ? spotifyTrackMetaLine : spotifyDeviceLine }}</span>
                 </div>
-                <div class="player-controls">
-                  <button mat-icon-button class="ctrl-btn" (click)="prevTrack()">
-                    <mat-icon svgIcon="mx-chevron-left"></mat-icon>
+
+                @if (spotifyTrack) {
+                  <div class="spotify-progress-row">
+                    <span class="spotify-time">{{ spotifyElapsedLabel }}</span>
+                    <div class="spotify-progress-track">
+                      <div class="spotify-progress-fill" [style.width.%]="spotifyProgressPercent"></div>
+                    </div>
+                    <span class="spotify-time">{{ spotifyDurationLabel }}</span>
+                  </div>
+                }
+
+                <div class="spotify-controls-row">
+                  <button type="button" class="spotify-control-btn" [class.active]="spotifyPlayback?.shuffleEnabled" [disabled]="spotifyBusy || !canToggleSpotifyShuffleControl" (click)="toggleSpotifyShuffle()" aria-label="Toggle shuffle">
+                    <mat-icon svgIcon="mx-shuffle"></mat-icon>
                   </button>
-                  <button mat-icon-button class="ctrl-btn play-btn" (click)="togglePlay()">
-                    <mat-icon [svgIcon]="isPlaying ? 'mx-x' : 'mx-plus'"></mat-icon>
+                  <button type="button" class="spotify-control-btn" [disabled]="spotifyBusy || !spotifyPlayback?.canSkipPrevious" (click)="skipSpotifyPrevious()" aria-label="Previous track">
+                    <mat-icon svgIcon="mx-skip-back"></mat-icon>
                   </button>
-                  <button mat-icon-button class="ctrl-btn" (click)="nextTrack()">
-                    <mat-icon svgIcon="mx-chevron-right"></mat-icon>
+                  <button type="button" class="spotify-control-btn primary" [disabled]="spotifyBusy || !canToggleSpotifyPlayback" (click)="toggleSpotifyPlayback()" [attr.aria-label]="spotifyPlayback?.isPlaying ? 'Pause' : 'Play'">
+                    <mat-icon [svgIcon]="spotifyPlayback?.isPlaying ? 'mx-pause' : 'mx-play'"></mat-icon>
                   </button>
+                  <button type="button" class="spotify-control-btn" [disabled]="spotifyBusy || !spotifyPlayback?.canSkipNext" (click)="skipSpotifyNext()" aria-label="Next track">
+                    <mat-icon svgIcon="mx-skip-forward"></mat-icon>
+                  </button>
+                  <button type="button" class="spotify-control-btn" [class.active]="spotifyPlayback?.repeatMode !== 'off'" [class.track-repeat]="spotifyPlayback?.repeatMode === 'track'" [disabled]="spotifyBusy || !canToggleSpotifyRepeatControl" (click)="cycleSpotifyRepeatMode()" aria-label="Cycle repeat mode">
+                    <mat-icon svgIcon="mx-repeat"></mat-icon>
+                    @if (spotifyPlayback?.repeatMode === 'track') {
+                      <span class="spotify-repeat-indicator">1</span>
+                    }
+                  </button>
+                </div>
+
+                <div class="spotify-meta-row">
+                  <span class="playback-badge" [class.paused]="!spotifyPlayback?.isPlaying">{{ spotifyPlayback?.isPlaying ? 'Playing' : 'Paused' }}</span>
+                  @if (spotifyPlayback?.deviceName) {
+                    <span class="device-badge">{{ spotifyPlayback?.deviceName }}</span>
+                  }
+                  @if (spotifyPlayback?.repeatMode && spotifyPlayback?.repeatMode !== 'off') {
+                    <span class="device-badge spotify-mode-badge">{{ spotifyRepeatLabel }}</span>
+                  }
+                  <button mat-button class="section-link" (click)="refreshSpotifyPlayback()">Refresh</button>
+                  @if (spotifyTrack.externalUrl) {
+                    <a mat-button class="section-link" [href]="spotifyTrack.externalUrl" target="_blank" rel="noopener">Open Track</a>
+                  }
                 </div>
               </div>
+              } @else {
+                <div class="spotify-player spotify-player-idle">
+                  <div class="spotify-hero">
+                    <div class="album-art-placeholder spotify-idle-placeholder">
+                      <mat-icon svgIcon="mx-music"></mat-icon>
+                    </div>
+                    <span class="track-label">Spotify Connected</span>
+                    <span class="track-name">Start something on Spotify</span>
+                    <span class="track-meta">
+                      {{ spotifyPlayback?.deviceName ? 'Press play on ' + spotifyPlayback?.deviceName + ' and this card will snap into place.' : 'Open Spotify on one of your devices and press play. We will keep the dashboard synced.' }}
+                    </span>
+                  </div>
+                  <div class="spotify-meta-row spotify-meta-row-idle">
+                    @if (spotifyPlayback?.deviceName) {
+                      <span class="device-badge">{{ spotifyPlayback?.deviceName }}</span>
+                    }
+                    <button mat-button class="section-link" (click)="refreshSpotifyPlayback(false)">Check Again</button>
+                  </div>
+                </div>
+              }
             } @else {
               <div class="spotify-connect">
                 <div class="spotify-logo">
-                  @if (musicService === 'spotify') {
-                    <svg viewBox="0 0 24 24" width="40" height="40">
-                      <path fill="#1DB954" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
-                    </svg>
-                  } @else {
-                    <svg viewBox="0 0 40 40" width="40" height="40">
-                      <defs>
-                        <linearGradient id="am-grad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stop-color="#FA233B"/>
-                          <stop offset="100%" stop-color="#FB5C74"/>
-                        </linearGradient>
-                      </defs>
-                      <rect width="40" height="40" rx="9" fill="url(#am-grad)"/>
-                      <path fill="#fff" d="M27 9a1 1 0 0 0-1.16-.98l-10 2A1 1 0 0 0 15 11v13a4 4 0 1 0 2 3.46V15.72l8-1.6V22a4 4 0 1 0 2 3.46Z"/>
-                    </svg>
-                  }
+                  <svg viewBox="0 0 24 24" width="40" height="40">
+                    <path fill="#1DB954" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                  </svg>
                 </div>
-                <p class="spotify-desc">Connect {{ musicService === 'spotify' ? 'Spotify' : 'Apple Music' }} to control your music while you train</p>
-                <button mat-stroked-button
-                  [class.spotify-connect-btn]="musicService === 'spotify'"
-                  [class.apple-connect-btn]="musicService === 'apple'"
-                  (click)="connectMusic()">
-                  Connect {{ musicService === 'spotify' ? 'Spotify' : 'Apple Music' }}
-                </button>
+                <p class="spotify-desc">Connect Spotify to show your current track and control playback right from the dashboard.</p>
+                <button mat-stroked-button class="spotify-connect-btn" (click)="connectSpotify()">Connect Spotify</button>
               </div>
             }
           </mat-card>
         </div>
-      </div>
 
-      @if (workoutModalOpen) {
-        <div class="modal-backdrop" (click)="closeWorkoutModal()">
-          <div class="modal-panel workout-modal" (click)="$event.stopPropagation()">
-            <app-workout-quick-add
-              [initialDate]="today"
-              (saved)="onWorkoutSaved()"
-              (cancelled)="closeWorkoutModal()" />
+        @if (workoutModalOpen) {
+          <div class="modal-backdrop" (click)="closeWorkoutModal()">
+            <div class="modal-panel workout-modal" (click)="$event.stopPropagation()">
+              <app-workout-quick-add [initialDate]="today" (saved)="onWorkoutSaved()" (cancelled)="closeWorkoutModal()" />
+            </div>
           </div>
-        </div>
-      }
+        }
 
-      @if (showAiToast && aiSuggestion) {
-        <div class="ai-toast" [class.fade-out]="aiToastFading" [class.minimized]="aiMinimized"
-          (mouseenter)="onAiHover()" (mouseleave)="onAiLeave()">
-          @if (aiMinimized) {
-            <button class="ai-minimized-btn" (click)="aiMinimized = false">
-              <mat-icon svgIcon="mx-ai" class="ai-icon"></mat-icon>
-              <span>AI Suggestion</span>
-              <mat-icon svgIcon="mx-chevron-left" class="expand-icon"></mat-icon>
-            </button>
-          } @else {
-            <div class="ai-toast-header">
-              <mat-icon svgIcon="mx-ai" class="ai-icon"></mat-icon>
-              <span class="ai-title">AI Suggestion</span>
-              <button class="ai-close-btn" (click)="aiMinimized = true" aria-label="Minimize" title="Minimize">
-                <mat-icon svgIcon="mx-minus"></mat-icon>
+        @if (showAiToast && aiSuggestion) {
+          <div class="ai-toast" [class.fade-out]="aiToastFading" [class.minimized]="aiMinimized" (mouseenter)="onAiHover()" (mouseleave)="onAiLeave()">
+            @if (aiMinimized) {
+              <button class="ai-minimized-btn" (click)="aiMinimized = false">
+                <mat-icon svgIcon="mx-ai" class="ai-icon"></mat-icon>
+                <span>AI Suggestion</span>
+                <mat-icon svgIcon="mx-chevron-left" class="expand-icon"></mat-icon>
               </button>
-              <button class="ai-close-btn" (click)="dismissAiToast()" aria-label="Dismiss" title="Close">
-                <mat-icon svgIcon="mx-x"></mat-icon>
-              </button>
-            </div>
-            <p class="ai-toast-text">{{ aiSuggestion }}</p>
-            <div class="ai-actions">
-              <button mat-stroked-button class="ai-chat-btn" (click)="openAiChat()">
-                Ask a question
-              </button>
-            </div>
-          }
-        </div>
-      }
+            } @else {
+              <div class="ai-toast-header">
+                <mat-icon svgIcon="mx-ai" class="ai-icon"></mat-icon>
+                <span class="ai-title">AI Suggestion</span>
+                <button class="ai-close-btn" (click)="aiMinimized = true" aria-label="Minimize" title="Minimize"><mat-icon svgIcon="mx-minus"></mat-icon></button>
+                <button class="ai-close-btn" (click)="dismissAiToast()" aria-label="Dismiss" title="Close"><mat-icon svgIcon="mx-x"></mat-icon></button>
+              </div>
+              <p class="ai-toast-text">{{ aiSuggestion }}</p>
+              <div class="ai-actions">
+                <button mat-stroked-button class="ai-chat-btn" (click)="openAiChat()">Ask a question</button>
+              </div>
+            }
+          </div>
+        }
+      </div>
     }
   `,
   styles: [`
-    :host { display: block; height: 100%; min-height: 0; overflow: hidden; }
-    .dashboard {
-      max-width: 1200px; margin: 0 auto;
-      height: 100%;
-      display: flex; flex-direction: column;
-      gap: 8px; padding: 0;
-      overflow: hidden;
-    }
-    .page-header {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      margin-bottom: 0; flex-wrap: wrap; gap: 10px; flex-shrink: 0;
-    }
-    h1 { color: var(--text-primary); font-size: 22px; font-weight: 700; margin: 0; }
-    .date-nav { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+    :host { display: block; min-height: 100%; --spotify-green: #1DB954; }
+    .dashboard { max-width: 1220px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 0; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; }
+    h1 { color: var(--text-primary); font-size: 21px; font-weight: 700; margin: 0; }
+    .date-nav { display: flex; align-items: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
     .date-nav button { color: var(--text-muted); }
     .date-display { color: var(--text-muted); font-size: 13px; min-width: 120px; text-align: center; }
     .calendar-btn { color: var(--text-muted); }
     .calendar-btn:hover { color: var(--accent); }
     .date-picker-input { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
-    .action-btn {
-      background: var(--accent) !important; color: #0D0D0D !important;
-      font-weight: 600; border-radius: 10px; padding: 0 14px; height: 36px;
-    }
-    .action-btn-outline {
-      border-color: var(--accent) !important; color: var(--accent) !important;
-      font-weight: 600; border-radius: 10px;
-    }
-    .modal-backdrop {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 1000; padding: 24px;
-    }
-    .modal-panel.workout-modal {
-      background: var(--bg-surface); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px; padding: 24px; max-width: 480px; width: 100%;
-      max-height: 90vh; overflow-y: auto;
-    }
-
-    .stats-grid {
-      display: grid; grid-template-columns: repeat(4, 1fr);
-      gap: 10px; margin-bottom: 0; flex-shrink: 0;
-    }
-    .stats-grid > * { min-height: 0; }
-
-    .dashboard-body {
-      flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px;
-    }
-
-    .content-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 10px; margin-bottom: 10px; flex: 1; min-height: 0;
-    }
-
-    .bottom-grid {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 10px; margin-bottom: 0; flex: 1; min-height: 0;
-    }
-
-    .section-card {
-      background: var(--bg-surface);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 10px; padding: 12px;
-      min-height: 0; display: flex; flex-direction: column;
-    }
-    .section-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 8px; flex-shrink: 0;
-    }
-    .section-header h3 {
-      font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 0;
-    }
-    .section-link { color: var(--accent) !important; font-size: 12px; font-weight: 600; }
-
-    .exercise-list { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: auto; }
-    .exercise-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 6px;
-    }
-    .exercise-name { color: var(--text-primary); font-weight: 500; font-size: 13px; }
-    .exercise-detail { color: var(--text-muted); font-size: 12px; }
-    .empty-section {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      padding: 16px; color: var(--text-muted); flex: 1; min-height: 60px;
-    }
-    .empty-section mat-icon { font-size: 24px; width: 24px; height: 24px; opacity: 0.3; margin-bottom: 4px; }
-    .empty-section p { font-size: 12px; margin: 0; }
-
-    /* ── Macro pie chart (CSS conic-gradient) ── */
-    .macros-stacked {
-      display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1; min-height: 0;
-    }
-    .pie-wrapper {
-      position: relative; width: 72px; height: 72px; flex-shrink: 0;
-    }
-    .pie-donut {
-      width: 100%; height: 100%; border-radius: 50%;
-      background: conic-gradient(
-        from 0deg,
-        #4fc3f7 0% var(--p-pct, 0%),
-        #C8F135 var(--p-pct, 0%) var(--c-pct, 0%),
-        #ff7043 var(--c-pct, 0%) var(--f-pct, 100%),
-        rgba(255,255,255,0.04) var(--f-pct, 100%) 100%
-      );
-    }
-    .pie-hole {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 42px; height: 42px; border-radius: 50%;
-      background: var(--bg-surface);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-    }
-    .pie-cal { font-size: 13px; font-weight: 700; color: var(--text-primary); line-height: 1; }
+    .action-btn { background: var(--accent) !important; color: #0d0d0d !important; font-weight: 600; border-radius: 10px; padding: 0 14px; height: 34px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .content-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .bottom-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.94fr); gap: 10px; align-items: stretch; }
+    .section-card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)), var(--bg-surface); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 10px 12px; min-height: 0; display: flex; flex-direction: column; min-width: 0; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+    .section-header h3 { font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin: 0; }
+    .section-link { color: var(--accent) !important; font-size: 11.5px; font-weight: 600; }
+    .exercise-list, .pr-list { display: flex; flex-direction: column; gap: 5px; min-height: 0; overflow: auto; }
+    .exercise-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 5px 8px; background: rgba(255,255,255,0.03); border-radius: 8px; }
+    .exercise-name { color: var(--text-primary); font-weight: 500; font-size: 12px; }
+    .exercise-detail { color: var(--text-muted); font-size: 11px; text-align: right; }
+    .empty-section { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 14px; color: var(--text-muted); flex: 1; min-height: 88px; text-align: center; }
+    .empty-section mat-icon { font-size: 22px; width: 22px; height: 22px; opacity: 0.3; margin-bottom: 4px; }
+    .empty-section p { font-size: 11.5px; margin: 0; }
+    .macros-stacked { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; min-height: 0; }
+    .pie-wrapper { position: relative; width: 68px; height: 68px; flex-shrink: 0; }
+    .pie-donut { width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(from 0deg, #4fc3f7 0% var(--p-pct, 0%), #c8f135 var(--p-pct, 0%) var(--c-pct, 0%), #ff7043 var(--c-pct, 0%) var(--f-pct, 100%), rgba(255,255,255,0.04) var(--f-pct, 100%) 100%); }
+    .pie-hole { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%; background: var(--bg-surface); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .pie-cal { font-size: 12px; font-weight: 700; color: var(--text-primary); line-height: 1; }
     .pie-unit { font-size: 9px; color: var(--text-muted); line-height: 1; margin-top: 1px; }
     .pie-legend { display: flex; flex-direction: column; gap: 4px; align-items: center; }
-    .legend-item {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 11px; color: var(--text-muted);
-    }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--text-muted); }
     .legend-item strong { color: var(--text-primary); }
-    .legend-dot {
-      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-    }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .legend-dot.protein { background: #4fc3f7; }
-    .legend-dot.carbs { background: #C8F135; }
+    .legend-dot.carbs { background: #c8f135; }
     .legend-dot.fat { background: #ff7043; }
-
-    /* ── Water quick-add ── */
     .water-section { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; min-height: 0; }
     .water-visual { position: relative; flex-shrink: 0; }
-    .water-ring { position: relative; width: 80px; height: 80px; }
+    .water-ring { position: relative; width: 72px; height: 72px; }
     .water-ring svg { width: 100%; height: 100%; }
     .water-ring circle { transition: stroke-dashoffset 0.6s ease; }
-    .water-center {
-      position: absolute; inset: 0; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-    }
-    .water-amount { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+    .water-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .water-amount { font-size: 16px; font-weight: 700; color: var(--text-primary); }
     .water-unit { font-size: 10px; color: var(--text-muted); }
     .water-quick-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
-    .water-step-btn {
-      width: 34px; height: 34px;
-      display: flex; align-items: center; justify-content: center;
-      background: none;
-      color: var(--text-muted);
-      border: 1.5px solid rgba(255,255,255,0.15);
-      border-radius: 50%;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      padding: 0;
-    }
-    .water-step-btn:hover:not(:disabled) {
-      border-color: var(--accent);
-      color: var(--accent);
-      background: rgba(200,241,53,0.06);
-    }
-    .water-step-btn:disabled {
-      opacity: 0.25; cursor: default;
-    }
-    .water-step-btn mat-icon { width: 16px; height: 16px; font-size: 16px; }
-    .water-quick-btn {
-      border-color: rgba(255,255,255,0.15) !important;
-      color: var(--text-primary) !important;
-      font-weight: 600; font-size: 11px;
-      border-radius: 6px; min-width: 0; padding: 2px 10px;
-      height: 28px;
-    }
-    .water-quick-btn:hover {
-      border-color: var(--accent) !important; color: var(--accent) !important;
-    }
-    .goal-met { font-size: 12px; font-weight: 700; color: var(--accent); }
-
-    /* PRs */
-    .prs-card { border-color: rgba(200,241,53,0.15); }
-    .pr-list { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: auto; }
-    .pr-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 8px 10px; background: rgba(200,241,53,0.04); border-radius: 6px;
-    }
-    .pr-icon { color: var(--accent); font-size: 18px; width: 18px; height: 18px; }
-    .pr-details { flex: 1; display: flex; flex-direction: column; }
-    .pr-exercise { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-    .pr-stats { font-size: 11px; color: var(--text-muted); }
-    .pr-1rm { font-size: 13px; font-weight: 700; color: var(--accent); }
-
-    /* Music service toggle */
-    .music-service-toggle {
-      display: flex; gap: 2px; background: rgba(255,255,255,0.04);
-      border-radius: 8px; padding: 2px;
-    }
-    .svc-btn {
-      display: flex; align-items: center; gap: 4px;
-      padding: 4px 10px; border-radius: 6px;
-      background: none; border: none; color: var(--text-muted);
-      font-size: 11px; font-weight: 600; cursor: pointer;
-      transition: all 0.15s;
-    }
-    .svc-btn.active {
-      background: rgba(255,255,255,0.08); color: var(--text-primary);
-    }
-    .svc-btn.active.spotify-active {
-      background: rgba(29,185,84,0.15) !important; color: #1DB954 !important;
-    }
-    .svc-btn:hover:not(.active) { color: var(--text-primary); }
-
-    /* Spotify/Apple Music */
-    .connect-badge {
-      font-size: 11px; color: var(--text-muted);
-      background: rgba(255,255,255,0.04); padding: 3px 10px;
-      border-radius: 20px; font-weight: 500;
-    }
-    .spotify-connect {
-      display: flex; flex-direction: column; align-items: center;
-      padding: 12px 0 4px; gap: 8px;
-    }
-    .spotify-logo { opacity: 0.8; }
-    .spotify-desc { font-size: 12px; color: var(--text-muted); text-align: center; margin: 0; }
-    .spotify-connect-btn {
-      border-color: #1DB954 !important; color: #1DB954 !important;
-      font-weight: 600; font-size: 13px; border-radius: 20px;
-    }
-    .spotify-connect-btn:hover { background: rgba(29,185,84,0.08) !important; }
-    .apple-connect-btn {
-      border-color: #FC3C44 !important; color: #FC3C44 !important;
-      font-weight: 600; font-size: 13px; border-radius: 20px;
-    }
-    .apple-connect-btn:hover { background: rgba(252,60,68,0.08) !important; }
-    .spotify-player { display: flex; flex-direction: column; gap: 14px; }
-    .track-info { display: flex; align-items: center; gap: 12px; }
-    .album-art-placeholder {
-      width: 48px; height: 48px; border-radius: 8px;
-      background: rgba(29,185,84,0.1); display: flex;
-      align-items: center; justify-content: center;
-    }
-    .album-art-placeholder mat-icon { color: #1DB954; }
-    .track-details { flex: 1; display: flex; flex-direction: column; }
-    .track-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-    .track-artist { font-size: 12px; color: var(--text-muted); }
-    .player-controls { display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .ctrl-btn { color: var(--text-muted); }
-    .ctrl-btn:hover { color: var(--text-primary); }
-    .play-btn { color: #1DB954 !important; }
-
-    /* ── AI Toast ── */
-    @keyframes slide-in-up {
-      from { opacity: 0; transform: translateY(24px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .ai-toast {
-      position: fixed; bottom: 24px; right: 24px;
-      width: 340px; max-width: calc(100vw - 48px);
-      background: var(--bg-surface);
-      border: 1px solid rgba(200,241,53,0.2);
-      border-radius: 14px; padding: 16px;
-      z-index: 1000;
-      animation: slide-in-up 0.4s ease-out;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-      transition: opacity 0.5s ease, transform 0.5s ease;
-    }
+    .water-step-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: none; color: var(--text-muted); border: 1.5px solid rgba(255,255,255,0.15); border-radius: 50%; cursor: pointer; transition: all 0.15s ease; padding: 0; }
+    .water-step-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); background: rgba(200,241,53,0.06); }
+    .water-step-btn:disabled { opacity: 0.25; cursor: default; }
+    .water-step-btn mat-icon { width: 15px; height: 15px; font-size: 15px; }
+    .water-quick-btn { border-color: rgba(255,255,255,0.15) !important; color: var(--text-primary) !important; font-weight: 600; font-size: 10.5px; border-radius: 999px; min-width: 0; padding: 2px 10px; height: 26px; }
+    .water-quick-btn:hover { border-color: var(--accent) !important; color: var(--accent) !important; }
+    .goal-met { font-size: 11px; font-weight: 700; color: var(--accent); }
+    .prs-card { border-color: rgba(255,255,255,0.08); box-shadow: inset 0 0 0 1px rgba(200,241,53,0.05); }
+    .pr-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: rgba(255,255,255,0.03); border-radius: 8px; }
+    .pr-icon { color: var(--accent); font-size: 16px; width: 16px; height: 16px; }
+    .pr-details { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .pr-exercise { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+    .pr-stats { font-size: 10.5px; color: var(--text-muted); }
+    .pr-1rm { font-size: 12px; font-weight: 700; color: var(--accent); }
+    .spotify-card { position: relative; overflow: hidden; border-color: rgba(255,255,255,0.08); box-shadow: inset 0 0 0 1px rgba(29,185,84,0.04); }
+    .spotify-card::before { content: ''; position: absolute; right: -54px; bottom: -98px; width: 172px; height: 172px; border-radius: 50%; background: radial-gradient(circle, rgba(29,185,84,0.12), rgba(29,185,84,0)); pointer-events: none; }
+    .spotify-status-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 126px; height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(29,185,84,0.35); background: rgba(29,185,84,0.08); color: #dfffea; font-size: 11px; font-weight: 700; cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; box-shadow: none; }
+    .spotify-status-btn:hover { border-color: rgba(29,185,84,0.54); background: rgba(29,185,84,0.12); box-shadow: 0 8px 18px rgba(29,185,84,0.08); }
+    .spotify-status-btn.connect { min-width: 142px; color: #06110a; background: var(--spotify-green); border-color: rgba(29,185,84,0.35); }
+    .spotify-status-btn.connect:hover { background: #21c55d; color: #06110a; }
+    .spotify-status-label-wrap { position: relative; display: inline-grid; place-items: center; min-width: 70px; }
+    .spotify-status-label { grid-area: 1 / 1; white-space: nowrap; transition: opacity 0.15s ease; }
+    .spotify-status-label-hover { opacity: 0; }
+    .spotify-status-btn.connected:hover .spotify-status-label-default { opacity: 0; }
+    .spotify-status-btn.connected:hover .spotify-status-label-hover { opacity: 1; }
+    .spotify-connect { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 220px; padding: 18px 10px 10px; gap: 12px; text-align: center; }
+    .spotify-logo { opacity: 0.95; transform: scale(0.9); filter: drop-shadow(0 10px 20px rgba(29,185,84,0.2)); }
+    .spotify-desc { font-size: 12px; color: var(--text-muted); margin: 0; max-width: 300px; line-height: 1.55; }
+    .spotify-connect-btn { border-color: transparent !important; background: var(--spotify-green) !important; color: #06110a !important; font-weight: 800; font-size: 12px; border-radius: 999px; box-shadow: none; min-height: 34px; padding: 0 18px; }
+    .spotify-connect-btn:hover { background: #21c55d !important; }
+    .spotify-player { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 10px 6px 6px; min-height: 220px; }
+    .spotify-player-idle { gap: 14px; }
+    .spotify-hero { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; max-width: 420px; }
+    .album-art-image { width: 92px; height: 92px; border-radius: 18px; object-fit: cover; border: 1px solid rgba(29,185,84,0.18); box-shadow: 0 12px 24px rgba(0,0,0,0.24); }
+    .album-art-placeholder { width: 92px; height: 92px; border-radius: 18px; background: radial-gradient(circle at top, rgba(29,185,84,0.22), rgba(29,185,84,0.08)); border: 1px solid rgba(29,185,84,0.18); display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); }
+    .album-art-placeholder mat-icon { color: var(--spotify-green); }
+    .spotify-idle-placeholder { background: radial-gradient(circle at top, rgba(29,185,84,0.24), rgba(8,20,13,0.92)); box-shadow: 0 12px 24px rgba(0,0,0,0.22); }
+    .track-label { font-size: 10px; color: var(--spotify-green); text-transform: uppercase; letter-spacing: 0.18em; font-weight: 700; }
+    .track-name { font-size: 20px; line-height: 1.08; font-weight: 700; color: var(--text-primary); max-width: 360px; word-break: break-word; text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .track-meta { font-size: 12px; color: var(--text-muted); max-width: 360px; line-height: 1.45; text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .spotify-progress-row { width: 100%; max-width: 420px; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+    .spotify-progress-track { position: relative; width: 100%; height: 6px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.08); box-shadow: inset 0 1px 2px rgba(0,0,0,0.32); }
+    .spotify-progress-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--spotify-green) 0%, #53f28d 100%); transition: width 0.9s linear; }
+    .spotify-time { font-size: 11px; color: rgba(255,255,255,0.62); font-variant-numeric: tabular-nums; }
+    .spotify-controls-row { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .spotify-control-btn { position: relative; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(29,185,84,0.18); background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.9); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; padding: 0; box-shadow: inset 0 1px 0 rgba(255,255,255,0.03); }
+    .spotify-control-btn:hover:not(:disabled) { border-color: rgba(29,185,84,0.46); color: #d3ffe3; background: rgba(29,185,84,0.12); box-shadow: 0 8px 18px rgba(29,185,84,0.08); }
+    .spotify-control-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .spotify-control-btn.primary { width: 50px; height: 50px; background: var(--spotify-green); color: #06110a; border-color: transparent; box-shadow: 0 10px 20px rgba(29,185,84,0.18); }
+    .spotify-control-btn.primary:hover:not(:disabled) { background: #21c55d; color: #06110a; }
+    .spotify-control-btn.active { border-color: rgba(29,185,84,0.52); color: #d2ffe3; background: rgba(29,185,84,0.14); }
+    .spotify-control-btn.track-repeat { box-shadow: inset 0 0 0 1px rgba(141,255,187,0.2); }
+    .spotify-repeat-indicator { position: absolute; right: 6px; bottom: 5px; min-width: 12px; height: 12px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; background: #8dffbb; color: #06110a; }
+    .spotify-control-btn mat-icon { width: 16px; height: 16px; }
+    .spotify-meta-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; max-width: 100%; }
+    .spotify-meta-row-idle { gap: 10px; }
+    .playback-badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 9px; background: rgba(29,185,84,0.14); color: #aaffc7; font-size: 10.5px; font-weight: 700; }
+    .playback-badge.paused { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+    .device-badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 9px; background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 10.5px; font-weight: 600; }
+    .spotify-mode-badge { color: #d9ffe7; background: rgba(29,185,84,0.12); }
+    @keyframes slide-in-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    .ai-toast { position: fixed; bottom: 24px; right: 24px; width: 340px; max-width: calc(100vw - 48px); background: var(--bg-surface); border: 1px solid rgba(200,241,53,0.2); border-radius: 14px; padding: 16px; z-index: 1000; animation: slide-in-up 0.4s ease-out; box-shadow: 0 8px 32px rgba(0,0,0,0.4); transition: opacity 0.5s ease, transform 0.5s ease; }
     .ai-toast.fade-out { opacity: 0; transform: translateY(16px); }
-    .ai-toast-header {
-      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
-    }
+    .ai-toast-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
     .ai-icon { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; }
-    .ai-title {
-      font-size: 13px; font-weight: 700; color: var(--accent);
-      flex: 1;
-    }
-    .ai-close-btn {
-      width: 28px; height: 28px;
-      display: flex; align-items: center; justify-content: center;
-      background: none; border: none; cursor: pointer;
-      color: var(--text-muted); border-radius: 50%;
-      padding: 0; flex-shrink: 0;
-      transition: background 0.15s, color 0.15s;
-    }
+    .ai-title { font-size: 13px; font-weight: 700; color: var(--accent); flex: 1; }
+    .ai-close-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; color: var(--text-muted); border-radius: 50%; padding: 0; flex-shrink: 0; transition: background 0.15s, color 0.15s; }
     .ai-close-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
     .ai-close-btn mat-icon { width: 16px; height: 16px; font-size: 16px; }
-    .ai-toast-text {
-      color: var(--text-muted); font-size: 13px; line-height: 1.5; margin: 0;
-    }
+    .ai-toast-text { color: var(--text-muted); font-size: 13px; line-height: 1.5; margin: 0; }
     .ai-actions { margin-top: 10px; }
-    .ai-chat-btn {
-      border-color: var(--accent) !important; color: var(--accent) !important;
-      font-size: 12px; font-weight: 600; border-radius: 8px;
-      width: 100%; height: 32px;
-    }
+    .ai-chat-btn { border-color: var(--accent) !important; color: var(--accent) !important; font-size: 12px; font-weight: 600; border-radius: 8px; width: 100%; height: 32px; }
     .ai-chat-btn:hover { background: rgba(200,241,53,0.06) !important; }
-    .ai-toast.minimized {
-      width: auto; padding: 0; border-radius: 24px;
-    }
-    .ai-minimized-btn {
-      display: flex; align-items: center; gap: 6px;
-      background: none; border: none; color: var(--accent);
-      font-size: 12px; font-weight: 600; cursor: pointer;
-      padding: 10px 14px; white-space: nowrap;
-    }
-    .ai-minimized-btn .expand-icon {
-      width: 14px; height: 14px; transform: rotate(180deg);
-    }
+    .ai-toast.minimized { width: auto; padding: 0; border-radius: 24px; }
+    .ai-minimized-btn { display: flex; align-items: center; gap: 6px; background: none; border: none; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; padding: 10px 14px; white-space: nowrap; }
+    .ai-minimized-btn .expand-icon { width: 14px; height: 14px; transform: rotate(180deg); }
     .ai-minimized-btn:hover { background: rgba(200,241,53,0.04); border-radius: 24px; }
-
-    /* Error state */
-    .error-state {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      min-height: 400px; text-align: center; padding: 48px 24px;
-    }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 24px; }
+    .modal-panel.workout-modal { background: var(--bg-surface); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 24px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; }
+    .error-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; text-align: center; padding: 48px 24px; }
     .error-icon { width: 48px; height: 48px; color: #ff7043; margin-bottom: 16px; }
     .error-state h2 { color: var(--text-primary); font-size: 20px; font-weight: 600; margin: 0 0 8px; }
     .error-state p { color: var(--text-muted); font-size: 14px; margin: 0 0 24px; max-width: 360px; }
-    .retry-btn {
-      background: var(--accent) !important; color: #0D0D0D !important;
-      font-weight: 600; border-radius: 10px;
-    }
-
-    @media (max-width: 1024px) {
-      .stats-grid { grid-template-columns: repeat(2, 1fr); }
-      .content-grid { grid-template-columns: 1fr; }
+    .retry-btn { background: var(--accent) !important; color: #0d0d0d !important; font-weight: 600; border-radius: 10px; }
+    @media (max-width: 1180px) {
+      .page-header { align-items: stretch; }
+      .quick-actions { width: 100%; display: flex; justify-content: flex-start; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .content-grid,
       .bottom-grid { grid-template-columns: 1fr; }
-      .macros-stacked { justify-content: center; }
-      .water-section { align-items: center; }
-      .section-card { max-width: 100%; }
     }
-    @media (max-width: 600px) {
+    @media (max-width: 720px) {
+      .page-header { flex-direction: column; }
+      .quick-actions,
+      .action-btn { width: 100%; }
+      .date-display { min-width: 0; }
       .stats-grid { grid-template-columns: 1fr; }
-      .page-header { flex-direction: column; gap: 10px; }
-      .water-quick-row { flex-wrap: wrap; justify-content: center; }
+      .spotify-status-btn { width: 100%; max-width: 220px; }
+      .spotify-progress-row { gap: 8px; }
+      .track-name { font-size: 18px; }
+      .track-meta { font-size: 12px; }
     }
   `],
 })
@@ -660,12 +509,10 @@ export class DashboardComponent implements OnInit {
   aiToastFading = false;
   waterQuickAmounts = [8, 16, 24];
   workoutModalOpen = false;
-
   spotifyConnected = false;
-  isPlaying = false;
-  currentTrack = '';
-  currentArtist = '';
-  musicService: 'spotify' | 'apple' = 'spotify';
+  spotifyPlayback: SpotifyPlaybackState | null = null;
+  spotifyDisplayProgressMs = 0;
+  spotifyBusy = false;
   aiMinimized = false;
   private aiHovered = false;
   private aiAutoTimer: any = null;
@@ -678,8 +525,18 @@ export class DashboardComponent implements OnInit {
     private readonly authService: AuthService,
     private readonly waterService: WaterService,
     private readonly confettiService: ConfettiService,
+    private readonly spotifyService: SpotifyService,
     private readonly snackBar: MatSnackBar,
   ) {}
+
+  ngOnInit(): void {
+    this.authService.currentUser$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(user => this.user = user);
+
+    this.initializeSpotify();
+    this.fetchDashboard();
+  }
 
   openWorkoutModal(): void {
     this.workoutModalOpen = true;
@@ -695,14 +552,6 @@ export class DashboardComponent implements OnInit {
     this.snackBar.open('Workout saved!', 'Close', { duration: 3000 });
   }
 
-  ngOnInit(): void {
-    this.authService.currentUser$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(user => this.user = user);
-
-    this.fetchDashboard();
-  }
-
   retryLoad(): void {
     this.loading = true;
     this.loadError = false;
@@ -714,33 +563,6 @@ export class DashboardComponent implements OnInit {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  private fetchDashboard(isRefreshAfterSave = false): void {
-    this.analyticsService.getDashboardSummary(this.dateStr)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: summary => {
-          this.summary = summary;
-          this.loading = false;
-          this.loadError = false;
-          this.generateAiSuggestion(summary);
-          const dateKey = this.dateStr;
-          if (summary.waterToday?.goalMet && !this.confettiFiredThisSession.has('water-' + dateKey)) {
-            this.confettiFiredThisSession.add('water-' + dateKey);
-            this.confettiService.burst();
-          }
-        },
-        error: () => {
-          this.loading = false;
-          if (isRefreshAfterSave && this.summary) {
-            this.loadError = false;
-            this.snackBar.open('Workout saved. Couldn\'t refresh dashboard — pull to retry.', 'OK', { duration: 4000 });
-          } else {
-            this.loadError = true;
-          }
-        },
-      });
-  }
-
   get displayFirstName(): string {
     return this.user?.firstName ?? this.user?.displayName?.split(' ')[0] ?? 'Athlete';
   }
@@ -750,6 +572,79 @@ export class DashboardComponent implements OnInit {
     if (hour < 12) return 'morning';
     if (hour < 17) return 'afternoon';
     return 'evening';
+  }
+
+  get spotifyArtistLine(): string {
+    return this.spotifyTrack?.artistNames.join(', ') || 'Unknown artist';
+  }
+
+  get spotifyTrack(): SpotifyTrack | null {
+    return this.spotifyPlayback?.track ?? null;
+  }
+
+  get spotifyDeviceLine(): string {
+    if (this.spotifyPlayback?.deviceName) {
+      return `Open on ${this.spotifyPlayback.deviceName}`;
+    }
+    return 'Open Spotify on one of your devices and start playing something.';
+  }
+
+  get spotifyTrackMetaLine(): string {
+    if (!this.spotifyTrack) {
+      return this.spotifyDeviceLine;
+    }
+
+    return this.spotifyTrack.albumName
+      ? `${this.spotifyArtistLine} - ${this.spotifyTrack.albumName}`
+      : this.spotifyArtistLine;
+  }
+
+  get spotifyProgressPercent(): number {
+    const duration = this.spotifyTrack?.durationMs ?? 0;
+    if (!duration) {
+      return 0;
+    }
+    return Math.min((this.spotifyDisplayProgressMs / duration) * 100, 100);
+  }
+
+  get spotifyElapsedLabel(): string {
+    return this.formatSpotifyTime(this.spotifyDisplayProgressMs);
+  }
+
+  get spotifyDurationLabel(): string {
+    return this.formatSpotifyTime(this.spotifyTrack?.durationMs ?? 0);
+  }
+
+  get spotifyHasActiveDevice(): boolean {
+    return !!(this.spotifyPlayback?.deviceId || this.spotifyPlayback?.deviceName);
+  }
+
+  get canToggleSpotifyShuffleControl(): boolean {
+    return !!this.spotifyPlayback && (this.spotifyPlayback.canToggleShuffle || this.spotifyHasActiveDevice);
+  }
+
+  get canToggleSpotifyRepeatControl(): boolean {
+    return !!this.spotifyPlayback && (this.spotifyPlayback.canToggleRepeat || this.spotifyHasActiveDevice);
+  }
+
+  get spotifyRepeatLabel(): string {
+    switch (this.spotifyPlayback?.repeatMode) {
+      case 'track':
+        return 'Repeat Track';
+      case 'context':
+        return 'Repeat Queue';
+      default:
+        return 'Repeat Off';
+    }
+  }
+
+  get canToggleSpotifyPlayback(): boolean {
+    if (!this.spotifyPlayback) {
+      return false;
+    }
+    return this.spotifyPlayback.isPlaying
+      ? (this.spotifyPlayback.canPause || this.spotifyHasActiveDevice)
+      : (this.spotifyPlayback.canResume || this.spotifyHasActiveDevice);
   }
 
   get waterOffset(): number {
@@ -767,27 +662,11 @@ export class DashboardComponent implements OnInit {
   }
 
   get carbsPct(): number {
-    return this.proteinPct + this._carbsRawPct;
+    return this.proteinPct + this.carbsRawPct;
   }
 
   get fatPct(): number {
-    return this.carbsPct + this._fatRawPct;
-  }
-
-  private get _carbsRawPct(): number {
-    const n = this.summary?.nutritionToday;
-    if (!n) return 0;
-    const total = (n.totalProteinG || 0) + (n.totalCarbsG || 0) + (n.totalFatG || 0);
-    if (total <= 0) return 0;
-    return ((n.totalCarbsG || 0) / total) * 100;
-  }
-
-  private get _fatRawPct(): number {
-    const n = this.summary?.nutritionToday;
-    if (!n) return 0;
-    const total = (n.totalProteinG || 0) + (n.totalCarbsG || 0) + (n.totalFatG || 0);
-    if (total <= 0) return 0;
-    return ((n.totalFatG || 0) / total) * 100;
+    return this.carbsPct + this.fatRawPct;
   }
 
   quickAddWater(amountOz: number): void {
@@ -795,10 +674,12 @@ export class DashboardComponent implements OnInit {
     const dateStr = this.dateStr;
 
     if (amountOz < 0) {
-      const absAmount = Math.abs(amountOz);
       const currentOz = this.summary?.waterToday?.totalOz || 0;
-      if (currentOz <= 0) { this.addingWater = false; return; }
-      const removeAmount = Math.min(absAmount, currentOz);
+      if (currentOz <= 0) {
+        this.addingWater = false;
+        return;
+      }
+      const removeAmount = Math.min(Math.abs(amountOz), currentOz);
       this.waterService.logWater(dateStr, -removeAmount)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
@@ -822,10 +703,10 @@ export class DashboardComponent implements OnInit {
       .subscribe({
         next: water => {
           this.addingWater = false;
-            if (this.summary) {
-              const wasGoalMet = this.summary.waterToday?.goalMet || false;
-              this.summary = { ...this.summary, waterToday: water };
-              const dateKey = this.dateStr;
+          if (this.summary) {
+            const wasGoalMet = this.summary.waterToday?.goalMet || false;
+            this.summary = { ...this.summary, waterToday: water };
+            const dateKey = this.dateStr;
             if (water.goalMet && !wasGoalMet && !this.confettiFiredThisSession.has('water-' + dateKey)) {
               this.confettiFiredThisSession.add('water-' + dateKey);
               this.confettiService.burst();
@@ -858,18 +739,112 @@ export class DashboardComponent implements OnInit {
     this.fetchDashboard();
   }
 
-  connectMusic(): void {
-    const svc = this.musicService === 'spotify' ? 'Spotify' : 'Apple Music';
-    this.snackBar.open(`${svc} integration coming soon!`, 'Close', { duration: 3000 });
+  connectSpotify(): void {
+    try {
+      this.spotifyService.beginAuthorization();
+    } catch (error: any) {
+      this.snackBar.open(error?.message || 'Spotify is not configured yet.', 'Close', { duration: 4000 });
+    }
   }
 
-  prevTrack(): void {}
-  nextTrack(): void {}
-  togglePlay(): void { this.isPlaying = !this.isPlaying; }
+  disconnectSpotify(): void {
+    this.spotifyService.disconnect();
+    this.spotifyConnected = false;
+    this.spotifyPlayback = null;
+    this.spotifyDisplayProgressMs = 0;
+    this.snackBar.open('Spotify disconnected.', 'Close', { duration: 2500 });
+  }
+
+  refreshSpotifyPlayback(showFeedback = true): void {
+    if (!this.spotifyConnected) {
+      return;
+    }
+
+    this.spotifyService.getPlaybackState()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        catchError(error => {
+          this.handleSpotifyError(error, 'Could not refresh Spotify right now.');
+          return of(null);
+        }),
+      )
+      .subscribe(playback => {
+        this.syncSpotifyPlayback(playback);
+        if (showFeedback) {
+          this.snackBar.open(
+            playback?.track ? `Now showing ${playback.track.name}.` : 'Spotify connected, but nothing is playing right now.',
+            'Close',
+            { duration: 2500 },
+          );
+        }
+      });
+  }
+
+  toggleSpotifyPlayback(): void {
+    const previousPlayback = this.spotifyPlayback ? { ...this.spotifyPlayback } : null;
+    this.runSpotifyCommand(
+      this.spotifyService.togglePlayback(this.spotifyPlayback),
+      "Could not change Spotify playback.",
+      () => {
+        if (!this.spotifyPlayback) {
+          return;
+        }
+        this.spotifyPlayback = { ...this.spotifyPlayback, isPlaying: !this.spotifyPlayback.isPlaying };
+      },
+      () => this.syncSpotifyPlayback(previousPlayback),
+    );
+  }
+
+  skipSpotifyNext(): void {
+    this.runSpotifyCommand(this.spotifyService.nextTrack(this.spotifyPlayback?.deviceId ?? null), 'Could not skip to the next track.');
+  }
+
+  skipSpotifyPrevious(): void {
+    this.runSpotifyCommand(this.spotifyService.previousTrack(this.spotifyPlayback?.deviceId ?? null), 'Could not go to the previous track.');
+  }
+
+  toggleSpotifyShuffle(): void {
+    const nextShuffle = !this.spotifyPlayback?.shuffleEnabled;
+    const previousPlayback = this.spotifyPlayback ? { ...this.spotifyPlayback } : null;
+    this.runSpotifyCommand(
+      this.spotifyService.setShuffle(nextShuffle, this.spotifyPlayback?.deviceId ?? null),
+      "Could not update shuffle.",
+      () => {
+        if (!this.spotifyPlayback) {
+          return;
+        }
+        this.spotifyPlayback = { ...this.spotifyPlayback, shuffleEnabled: nextShuffle };
+      },
+      () => this.syncSpotifyPlayback(previousPlayback),
+    );
+  }
+
+  cycleSpotifyRepeatMode(): void {
+    const currentMode = this.spotifyPlayback?.repeatMode ?? "off";
+    const nextMode: SpotifyRepeatMode =
+      currentMode === "off" ? "context" :
+      currentMode === "context" ? "track" :
+      "off";
+    const previousPlayback = this.spotifyPlayback ? { ...this.spotifyPlayback } : null;
+    this.runSpotifyCommand(
+      this.spotifyService.setRepeatMode(nextMode, this.spotifyPlayback?.deviceId ?? null),
+      "Could not update repeat mode.",
+      () => {
+        if (!this.spotifyPlayback) {
+          return;
+        }
+        this.spotifyPlayback = { ...this.spotifyPlayback, repeatMode: nextMode };
+      },
+      () => this.syncSpotifyPlayback(previousPlayback),
+    );
+  }
 
   onAiHover(): void {
     this.aiHovered = true;
-    if (this.aiAutoTimer) { clearTimeout(this.aiAutoTimer); this.aiAutoTimer = null; }
+    if (this.aiAutoTimer) {
+      clearTimeout(this.aiAutoTimer);
+      this.aiAutoTimer = null;
+    }
   }
 
   onAiLeave(): void {
@@ -877,12 +852,142 @@ export class DashboardComponent implements OnInit {
   }
 
   openAiChat(): void {
-    this.snackBar.open('AI chat coming soon -- stay tuned!', 'Close', { duration: 3000 });
+    this.snackBar.open('AI chat coming soon. Stay tuned!', 'Close', { duration: 3000 });
   }
 
   dismissAiToast(): void {
     this.aiToastFading = true;
-    setTimeout(() => { this.showAiToast = false; this.aiToastFading = false; }, 500);
+    setTimeout(() => {
+      this.showAiToast = false;
+      this.aiToastFading = false;
+    }, 500);
+  }
+
+  private fetchDashboard(isRefreshAfterSave = false): void {
+    this.analyticsService.getDashboardSummary(this.dateStr)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: summary => {
+          this.summary = summary;
+          this.loading = false;
+          this.loadError = false;
+          this.generateAiSuggestion(summary);
+          const dateKey = this.dateStr;
+          if (summary.waterToday?.goalMet && !this.confettiFiredThisSession.has('water-' + dateKey)) {
+            this.confettiFiredThisSession.add('water-' + dateKey);
+            this.confettiService.burst();
+          }
+        },
+        error: () => {
+          this.loading = false;
+          if (isRefreshAfterSave && this.summary) {
+            this.loadError = false;
+            this.snackBar.open('Workout saved. Could not refresh dashboard. Pull to retry.', 'OK', { duration: 4000 });
+          } else {
+            this.loadError = true;
+          }
+        },
+      });
+  }
+
+  private initializeSpotify(): void {
+    const pendingAuthError = this.spotifyService.consumePendingAuthError();
+    if (pendingAuthError) {
+      this.snackBar.open(pendingAuthError, "Close", { duration: 4000 });
+    }
+
+    interval(1000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.tickSpotifyProgress());
+
+    this.spotifyConnected = this.spotifyService.isConnected();
+    if (!this.spotifyConnected) {
+      return;
+    }
+
+    timer(0, 15000)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        switchMap(() => {
+          if (typeof document !== "undefined" && document.hidden) {
+            return of(this.spotifyPlayback);
+          }
+          return this.spotifyService.getPlaybackState().pipe(
+            catchError(error => this.handleSpotifyPollingError(error)),
+          );
+        }),
+      )
+      .subscribe(playback => {
+        this.syncSpotifyPlayback(playback);
+      });
+  }
+
+  private runSpotifyCommand(
+    command$: Observable<void>,
+    fallbackMessage: string,
+    optimisticUpdate?: () => void,
+    rollback?: () => void,
+  ): void {
+    if (this.spotifyBusy) {
+      return;
+    }
+
+    optimisticUpdate?.();
+    this.spotifyBusy = true;
+    command$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.spotifyBusy = false;
+          setTimeout(() => this.refreshSpotifyPlayback(false), 200);
+        },
+        error: error => {
+          this.spotifyBusy = false;
+          rollback?.();
+          this.handleSpotifyError(error, fallbackMessage);
+        },
+      });
+  }
+
+  private handleSpotifyError(error: any, fallbackMessage: string): void {
+    const message = error?.message || fallbackMessage;
+    if (String(message).toLowerCase().includes("not connected") || String(message).toLowerCase().includes("expired")) {
+      this.spotifyService.disconnect();
+      this.spotifyConnected = false;
+      this.spotifyPlayback = null;
+      this.spotifyDisplayProgressMs = 0;
+    }
+    this.snackBar.open(message, "Close", { duration: 3500 });
+  }
+
+  private handleSpotifyPollingError(error: any): Observable<SpotifyPlaybackState | null> {
+    const message = String(error?.message || "").toLowerCase();
+    if (message.includes("not connected") || message.includes("expired")) {
+      this.spotifyService.disconnect();
+      this.spotifyConnected = false;
+      this.spotifyPlayback = null;
+      this.spotifyDisplayProgressMs = 0;
+    }
+    return of(this.spotifyPlayback);
+  }
+
+  private syncSpotifyPlayback(playback: SpotifyPlaybackState | null): void {
+    this.spotifyPlayback = playback;
+    this.spotifyDisplayProgressMs = playback?.progressMs ?? 0;
+  }
+
+  private tickSpotifyProgress(): void {
+    if (!this.spotifyPlayback?.isPlaying || !this.spotifyTrack?.durationMs) {
+      return;
+    }
+    this.spotifyDisplayProgressMs = Math.min(this.spotifyDisplayProgressMs + 1000, this.spotifyTrack.durationMs);
+  }
+
+  private formatSpotifyTime(valueMs: number): string {
+    const totalSeconds = Math.max(Math.floor(valueMs / 1000), 0);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
   }
 
   private generateAiSuggestion(summary: DashboardSummary): void {
@@ -892,22 +997,38 @@ export class DashboardComponent implements OnInit {
     if (summary.recentPRs.length > 0) {
       const pr = summary.recentPRs[0];
       const nextWeight = Math.round(pr.weightLbs * 1.05);
-      this.aiSuggestion = `Based on your ${pr.exerciseName} PR of ${pr.weightLbs} lbs x ${pr.reps} reps, ` +
-        `try ${nextWeight} lbs for ${Math.max(pr.reps - 1, 1)} reps next session. ` +
-        `Progressive overload of ~5% is optimal for steady gains.`;
+      this.aiSuggestion = `Based on your ${pr.exerciseName} PR of ${pr.weightLbs} lbs x ${pr.reps} reps, try ${nextWeight} lbs for ${Math.max(pr.reps - 1, 1)} reps next session. Progressive overload of about 5% is a strong next step.`;
     } else if (summary.streak.currentStreak >= 3) {
-      this.aiSuggestion = `Great consistency with a ${summary.streak.currentStreak}-day streak! ` +
-        `Consider adding 5-10 lbs to your compounds this week.`;
+      this.aiSuggestion = `Great consistency with a ${summary.streak.currentStreak}-day streak. Consider adding 5-10 lbs to your compounds this week.`;
     } else if (summary.streak.totalWorkouts > 0) {
-      this.aiSuggestion = `You've logged ${summary.streak.totalWorkouts} workout${summary.streak.totalWorkouts > 1 ? 's' : ''}. ` +
-        `Keep building consistency — aim for at least 3 sessions per week to maximize progress.`;
+      this.aiSuggestion = `You've logged ${summary.streak.totalWorkouts} workout${summary.streak.totalWorkouts > 1 ? 's' : ''}. Keep building consistency and aim for at least 3 sessions per week.`;
     }
 
     if (this.aiSuggestion) {
       setTimeout(() => { this.showAiToast = true; }, 1500);
       this.aiAutoTimer = setTimeout(() => {
-        if (!this.aiHovered) { this.dismissAiToast(); }
+        if (!this.aiHovered) {
+          this.dismissAiToast();
+        }
       }, 15000);
     }
   }
+
+  private get carbsRawPct(): number {
+    const n = this.summary?.nutritionToday;
+    if (!n) return 0;
+    const total = (n.totalProteinG || 0) + (n.totalCarbsG || 0) + (n.totalFatG || 0);
+    if (total <= 0) return 0;
+    return ((n.totalCarbsG || 0) / total) * 100;
+  }
+
+  private get fatRawPct(): number {
+    const n = this.summary?.nutritionToday;
+    if (!n) return 0;
+    const total = (n.totalProteinG || 0) + (n.totalCarbsG || 0) + (n.totalFatG || 0);
+    if (total <= 0) return 0;
+    return ((n.totalFatG || 0) / total) * 100;
+  }
 }
+
+

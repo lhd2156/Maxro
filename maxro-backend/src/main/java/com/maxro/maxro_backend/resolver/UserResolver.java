@@ -1,5 +1,6 @@
 package com.maxro.maxro_backend.resolver;
 
+import com.maxro.maxro_backend.dto.user.ChangePasswordInput;
 import com.maxro.maxro_backend.dto.user.UserProfileInput;
 import com.maxro.maxro_backend.dto.user.UserProfileResponse;
 import com.maxro.maxro_backend.security.SecurityContextHelper;
@@ -34,6 +35,11 @@ public class UserResolver {
     @MutationMapping
     public UserProfileResponse updateDailyWaterGoal(@Argument double goalOz) {
         return userService.updateDailyWaterGoal(securityContextHelper.getCurrentUserId(), goalOz);
+    }
+
+    @MutationMapping
+    public UserProfileResponse changePassword(@Argument @Valid ChangePasswordInput input) {
+        return userService.changePassword(securityContextHelper.getCurrentUserId(), input);
     }
 
     @MutationMapping
