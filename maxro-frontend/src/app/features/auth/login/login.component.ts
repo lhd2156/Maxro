@@ -12,8 +12,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../core/services/auth.service';
 import { environment } from '../../../../environments/environment';
 
-declare const google: any;
-
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -194,23 +192,37 @@ export class LoginComponent implements AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    if (environment.googleClientId && typeof google !== 'undefined') {
+    if (!environment.googleClientId) return;
+    this.waitForGoogleAndInit();
+  }
+
+  private waitForGoogleAndInit(retries = 20): void {
+    if (typeof (window as any).google !== 'undefined' && (window as any).google?.accounts?.id) {
       this.useGisButton = true;
       setTimeout(() => {
-        google.accounts.id.initialize({
-          client_id: environment.googleClientId,
-          callback: (response: any) => this.handleGoogleResponse(response),
-        });
-        google.accounts.id.renderButton(
-          document.getElementById('google-signin-btn'),
-          { theme: 'filled_black', size: 'large', width: 356, text: 'continue_with', shape: 'pill' },
-        );
+        const google = (window as any).google;
+        if (google?.accounts?.id?.initialize) {
+          google.accounts.id.initialize({
+            client_id: environment.googleClientId,
+            callback: (response: any) => this.handleGoogleResponse(response),
+          });
+          const el = document.getElementById('google-signin-btn');
+          if (el) google.accounts.id.renderButton(el, { theme: 'filled_black', size: 'large', width: 356, text: 'continue_with', shape: 'pill' });
+        }
       });
+      return;
+    }
+    if (retries > 0) {
+      setTimeout(() => this.waitForGoogleAndInit(retries - 1), 150);
     }
   }
 
   onCustomGoogleClick(): void {
-    this.snackBar.open('Google Sign-In requires a Client ID. Configure GOOGLE_CLIENT_ID to enable.', 'Close', { duration: 5000 });
+    if (environment.googleClientId && typeof (window as any).google !== 'undefined') {
+      this.waitForGoogleAndInit();
+      return;
+    }
+    this.snackBar.open('Google Sign-In requires a Client ID. Add it to environment.ts and .env (GOOGLE_CLIENT_ID).', 'Close', { duration: 5000 });
   }
 
   handleGoogleResponse(response: any): void {
