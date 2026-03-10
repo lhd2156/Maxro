@@ -1,0 +1,43 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: maxro-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: maxro
+
+  backend:
+    build:
+      context: ./maxro-backend
+      dockerfile: Dockerfile
+    container_name: maxro-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongodb
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/maxro
+      JWT_SECRET: local-dev-secret-key-minimum-256-bits-change-in-prod-environment
+      JWT_ACCESS_EXPIRATION: "900000"
+      JWT_REFRESH_EXPIRATION: "604800000"
+      NUTRITIONIX_APP_ID: ${NUTRITIONIX_APP_ID:-}
+      NUTRITIONIX_API_KEY: ${NUTRITIONIX_API_KEY:-}
+      CORS_ORIGINS: http://localhost:4200,http://localhost
+      GRAPHIQL_ENABLED: "true"
+      SERVER_PORT: "8080"
+
+  frontend:
+    build:
+      context: ./maxro-frontend
+      dockerfile: Dockerfile
+    container_name: maxro-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo-data:
