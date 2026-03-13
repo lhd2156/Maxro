@@ -21,6 +21,10 @@ variables:
     value: 'maxro-env'
   - name: azureLocation
     value: 'centralus'
+  - name: containerCpu
+    value: '0.5'
+  - name: containerMemory
+    value: '1.0Gi'
   - name: javaToolOptions
     value: '-Xms32m -Xmx128m -XX:+UseSerialGC'
   - name: mavenOpts
@@ -173,8 +177,8 @@ stages:
                     --image $imageRef `
                     --ingress external `
                     --target-port $serverPortValue `
-                    --cpu 0.25 `
-                    --memory 0.5Gi `
+                    --cpu $(containerCpu) `
+                    --memory $(containerMemory) `
                     --min-replicas 0 `
                     --max-replicas 1 `
                     --registry-server $(containerRegistry) `
@@ -214,8 +218,8 @@ stages:
                   --name $(containerAppName) `
                   --resource-group $(RESOURCE_GROUP) `
                   --image $imageRef `
-                  --cpu 0.25 `
-                  --memory 0.5Gi `
+                  --cpu $(containerCpu) `
+                  --memory $(containerMemory) `
                   --min-replicas 0 `
                   --max-replicas 1
 
@@ -330,10 +334,31 @@ stages:
                   --resource-group $(RESOURCE_GROUP) `
                   --query "[].{name:name,active:properties.active,createdTime:properties.createdTime,runningState:properties.runningState,healthState:properties.healthState,replicas:properties.replicas}" -o table
 
+                $latestRevisionForDiagnostics = az containerapp show `
+                  --name $(containerAppName) `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --query properties.latestRevisionName -o tsv
+
+                if (-not [string]::IsNullOrWhiteSpace($latestRevisionForDiagnostics)) {
+                  Write-Host "Latest revision conditions ($latestRevisionForDiagnostics):"
+                  az containerapp revision show `
+                    --name $(containerAppName) `
+                    --resource-group $(RESOURCE_GROUP) `
+                    --revision $latestRevisionForDiagnostics `
+                    --query "properties.conditions[].{type:type,status:status,reason:reason,message:message}" -o table
+                }
+
                 Write-Host 'Recent app logs:'
                 az containerapp logs show `
                   --name $(containerAppName) `
                   --resource-group $(RESOURCE_GROUP) `
+                  --tail 100
+
+                Write-Host 'Recent system logs:'
+                az containerapp logs show `
+                  --name $(containerAppName) `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --type system `
                   --tail 100
 
                 exit 1
