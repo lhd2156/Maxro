@@ -19,18 +19,22 @@ public class MaxroBackendApplication {
     }
 
     @Bean
-    @ConditionalOnProperty(name = "maxro.pr.cleanup.enabled", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnProperty(name = "maxro.pr.cleanup.enabled", havingValue = "true", matchIfMissing = false)
     public CommandLineRunner cleanUpGhostPRs(PersonalRecordRepository prRepository) {
         return args -> {
-            int deleted = 0;
-            for (var pr : prRepository.findAll()) {
-                if (pr.getWorkoutId() == null || pr.getWorkoutId().isEmpty()) {
-                    prRepository.delete(pr);
-                    deleted++;
+            try {
+                int deleted = 0;
+                for (var pr : prRepository.findAll()) {
+                    if (pr.getWorkoutId() == null || pr.getWorkoutId().isEmpty()) {
+                        prRepository.delete(pr);
+                        deleted++;
+                    }
                 }
-            }
-            if (deleted > 0) {
-                log.info("Cleaned up {} ghost personal records on startup", deleted);
+                if (deleted > 0) {
+                    log.info("Cleaned up {} ghost personal records on startup", deleted);
+                }
+            } catch (Exception ex) {
+                log.warn("Skipping startup personal record cleanup: {}", ex.getMessage());
             }
         };
     }

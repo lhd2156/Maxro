@@ -236,6 +236,7 @@ stages:
                 $envArgs = @()
                 Add-EnvArg 'SPRING_PROFILES_ACTIVE' 'prod'
                 Add-EnvArg 'SERVER_PORT' $serverPortValue
+                Add-EnvArg 'MAXRO_PR_CLEANUP_ENABLED' 'false'
                 Add-EnvArg 'CORS_ORIGINS' $env:CORS_ORIGINS
                 Add-EnvArg 'APP_LOG_LEVEL' '$(APP_LOG_LEVEL)'
                 Add-EnvArg 'GRAPHIQL_ENABLED' '$(GRAPHIQL_ENABLED)'
