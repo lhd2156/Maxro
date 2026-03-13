@@ -144,8 +144,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     private int calculateCurrentStreak(Set<LocalDate> dates) {
         LocalDate today = LocalDate.now();
         int streak = 0;
-        // Start from today if there's a workout, otherwise yesterday —
-        // this avoids breaking the streak when the user hasn't worked out yet today.
+        // Start from today if there's a workout, otherwise yesterday.
+        // This avoids breaking the streak when the user hasn't worked out yet today.
         LocalDate checkDate = dates.contains(today) ? today : today.minusDays(1);
 
         while (dates.contains(checkDate)) {
@@ -183,7 +183,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                     double maxWeight = exercise.getSets().stream()
                             .mapToDouble(ExerciseSet::getWeightLbs).max().orElse(0);
                     double best1RM = exercise.getSets().stream()
-                            .mapToDouble(s -> FitnessCalculator.estimateOneRepMax(s.getWeightLbs(), s.getReps()))
+                            .mapToDouble(s -> FitnessCalculator.scorePerformance(s.getWeightLbs(), s.getReps()))
                             .max().orElse(0);
                     double totalVolume = exercise.getSets().stream()
                             .mapToDouble(s -> FitnessCalculator.calculateVolume(s.getWeightLbs(), s.getReps()))

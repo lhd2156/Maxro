@@ -16,7 +16,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { switchMap, catchError, of } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
-import { environment } from '../../../../environments/environment';
+import { PublicConfigService } from '../../../core/services/public-config.service';
 
 @Component({
   selector: 'app-register',
@@ -35,10 +35,17 @@ import { environment } from '../../../../environments/environment';
         }
       </div>
       <div class="auth-container fade-in">
-        <div class="brand">
-          <a routerLink="/" class="brand-link"><span class="brand-text">MAXRO</span></a>
-          <p class="brand-tagline">Track. Lift. Fuel. Repeat.</p>
+        <div class="auth-topbar">
+          <a routerLink="/" class="corner-logo" aria-label="Go to home page">
+            <img src="favicon.svg" alt="" class="corner-logo-img">
+
+          </a>
+          <a routerLink="/login" class="top-action">Sign in</a>
         </div>
+        <a routerLink="/" class="auth-brand-block" aria-label="Go to home page">
+          <span class="brand-text">MAXRO</span>
+          <span class="brand-tagline">Track. Lift. Fuel. Repeat.</span>
+        </a>
         <mat-card class="auth-card slide-up">
           <div class="auth-card-header">
             <h2>Create Account</h2>
@@ -154,8 +161,11 @@ import { environment } from '../../../../environments/environment';
             </div>
 
             <div class="goals-section">
-              <p class="goals-label">Daily Goals (optional)</p>
-              <div class="goals-row">
+              <div class="goals-header">
+                <p class="goals-label">Daily Goals</p>
+                <span class="goals-helper">Optional</span>
+              </div>
+              <div class="goals-grid">
                 <mat-form-field appearance="outline" class="goal-field auth-field">
                   <mat-label>Calories</mat-label>
                   <input matInput formControlName="dailyCalorieTarget" type="number">
@@ -166,8 +176,6 @@ import { environment } from '../../../../environments/environment';
                   <input matInput formControlName="dailyProteinTarget" type="number">
                   <span matSuffix class="goal-unit">g</span>
                 </mat-form-field>
-              </div>
-              <div class="goals-row">
                 <mat-form-field appearance="outline" class="goal-field auth-field">
                   <mat-label>Carbs</mat-label>
                   <input matInput formControlName="dailyCarbTarget" type="number">
@@ -178,12 +186,12 @@ import { environment } from '../../../../environments/environment';
                   <input matInput formControlName="dailyFatTarget" type="number">
                   <span matSuffix class="goal-unit">g</span>
                 </mat-form-field>
+                <mat-form-field appearance="outline" class="goal-field auth-field">
+                  <mat-label>Water</mat-label>
+                  <input matInput formControlName="dailyWaterTarget" type="number">
+                  <span matSuffix class="goal-unit">oz</span>
+                </mat-form-field>
               </div>
-              <mat-form-field appearance="outline" class="auth-field">
-                <mat-label>Daily Water Goal</mat-label>
-                <input matInput formControlName="dailyWaterTarget" type="number">
-                <span matSuffix class="goal-unit">oz</span>
-              </mat-form-field>
             </div>
 
             <div class="terms-row" [class.terms-invalid]="isFieldInvalid('agreedToTerms')">
@@ -229,9 +237,12 @@ import { environment } from '../../../../environments/environment';
     @keyframes pulse-dot { 0%, 100% { opacity: 0.03; } 50% { opacity: 0.12; } }
 
     .auth-page {
-      min-height: 100vh; background: var(--bg-primary);
+      min-height: 100vh;
+      height: 100dvh;
+      background: var(--bg-primary);
       display: flex; align-items: center; justify-content: center;
-      padding: 24px; position: relative; overflow: hidden;
+      padding: 72px 18px 28px; position: relative; overflow: hidden;
+      box-sizing: border-box;
     }
     .bg-grid {
       position: absolute; inset: 0;
@@ -247,46 +258,104 @@ import { environment } from '../../../../environments/environment';
     .fade-in { animation: fade-in 0.6s ease-out; }
     .slide-up { animation: slide-up 0.5s ease-out 0.2s both; }
 
-    .auth-container { width: 100%; max-width: 760px; position: relative; z-index: 1; }
-    .brand { text-align: center; margin-bottom: 20px; }
-    .brand-link { text-decoration: none; }
-    .brand-text { font-size: 26px; font-weight: 800; letter-spacing: 6px; color: var(--accent); }
-    .brand-tagline { color: var(--text-muted); font-size: 13px; margin-top: 6px; }
-    .auth-card {
-      background: var(--bg-surface);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px; padding: 24px 28px;
-      max-height: 90vh; overflow-y: auto;
-      position: relative; z-index: 2;
+    .auth-container {
+      width: 100%;
+      max-width: 980px;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-height: 100%;
+      padding-top: 0;
+      padding-bottom: 8px;
     }
-    .auth-card::-webkit-scrollbar { width: 6px; }
-    .auth-card::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
-    .auth-card-header { text-align: center; margin-bottom: 24px; }
+    .auth-topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 20px 40px;
+      box-sizing: border-box;
+    }
+    .corner-logo { display: inline-flex; align-items: center; gap: 0; text-decoration: none; }
+    .corner-logo-img { width: 30px; height: 30px; border-radius: 6px; flex-shrink: 0; }
+    .auth-brand-block {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 12px;
+      text-decoration: none;
+      text-align: center;
+    }
+    .brand-text { font-size: clamp(28px, 4vw, 34px); font-weight: 800; letter-spacing: 7px; color: var(--accent); line-height: 1; }
+    .brand-tagline { color: var(--text-muted); font-size: 13px; line-height: 1.2; }
+    .top-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 22px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(12,12,12,0.72);
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 700;
+      transition: border-color 0.18s ease, color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+    }
+    .top-action:hover {
+      border-color: var(--accent);
+      color: var(--text-primary);
+      background: rgba(16,16,16,0.88);
+      transform: translateY(-1px);
+    }
+    .auth-card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)), var(--bg-surface);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 18px; padding: 16px 20px 24px;
+      width: min(100%, 760px);
+      overflow: visible;
+      position: relative; z-index: 2;
+      box-shadow: 0 28px 70px rgba(0,0,0,0.3);
+    }
+    .auth-card-header { text-align: left; margin-bottom: 14px; }
     .auth-card-header h2 {
-      color: var(--text-primary); font-size: 20px; font-weight: 700;
+      color: var(--text-primary); font-size: 22px; font-weight: 700;
       margin: 0 0 4px; letter-spacing: -0.3px;
     }
-    .auth-subtitle { color: var(--text-muted); font-size: 14px; margin: 0; }
+    .auth-subtitle { color: var(--text-muted); font-size: 13px; margin: 0; line-height: 1.45; }
 
-    .auth-form { display: flex; flex-direction: column; gap: 0; }
+    .auth-form { display: flex; flex-direction: column; gap: 6px; }
     .split-row {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+      gap: 8px;
     }
     .field-stack {
       min-width: 0;
+      display: grid;
+      grid-template-rows: auto 16px;
+      row-gap: 4px;
+      align-content: start;
     }
     .auth-field { margin-bottom: 0; }
     mat-form-field { width: 100%; }
     :host ::ng-deep .auth-form .mat-mdc-text-field-wrapper {
       align-items: center;
-      min-height: 58px;
+      min-height: 52px;
     }
     :host ::ng-deep .auth-form .mat-mdc-form-field-infix {
       min-height: 24px;
-      padding-top: 16px !important;
-      padding-bottom: 16px !important;
+      padding-top: 13px !important;
+      padding-bottom: 13px !important;
     }
     :host ::ng-deep .auth-form .mat-mdc-input-element {
       margin: 0 !important;
@@ -341,9 +410,16 @@ import { environment } from '../../../../environments/environment';
     }
     :host ::ng-deep .auth-form .mat-mdc-form-field { margin-bottom: 0; }
     .field-note {
-      margin: 4px 0 10px 4px;
-      font-size: 12px;
-      line-height: 1.4;
+      margin: 0 0 0 4px;
+      min-height: 16px;
+      display: flex;
+      align-items: center;
+      font-size: 11px;
+      line-height: 1.3;
+      visibility: hidden;
+    }
+    .field-note.visible {
+      visibility: visible;
     }
     .field-note.error {
       color: #ff6f61;
@@ -351,37 +427,33 @@ import { environment } from '../../../../environments/environment';
     .password-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 220px;
-      gap: 14px;
+      gap: 10px;
       align-items: start;
     }
     .password-field-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+      gap: 8px;
       min-width: 0;
     }
     .password-popover {
       display: flex;
-      min-height: 58px;
+      min-height: 52px;
       flex-direction: column;
       gap: 8px;
-      padding: 14px;
+      padding: 12px;
+
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.08);
       background: rgba(14,16,18,0.96);
       box-shadow: inset 0 0 0 1px rgba(155,240,180,0.05), 0 12px 24px rgba(0,0,0,0.22);
-      opacity: 0;
-      transform: translateX(-10px);
-      pointer-events: none;
-      z-index: 3;
-      transition: opacity 0.2s ease, transform 0.2s ease;
-    }
-    .password-row:hover .password-popover,
-    .password-row:focus-within .password-popover {
       opacity: 1;
       transform: translateX(0);
       pointer-events: auto;
+      z-index: 3;
+      transition: none;
     }
+
     .popover-title {
       font-size: 12px;
       font-weight: 700;
@@ -414,13 +486,13 @@ import { environment } from '../../../../environments/environment';
       background: #1db954;
     }
 
-    .auth-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+    .auth-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 2px; }
     .auth-btn {
       width: 100% !important;
       min-width: 0 !important;
       height: 44px !important;
       min-height: 44px !important;
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 14px;
       font-weight: 700;
       box-sizing: border-box;
@@ -429,8 +501,9 @@ import { environment } from '../../../../environments/environment';
     .submit-btn:disabled { opacity: 0.5; }
     .google-btn-shell { position: relative; }
     .google-btn-wrapper {
-      position: absolute; inset: 0; z-index: 2;
-      opacity: 0.01; overflow: hidden; border-radius: 10px;
+      position: absolute; inset: 0; z-index: 1;
+      opacity: 0; overflow: hidden; border-radius: 10px;
+      pointer-events: none;
     }
     :host ::ng-deep #google-signup-btn > div {
       width: 100% !important;
@@ -440,7 +513,7 @@ import { environment } from '../../../../environments/environment';
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
+      gap: 8px;
       background: #fff;
       color: #3c4043;
       border: none;
@@ -449,20 +522,27 @@ import { environment } from '../../../../environments/environment';
       font-family: 'Roboto', sans-serif;
       cursor: pointer;
       transition: box-shadow 0.2s, background 0.2s;
-      position: relative; z-index: 1;
+      position: relative; z-index: 2;
     }
     .custom-google-btn:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.3); background: #f7f8f8; }
 
-    .goals-section { margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.06); }
-    .goals-label {
-      font-size: 11px; font-weight: 600; color: var(--text-muted);
-      margin: 0 0 12px; letter-spacing: 0.8px; text-transform: uppercase;
+    .goals-section { margin-top: 0; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); }
+    .goals-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
     }
-    .goals-row { display: flex; gap: 12px; margin-bottom: 8px; }
-    .goals-row .goal-field { flex: 1; }
-    .goal-unit { font-size: 12px; color: var(--text-muted); padding-right: 4px; }
+    .goals-label {
+      font-size: 11px; font-weight: 700; color: var(--text-primary);
+      margin: 0; letter-spacing: 0.1em; text-transform: uppercase;
+    }
+    .goals-helper { color: var(--text-muted); font-size: 11px; font-weight: 600; }
+    .goals-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+    .goal-unit { font-size: 11px; color: var(--text-muted); padding-right: 4px; }
 
-    .terms-row { margin: 20px 0 16px; }
+    .terms-row { margin: 2px 0 0; }
     .terms-row mat-checkbox { font-size: 13px; color: var(--text-muted); }
     .terms-link { color: var(--accent); text-decoration: none; font-weight: 600; }
     .terms-link:hover { text-decoration: underline; }
@@ -470,24 +550,55 @@ import { environment } from '../../../../environments/environment';
     .terms-invalid mat-checkbox { color: #ff5252 !important; }
 
     .google-icon { flex-shrink: 0; }
-    .auth-switch { text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 14px; }
+    .auth-switch { text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 10px; margin-bottom: 2px; }
     .auth-switch a { color: var(--accent); text-decoration: none; font-weight: 600; }
-    @media (max-width: 860px) {
+    .auth-switch a:hover { text-decoration: underline; }
+    @media (max-width: 900px) {
       .split-row,
       .password-row,
-      .password-field-grid {
+      .password-field-grid,
+      .goals-grid {
         grid-template-columns: 1fr;
       }
+      .auth-buttons { grid-template-columns: 1fr; }
       .password-popover {
+        min-height: 58px;
         padding: 12px;
-        min-height: 0;
       }
+    }
+    @media (max-width: 700px) {
+      .auth-page {
+        padding: 84px 12px 12px;
+        overflow: auto;
+        align-items: flex-start;
+        height: auto;
+      }
+      .auth-topbar { padding: 18px 16px; }
+      .auth-brand-block { margin-bottom: 16px; }
+      .brand-text { font-size: 18px; letter-spacing: 4px; }
+      .brand-tagline { font-size: 11px; }
+    .corner-logo-img { width: 30px; height: 30px; border-radius: 6px; flex-shrink: 0; }
+      .top-action {
+        min-height: 40px;
+        padding: 0 16px;
+        font-size: 12px;
+      }
+      .auth-card {
+        padding: 18px 16px;
+        border-radius: 16px;
+      }
+    }
+    @media (max-height: 860px) and (min-width: 901px) {
+      .auth-card { padding: 16px 20px; }
+      .auth-form { gap: 6px; }
+      .field-note { min-height: 14px; }
     }
   `],
 })
 export class RegisterComponent implements AfterViewInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly ngZone = inject(NgZone);
+  private readonly publicConfig = inject(PublicConfigService);
   form: FormGroup;
   loading = false;
   hidePassword = true;
@@ -596,7 +707,7 @@ export class RegisterComponent implements AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    if (!environment.googleClientId) return;
+    if (!this.publicConfig.googleClientId) return;
     this.waitForGoogleAndInit();
   }
 
@@ -608,7 +719,7 @@ export class RegisterComponent implements AfterViewInit {
         const el = document.getElementById('google-signup-btn');
         if (google?.accounts?.id?.initialize && el) {
           google.accounts.id.initialize({
-            client_id: environment.googleClientId,
+            client_id: this.publicConfig.googleClientId,
             callback: (response: any) => this.handleGoogleResponse(response),
           });
           const width = Math.max(Math.round(el.getBoundingClientRect().width || 320), 280);
@@ -626,7 +737,7 @@ export class RegisterComponent implements AfterViewInit {
     if (this.useGisButton && this.clickGoogleButton('google-signup-btn')) {
       return;
     }
-    if (environment.googleClientId && typeof (window as any).google !== 'undefined') {
+    if (this.publicConfig.googleClientId && typeof (window as any).google !== 'undefined') {
       this.waitForGoogleAndInit();
       setTimeout(() => {
         if (!this.clickGoogleButton('google-signup-btn')) {
@@ -635,12 +746,12 @@ export class RegisterComponent implements AfterViewInit {
       }, 150);
       return;
     }
-    this.snackBar.open('Google Sign-In requires a Client ID. Add it to environment.ts and .env (GOOGLE_CLIENT_ID).', 'Close', { duration: 5000 });
+    this.snackBar.open('Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID on the backend so Maxro can load it.', 'Close', { duration: 5000 });
   }
 
   private clickGoogleButton(containerId: string): boolean {
     const host = document.getElementById(containerId);
-    const clickable = host?.querySelector('div[role="button"], button, iframe') as HTMLElement | null;
+    const clickable = host?.querySelector('div[role="button"], button') as HTMLElement | null;
     clickable?.click();
     return !!clickable;
   }
@@ -718,19 +829,6 @@ export class RegisterComponent implements AfterViewInit {
     });
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

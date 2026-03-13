@@ -1,11 +1,11 @@
 package com.maxro.maxro_backend.resolver;
 
-import com.maxro.maxro_backend.dto.nutrition.FoodSearchResultDto;
+import com.maxro.maxro_backend.dto.nutrition.FoodSearchPageDto;
 import com.maxro.maxro_backend.model.FoodEntry;
 import com.maxro.maxro_backend.model.NutritionLog;
 import com.maxro.maxro_backend.security.SecurityContextHelper;
+import com.maxro.maxro_backend.service.FoodSearchService;
 import com.maxro.maxro_backend.service.NutritionService;
-import com.maxro.maxro_backend.service.NutritionixService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -18,15 +18,15 @@ import java.util.Map;
 @Controller
 public class NutritionResolver {
 
+    private final FoodSearchService foodSearchService;
     private final NutritionService nutritionService;
-    private final NutritionixService nutritionixService;
     private final SecurityContextHelper securityContextHelper;
 
-    public NutritionResolver(NutritionService nutritionService,
-                             NutritionixService nutritionixService,
+    public NutritionResolver(FoodSearchService foodSearchService,
+                             NutritionService nutritionService,
                              SecurityContextHelper securityContextHelper) {
+        this.foodSearchService = foodSearchService;
         this.nutritionService = nutritionService;
-        this.nutritionixService = nutritionixService;
         this.securityContextHelper = securityContextHelper;
     }
 
@@ -44,8 +44,12 @@ public class NutritionResolver {
     }
 
     @QueryMapping
-    public List<FoodSearchResultDto> searchFood(@Argument String query) {
-        return nutritionixService.searchFood(query);
+    public FoodSearchPageDto searchFood(@Argument String query,
+                                        @Argument Integer page,
+                                        @Argument Integer size) {
+        int resolvedPage = page == null || page < 1 ? 1 : page;
+        int resolvedSize = size == null || size < 1 ? 5 : size;
+        return foodSearchService.searchFood(query, resolvedPage, resolvedSize);
     }
 
     @SuppressWarnings("unchecked")
@@ -88,6 +92,12 @@ public class NutritionResolver {
         entry.setCholesterolMg(getDouble(input, "cholesterolMg"));
         entry.setSaturatedFatG(getDouble(input, "saturatedFatG"));
         entry.setPotassiumMg(getDouble(input, "potassiumMg"));
+        entry.setVitaminAMcg(getDouble(input, "vitaminAMcg"));
+        entry.setVitaminCMg(getDouble(input, "vitaminCMg"));
+        entry.setVitaminDMcg(getDouble(input, "vitaminDMcg"));
+        entry.setCalciumMg(getDouble(input, "calciumMg"));
+        entry.setIronMg(getDouble(input, "ironMg"));
+        entry.setMagnesiumMg(getDouble(input, "magnesiumMg"));
         entry.setThumbnailUrl((String) input.get("thumbnailUrl"));
         return entry;
     }

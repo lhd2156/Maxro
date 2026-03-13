@@ -10,7 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../core/services/auth.service';
-import { environment } from '../../../../environments/environment';
+import { PublicConfigService } from '../../../core/services/public-config.service';
 
 @Component({
   selector: 'app-login',
@@ -28,10 +28,17 @@ import { environment } from '../../../../environments/environment';
         }
       </div>
       <div class="auth-container fade-in">
-        <div class="brand">
-          <a routerLink="/" class="brand-link"><span class="brand-text">MAXRO</span></a>
-          <p class="brand-tagline">Track. Lift. Fuel. Repeat.</p>
+        <div class="auth-topbar">
+          <a routerLink="/" class="corner-logo" aria-label="Go to home page">
+            <img src="favicon.svg" alt="" class="corner-logo-img">
+
+          </a>
+          <a routerLink="/register" class="top-action">Sign up</a>
         </div>
+        <a routerLink="/" class="auth-brand-block" aria-label="Go to home page">
+          <span class="brand-text">MAXRO</span>
+          <span class="brand-tagline">Track. Lift. Fuel. Repeat.</span>
+        </a>
         <mat-card class="auth-card slide-up">
           <div class="auth-card-header">
             <h2>Sign In</h2>
@@ -39,23 +46,23 @@ import { environment } from '../../../../environments/environment';
           </div>
 
           <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form" novalidate>
-            <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('email')">
-              <mat-label>Email</mat-label>
-              <input matInput formControlName="email" type="text" inputmode="email" autocomplete="email">
-            </mat-form-field>
-            @if (emailErrorMessage) {
-              <div class="field-note error">{{ emailErrorMessage }}</div>
-            }
-            <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('password')">
-              <mat-label>Password</mat-label>
-              <input matInput formControlName="password" [type]="hidePassword ? 'password' : 'text'" autocomplete="current-password">
-              <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
-                <mat-icon [svgIcon]="hidePassword ? 'mx-eye-off' : 'mx-eye'"></mat-icon>
-              </button>
-            </mat-form-field>
-            @if (passwordErrorMessage) {
-              <div class="field-note error">{{ passwordErrorMessage }}</div>
-            }
+            <div class="field-stack">
+              <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('email') || authFailed">
+                <mat-label>Email</mat-label>
+                <input matInput formControlName="email" type="text" inputmode="email" autocomplete="email">
+              </mat-form-field>
+              <div class="field-note error" [class.visible]="!!emailErrorMessage">{{ emailErrorMessage || ' ' }}</div>
+            </div>
+            <div class="field-stack">
+              <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('password') || authFailed">
+                <mat-label>Password</mat-label>
+                <input matInput formControlName="password" [type]="hidePassword ? 'password' : 'text'" autocomplete="current-password">
+                <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
+                  <mat-icon [svgIcon]="hidePassword ? 'mx-eye-off' : 'mx-eye'"></mat-icon>
+                </button>
+              </mat-form-field>
+              <div class="field-note error" [class.visible]="!!passwordErrorMessage">{{ passwordErrorMessage || ' ' }}</div>
+            </div>
             <button mat-flat-button class="submit-btn" type="submit" [disabled]="loading">
               {{ loading ? 'Signing in...' : 'Sign In' }}
             </button>
@@ -91,7 +98,7 @@ import { environment } from '../../../../environments/environment';
     .auth-page {
       min-height: 100vh; background: var(--bg-primary);
       display: flex; align-items: center; justify-content: center;
-      padding: 24px; position: relative; overflow: hidden;
+      padding: 96px 24px 24px; position: relative; overflow: hidden;
     }
     .bg-grid {
       position: absolute; inset: 0;
@@ -107,15 +114,50 @@ import { environment } from '../../../../environments/environment';
     .fade-in { animation: fade-in 0.6s ease-out; }
     .slide-up { animation: slide-up 0.5s ease-out 0.2s both; }
 
-    .auth-container { width: 100%; max-width: 360px; position: relative; z-index: 1; }
-    .brand { text-align: center; margin-bottom: 20px; }
-    .brand-link { text-decoration: none; }
-    .brand-text { font-size: 26px; font-weight: 800; letter-spacing: 6px; color: var(--accent); }
-    .brand-tagline { color: var(--text-muted); font-size: 13px; margin-top: 6px; }
+    .auth-container {
+      width: 100%;
+      max-width: 960px;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: clamp(18px, 4vh, 36px);
+    }
+    .auth-topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 20px 40px;
+      box-sizing: border-box;
+    }
+    .corner-logo { display: inline-flex; align-items: center; gap: 0; text-decoration: none; }
+    .corner-logo-img { width: 30px; height: 30px; border-radius: 6px; flex-shrink: 0; }
+    .auth-brand-block {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 22px;
+      text-decoration: none;
+      text-align: center;
+    }
+    .brand-text { font-size: clamp(28px, 4vw, 34px); font-weight: 800; letter-spacing: 7px; color: var(--accent); line-height: 1; }
+    .brand-tagline { color: var(--text-muted); font-size: 13px; line-height: 1.2; }
+    .top-action { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 22px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); background: rgba(12,12,12,0.72); color: var(--text-primary); text-decoration: none; font-size: 13px; font-weight: 700; transition: border-color 0.18s ease, color 0.18s ease, transform 0.18s ease, background 0.18s ease; }
+    .top-action:hover { border-color: var(--accent); color: var(--text-primary); background: rgba(16,16,16,0.88); transform: translateY(-1px); }
     .auth-card {
       background: var(--bg-surface);
       border: 1px solid rgba(255,255,255,0.06);
       border-radius: 14px; padding: 28px 32px;
+      width: min(100%, 360px);
+      margin: 0 auto;
     }
     .auth-card-header { text-align: center; margin-bottom: 24px; }
     .auth-card-header h2 {
@@ -124,8 +166,9 @@ import { environment } from '../../../../environments/environment';
     }
     .auth-subtitle { color: var(--text-muted); font-size: 14px; margin: 0; }
 
-    .auth-form { display: flex; flex-direction: column; gap: 0; }
-    :host ::ng-deep .auth-form .mat-mdc-form-field { margin-bottom: 20px; }
+    .auth-form { display: flex; flex-direction: column; gap: 8px; }
+    .field-stack { display: grid; grid-template-rows: auto 16px; row-gap: 4px; }
+    :host ::ng-deep .auth-form .mat-mdc-form-field { margin-bottom: 0; }
     mat-form-field { width: 100%; }
     :host ::ng-deep .auth-form .mat-mdc-text-field-wrapper {
       align-items: center;
@@ -150,6 +193,19 @@ import { environment } from '../../../../environments/environment';
     :host ::ng-deep .mat-mdc-form-field:not(.field-error) .mat-mdc-form-field-subscript-wrapper {
       display: none;
     }
+    :host ::ng-deep .mat-mdc-form-field.field-error .mdc-notched-outline .mdc-notched-outline__leading,
+    :host ::ng-deep .mat-mdc-form-field.field-error .mdc-notched-outline .mdc-notched-outline__notch,
+    :host ::ng-deep .mat-mdc-form-field.field-error .mdc-notched-outline .mdc-notched-outline__trailing {
+      border-color: #ff5252 !important;
+    }
+    :host ::ng-deep .mat-mdc-form-field.field-error.mdc-text-field--focused .mdc-notched-outline .mdc-notched-outline__leading,
+    :host ::ng-deep .mat-mdc-form-field.field-error.mdc-text-field--focused .mdc-notched-outline .mdc-notched-outline__notch,
+    :host ::ng-deep .mat-mdc-form-field.field-error.mdc-text-field--focused .mdc-notched-outline .mdc-notched-outline__trailing {
+      border-color: #ff5252 !important;
+    }
+    :host ::ng-deep .mat-mdc-form-field.field-error .mdc-floating-label {
+      color: #ff5252 !important;
+    }
     :host ::ng-deep .mat-mdc-form-field.field-error .mat-mdc-input-element,
     :host ::ng-deep .mat-mdc-form-field.field-error input {
       caret-color: var(--text-primary) !important;
@@ -166,9 +222,16 @@ import { environment } from '../../../../environments/environment';
       border-radius: inherit;
     }
     .field-note {
-      margin: -14px 0 14px 4px;
-      font-size: 12px;
-      line-height: 1.4;
+      margin: 0 0 0 4px;
+      min-height: 16px;
+      display: flex;
+      align-items: center;
+      font-size: 11px;
+      line-height: 1.25;
+      visibility: hidden;
+    }
+    .field-note.visible {
+      visibility: visible;
     }
     .field-note.error {
       color: #ff6f61;
@@ -205,15 +268,29 @@ import { environment } from '../../../../environments/environment';
     .auth-switch { text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 14px; }
     .auth-switch a { color: var(--accent); text-decoration: none; font-weight: 600; }
     .auth-switch a:hover { text-decoration: underline; }
+    @media (max-width: 700px) {
+      .auth-page { padding: 84px 16px 16px; align-items: flex-start; }
+      .auth-topbar { padding: 18px 16px; }
+      .auth-brand-block { margin-bottom: 18px; }
+      .brand-text { font-size: 18px; letter-spacing: 4px; }
+      .brand-tagline { font-size: 11px; }
+    .corner-logo-img { width: 30px; height: 30px; border-radius: 6px; flex-shrink: 0; }
+      .top-action { min-height: 40px; padding: 0 16px; font-size: 12px; }
+      .field-stack { grid-template-rows: auto 14px; }
+      .field-note { min-height: 14px; font-size: 10px; }
+      .auth-card { padding: 24px 22px; }
+    }
   `],
 })
 export class LoginComponent implements AfterViewInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly ngZone = inject(NgZone);
+  private readonly publicConfig = inject(PublicConfigService);
   form: FormGroup;
   loading = false;
   hidePassword = true;
   submitted = false;
+  authFailed = false;
   gridDots = Array.from({ length: 96 }, (_, i) => i);
   useGisButton = false;
 
@@ -227,6 +304,14 @@ export class LoginComponent implements AfterViewInit {
       email: ['', [Validators.required, Validators.pattern(/^[^\s@]+@(?!\.)[^\s@]+$/)]],
       password: ['', Validators.required],
     });
+
+    this.form.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (this.authFailed) {
+          this.authFailed = false;
+        }
+      });
   }
 
   isFieldInvalid(field: string): boolean {
@@ -248,7 +333,7 @@ export class LoginComponent implements AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    if (!environment.googleClientId) return;
+    if (!this.publicConfig.googleClientId) return;
     this.waitForGoogleAndInit();
   }
 
@@ -260,7 +345,7 @@ export class LoginComponent implements AfterViewInit {
         const el = document.getElementById('google-signin-btn');
         if (google?.accounts?.id?.initialize && el) {
           google.accounts.id.initialize({
-            client_id: environment.googleClientId,
+            client_id: this.publicConfig.googleClientId,
             callback: (response: any) => this.handleGoogleResponse(response),
           });
           const width = Math.max(Math.round(el.getBoundingClientRect().width || 320), 280);
@@ -275,8 +360,8 @@ export class LoginComponent implements AfterViewInit {
   }
 
   onCustomGoogleClick(): void {
-    if (!environment.googleClientId) {
-      this.snackBar.open('Google Sign-In requires a Client ID. Add it to environment.ts and .env (GOOGLE_CLIENT_ID).', 'Close', { duration: 5000 });
+    if (!this.publicConfig.googleClientId) {
+      this.snackBar.open('Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID on the backend so Maxro can load it.', 'Close', { duration: 5000 });
       return;
     }
     this.waitForGoogleAndInit();
@@ -334,6 +419,7 @@ export class LoginComponent implements AfterViewInit {
       this.form.markAllAsTouched();
       return;
     }
+    this.authFailed = false;
     this.loading = true;
     this.authService.login(this.form.value)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -347,12 +433,16 @@ export class LoginComponent implements AfterViewInit {
         },
         error: (err) => {
           this.loading = false;
+          this.authFailed = true;
+          this.form.controls['email'].markAsTouched();
+          this.form.controls['password'].markAsTouched();
           const message = err?.message || 'Login failed. Please try again.';
           this.snackBar.open(message, 'Close', { duration: 4000 });
         },
       });
   }
 }
+
 
 
 

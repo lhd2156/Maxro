@@ -7,7 +7,7 @@ type Query {
     getPersonalRecordsByExercise(exerciseName: String!): [PersonalRecord!]!
     getNutritionLog(date: String!): NutritionLog
     getNutritionLogs(startDate: String!, endDate: String!): [NutritionLog!]!
-    searchFood(query: String!): [FoodSearchResult!]!
+    searchFood(query: String!, page: Int, size: Int): FoodSearchPage!
     getWaterIntake(date: String!): WaterIntake
     getWaterIntakeLogs(startDate: String!, endDate: String!): [WaterIntake!]!
     getWorkoutStreak: StreakInfo!
@@ -38,7 +38,7 @@ type Mutation {
     deleteAccount: Boolean!
 }
 
-# ── Auth ──
+# -- Auth --
 
 input RegisterInput {
     email: String!
@@ -66,7 +66,7 @@ type AuthPayload {
     user: UserProfile!
 }
 
-# ── User ──
+# -- User --
 
 input UserProfileInput {
     displayName: String
@@ -112,7 +112,7 @@ type UserProfile {
     createdAt: String!
 }
 
-# ── Workouts ──
+# -- Workouts --
 
 input WorkoutInput {
     date: String!
@@ -163,7 +163,7 @@ type WorkoutResult {
     newPersonalRecords: [PersonalRecord!]!
 }
 
-# ── Personal Records ──
+# -- Personal Records --
 
 type PersonalRecord {
     id: ID!
@@ -175,7 +175,7 @@ type PersonalRecord {
     achievedAt: String!
 }
 
-# ── Nutrition ──
+# -- Nutrition --
 
 input NutritionLogInput {
     date: String!
@@ -198,6 +198,12 @@ input FoodEntryInput {
     cholesterolMg: Float
     saturatedFatG: Float
     potassiumMg: Float
+    vitaminAMcg: Float
+    vitaminCMg: Float
+    vitaminDMcg: Float
+    calciumMg: Float
+    ironMg: Float
+    magnesiumMg: Float
     thumbnailUrl: String
 }
 
@@ -216,6 +222,12 @@ type NutritionLog {
     totalCholesterolMg: Float!
     totalSaturatedFatG: Float!
     totalPotassiumMg: Float!
+    totalVitaminAMcg: Float!
+    totalVitaminCMg: Float!
+    totalVitaminDMcg: Float!
+    totalCalciumMg: Float!
+    totalIronMg: Float!
+    totalMagnesiumMg: Float!
 }
 
 type FoodEntry {
@@ -235,7 +247,20 @@ type FoodEntry {
     cholesterolMg: Float!
     saturatedFatG: Float!
     potassiumMg: Float!
+    vitaminAMcg: Float!
+    vitaminCMg: Float!
+    vitaminDMcg: Float!
+    calciumMg: Float!
+    ironMg: Float!
+    magnesiumMg: Float!
     thumbnailUrl: String
+}
+
+type FoodSearchPage {
+    currentPage: Int!
+    totalPages: Int!
+    totalHits: Int!
+    foods: [FoodSearchResult!]!
 }
 
 type FoodSearchResult {
@@ -253,10 +278,16 @@ type FoodSearchResult {
     cholesterolMg: Float!
     saturatedFatG: Float!
     potassiumMg: Float!
+    vitaminAMcg: Float!
+    vitaminCMg: Float!
+    vitaminDMcg: Float!
+    calciumMg: Float!
+    ironMg: Float!
+    magnesiumMg: Float!
     thumbnailUrl: String
 }
 
-# ── Water Intake ──
+# -- Water Intake --
 
 input WaterIntakeInput {
     date: String!
@@ -278,7 +309,7 @@ type WaterEntry {
     loggedAt: String!
 }
 
-# ── Analytics & Dashboard ──
+# -- Analytics & Dashboard --
 
 type StreakInfo {
     currentStreak: Int!
@@ -316,5 +347,7 @@ type DashboardSummary {
     streak: StreakInfo!
     recentPRs: [PersonalRecord!]!
 }
+
+
 
 

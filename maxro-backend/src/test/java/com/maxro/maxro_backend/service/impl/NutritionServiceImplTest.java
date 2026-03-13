@@ -9,6 +9,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -17,52 +21,49 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class NutritionServiceImplTest {
 
     @Mock private NutritionLogRepository nutritionLogRepository;
+    @Mock private MongoTemplate mongoTemplate;
     @InjectMocks private NutritionServiceImpl nutritionService;
 
     @Test
-    void logNutrition_createsNewLogWhenNoneExists() {
+    void logNutrition_createsOrUpdatesLogAtomically() {
         LocalDate date = LocalDate.of(2025, 6, 15);
-        when(nutritionLogRepository.findByUserIdAndDate("u1", date)).thenReturn(Optional.empty());
-        when(nutritionLogRepository.save(any(NutritionLog.class))).thenAnswer(inv -> inv.getArgument(0));
-
         FoodEntry entry = buildEntry("Chicken", 200, 30, 0, 5);
+        NutritionLog savedLog = buildNutritionLog("u1", date, 0);
+        savedLog.getEntries().add(entry);
+
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(NutritionLog.class)))
+                .thenReturn(savedLog);
+
         NutritionLog result = nutritionService.logNutrition("u1", date, List.of(entry));
 
         assertEquals("u1", result.getUserId());
         assertEquals(date, result.getDate());
         assertEquals(1, result.getEntries().size());
+        verify(mongoTemplate).findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(NutritionLog.class));
+        verifyNoInteractions(nutritionLogRepository);
     }
 
     @Test
-    void logNutrition_appendsToExistingLog() {
+    void addFoodEntry_appendsSingleEntryAtomically() {
         LocalDate date = LocalDate.now();
-        NutritionLog existing = buildNutritionLog("u1", date, 1);
-        when(nutritionLogRepository.findByUserIdAndDate("u1", date)).thenReturn(Optional.of(existing));
-        when(nutritionLogRepository.save(any(NutritionLog.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        FoodEntry newEntry = buildEntry("Rice", 300, 5, 60, 1);
-        NutritionLog result = nutritionService.logNutrition("u1", date, List.of(newEntry));
-
-        assertEquals(2, result.getEntries().size(), "New entries should be appended, not replaced");
-    }
-
-    @Test
-    void addFoodEntry_appendsSingleEntry() {
-        LocalDate date = LocalDate.now();
-        NutritionLog existing = buildNutritionLog("u1", date, 0);
-        when(nutritionLogRepository.findByUserIdAndDate("u1", date)).thenReturn(Optional.of(existing));
-        when(nutritionLogRepository.save(any(NutritionLog.class))).thenAnswer(inv -> inv.getArgument(0));
-
         FoodEntry entry = buildEntry("Egg", 70, 6, 0, 5);
+        NutritionLog savedLog = buildNutritionLog("u1", date, 0);
+        savedLog.getEntries().add(entry);
+
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(NutritionLog.class)))
+                .thenReturn(savedLog);
+
         NutritionLog result = nutritionService.addFoodEntry("u1", date, entry);
 
         assertEquals(1, result.getEntries().size());
+        verify(mongoTemplate).findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(NutritionLog.class));
     }
 
     @Test
@@ -100,16 +101,16 @@ class NutritionServiceImplTest {
     }
 
     private FoodEntry buildEntry(String name, double cal, double protein, double carbs, double fat) {
-        FoodEntry e = new FoodEntry();
-        e.setFoodName(name);
-        e.setMealType("Lunch");
-        e.setServingQty(1);
-        e.setServingUnit("serving");
-        e.setCalories(cal);
-        e.setProteinG(protein);
-        e.setCarbsG(carbs);
-        e.setFatG(fat);
-        return e;
+        FoodEntry entry = new FoodEntry();
+        entry.setFoodName(name);
+        entry.setMealType("Lunch");
+        entry.setServingQty(1);
+        entry.setServingUnit("serving");
+        entry.setCalories(cal);
+        entry.setProteinG(protein);
+        entry.setCarbsG(carbs);
+        entry.setFatG(fat);
+        return entry;
     }
 
     private NutritionLog buildNutritionLog(String userId, LocalDate date, int entryCount) {

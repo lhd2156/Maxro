@@ -13,6 +13,12 @@ export interface NutritionLog {
   totalCholesterolMg: number;
   totalSaturatedFatG: number;
   totalPotassiumMg: number;
+  totalVitaminAMcg: number;
+  totalVitaminCMg: number;
+  totalVitaminDMcg: number;
+  totalCalciumMg: number;
+  totalIronMg: number;
+  totalMagnesiumMg: number;
 }
 
 export interface FoodEntry {
@@ -32,6 +38,12 @@ export interface FoodEntry {
   cholesterolMg: number;
   saturatedFatG: number;
   potassiumMg: number;
+  vitaminAMcg: number;
+  vitaminCMg: number;
+  vitaminDMcg: number;
+  calciumMg: number;
+  ironMg: number;
+  magnesiumMg: number;
   thumbnailUrl: string | null;
 }
 
@@ -51,6 +63,12 @@ export interface FoodEntryInput {
   cholesterolMg?: number;
   saturatedFatG?: number;
   potassiumMg?: number;
+  vitaminAMcg?: number;
+  vitaminCMg?: number;
+  vitaminDMcg?: number;
+  calciumMg?: number;
+  ironMg?: number;
+  magnesiumMg?: number;
   thumbnailUrl?: string;
 }
 
@@ -69,7 +87,20 @@ export interface FoodSearchResult {
   cholesterolMg: number;
   saturatedFatG: number;
   potassiumMg: number;
+  vitaminAMcg: number;
+  vitaminCMg: number;
+  vitaminDMcg: number;
+  calciumMg: number;
+  ironMg: number;
+  magnesiumMg: number;
   thumbnailUrl: string | null;
+}
+
+export interface FoodSearchPage {
+  currentPage: number;
+  totalPages: number;
+  totalHits: number;
+  foods: FoodSearchResult[];
 }
 
 export interface MacroTrendPoint {

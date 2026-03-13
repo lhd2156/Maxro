@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { SpotifyService } from '../../../core/services/spotify.service';
-import { take } from 'rxjs';
+import { catchError, of, switchMap, take } from 'rxjs';
 
 @Component({
   selector: 'app-oauth-callback',
@@ -35,7 +35,10 @@ export class OAuthCallbackComponent implements OnInit {
     if (queryParams['code']) {
       this.statusMessage = 'Connecting Spotify...';
       this.spotifyService.completeAuthorization(queryParams['code'], queryParams['state'] ?? null)
-        .pipe(take(1))
+        .pipe(
+          switchMap(() => this.spotifyService.getPlaybackState().pipe(catchError(() => of(null)))),
+          take(1),
+        )
         .subscribe({
           next: () => this.router.navigate(['/dashboard']),
           error: () => this.router.navigate(['/dashboard']),
@@ -68,4 +71,5 @@ export class OAuthCallbackComponent implements OnInit {
     return params.get('id_token') ?? params.get('credential');
   }
 }
+
 

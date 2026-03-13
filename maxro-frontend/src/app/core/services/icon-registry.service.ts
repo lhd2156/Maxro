@@ -5,10 +5,10 @@ import { DomSanitizer } from '@angular/platform-browser';
 /**
  * Registers custom SVG icons with MatIconRegistry on app init so every
  * icon in the UI is a consistent, stroke-based line icon instead of
- * the stock Material "emoji-style" filled glyphs.
+ * the stock Material filled glyphs.
  *
  * All SVGs use a 24x24 viewBox, 2px strokes, round caps/joins, and
- * inherit color via currentColor — matching the dark flat aesthetic.
+ * inherit color via currentColor - matching the dark flat aesthetic.
  */
 @Injectable({ providedIn: 'root' })
 export class IconRegistryService {
@@ -212,6 +212,18 @@ export class IconRegistryService {
         <path d="M16 16h5v5"/>
         <path d="M21 21l-8.5-8.5"/>
         <path d="M4 4l5 5"/>
+      </svg>`,
+    'mx-mic': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="3" width="6" height="11" rx="3"/>
+        <path d="M5 10a7 7 0 0014 0"/>
+        <path d="M12 17v4"/>
+        <path d="M8 21h8"/>
+      </svg>`,
+    'mx-stop': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" stroke="none"/>
       </svg>`,
     'mx-ai': `
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

@@ -46,21 +46,25 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthPayload register(RegisterInput input) {
-        log.info("Registering new user with email: {}", input.email());
+        String normalizedEmail = normalizeEmail(input.email());
+        String firstName = input.firstName().trim();
+        String lastName = input.lastName().trim();
 
-        if (userRepository.existsByEmail(input.email())) {
-            throw new DuplicateResourceException("User", "email", input.email());
+        log.info("Registering new user with email: {}", normalizedEmail);
+
+        if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+            throw new DuplicateResourceException("User", "email", normalizedEmail);
         }
 
         User user = new User();
-        user.setEmail(input.email().toLowerCase().trim());
+        user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(input.password()));
-        user.setFirstName(input.firstName().trim());
-        user.setLastName(input.lastName().trim());
-        user.setDisplayName(input.firstName().trim() + " " + input.lastName().trim());
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
+        user.setDisplayName(firstName + " " + lastName);
         user.setDateOfBirth(input.dateOfBirth());
         user.setGender(input.gender());
-        user.setAgreedToTerms(input.agreedToTerms() != null ? input.agreedToTerms() : false);
+        user.setAgreedToTerms(input.agreedToTerms() != null && input.agreedToTerms());
         if (input.dailyCalorieTarget() != null) user.setDailyCalorieTarget(input.dailyCalorieTarget());
         if (input.dailyProteinTarget() != null) user.setDailyProteinTarget(input.dailyProteinTarget());
         if (input.dailyCarbTarget() != null) user.setDailyCarbTarget(input.dailyCarbTarget());
@@ -76,9 +80,10 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthPayload login(LoginInput input) {
-        log.info("Login attempt for email: {}", input.email());
+        String normalizedEmail = normalizeEmail(input.email());
+        log.info("Login attempt for email: {}", normalizedEmail);
 
-        User user = userRepository.findByEmail(input.email().toLowerCase().trim())
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
                 .orElseThrow(() -> new AuthenticationException("Invalid email or password"));
 
         if (user.getPassword() == null || user.getPassword().isBlank()) {
@@ -108,7 +113,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(refreshToken.getUserId())
                 .orElseThrow(() -> new AuthenticationException("User not found"));
 
-        // Delete-then-reissue prevents token reuse — each refresh token is single-use.
+        // Delete then reissue prevents token reuse because each refresh token is single-use.
         refreshTokenRepository.delete(refreshToken);
         log.debug("Token refreshed for user: {}", user.getId());
         return buildAuthPayload(user);
@@ -134,5 +139,9 @@ public class AuthServiceImpl implements AuthService {
         refreshToken.setExpiresAt(Instant.now().plusMillis(refreshTokenExpirationMs));
         refreshTokenRepository.save(refreshToken);
         return refreshToken.getToken();
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase();
     }
 }

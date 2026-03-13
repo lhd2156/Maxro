@@ -15,6 +15,12 @@ variables:
     value: 'maxro-backend'
   - name: containerRegistry
     value: '$(ACR_NAME).azurecr.io'
+  - name: containerAppName
+    value: 'maxro-backend'
+  - name: containerAppEnvironment
+    value: 'maxro-env'
+  - name: azureLocation
+    value: 'centralus'
 
 stages:
   - stage: Build
@@ -45,27 +51,20 @@ stages:
               goals: 'package'
               options: '-B -DskipTests'
 
-          - task: Docker@2
-            displayName: 'Build Docker Image'
+          - task: AzureCLI@2
+            displayName: 'Build and Push Image with ACR'
             inputs:
-              containerRegistry: '$(DOCKER_SERVICE_CONNECTION)'
-              repository: '$(imageName)'
-              command: 'build'
-              Dockerfile: 'maxro-backend/Dockerfile'
-              buildContext: 'maxro-backend'
-              tags: |
-                $(Build.BuildId)
-                latest
-
-          - task: Docker@2
-            displayName: 'Push to ACR'
-            inputs:
-              containerRegistry: '$(DOCKER_SERVICE_CONNECTION)'
-              repository: '$(imageName)'
-              command: 'push'
-              tags: |
-                $(Build.BuildId)
-                latest
+              azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -euo pipefail
+                az acr build \
+                  --registry $(ACR_NAME) \
+                  --image $(imageName):$(Build.BuildId) \
+                  --image $(imageName):latest \
+                  --file maxro-backend/Dockerfile \
+                  maxro-backend
 
   - stage: Deploy
     displayName: 'Deploy to Azure Container Apps'
@@ -86,10 +85,160 @@ stages:
                     scriptType: 'bash'
                     scriptLocation: 'inlineScript'
                     inlineScript: |
-                      az containerapp update \
-                        --name maxro-backend \
+                      set -euo pipefail
+
+                      append_secret() {
+                        local key="$1"
+                        local value="$2"
+                        if [ -n "$value" ]; then
+                          SECRET_ARGS+=("${key}=${value}")
+                        fi
+                      }
+
+                      append_env() {
+                        local key="$1"
+                        local value="$2"
+                        if [ -n "$value" ]; then
+                          ENV_ARGS+=("${key}=${value}")
+                        fi
+                      }
+
+                      LOCATION="${AZURE_LOCATION:-$(azureLocation)}"
+                      APP_ENVIRONMENT="${CONTAINER_APP_ENVIRONMENT:-$(containerAppEnvironment)}"
+                      SERVER_PORT_VALUE="${SERVER_PORT:-8080}"
+                      IMAGE_REF="$(containerRegistry)/$(imageName):$(Build.BuildId)"
+
+                      if ! az containerapp env show \
+                        --name "$APP_ENVIRONMENT" \
                         --resource-group $(RESOURCE_GROUP) \
-                        --image $(containerRegistry)/$(imageName):$(Build.BuildId)
+                        >/dev/null 2>&1; then
+                        az containerapp env create \
+                          --name "$APP_ENVIRONMENT" \
+                          --resource-group $(RESOURCE_GROUP) \
+                          --location "$LOCATION" \
+                          --logs-destination none
+                      fi
+
+                      az acr update --name $(ACR_NAME) --admin-enabled true >/dev/null
+                      ACR_USERNAME=$(az acr credential show --name $(ACR_NAME) --query username -o tsv)
+                      ACR_PASSWORD=$(az acr credential show --name $(ACR_NAME) --query "passwords[0].value" -o tsv)
+
+                      if ! az containerapp show \
+                        --name $(containerAppName) \
+                        --resource-group $(RESOURCE_GROUP) \
+                        >/dev/null 2>&1; then
+                        az containerapp create \
+                          --name $(containerAppName) \
+                          --resource-group $(RESOURCE_GROUP) \
+                          --environment "$APP_ENVIRONMENT" \
+                          --image "$IMAGE_REF" \
+                          --ingress external \
+                          --target-port "$SERVER_PORT_VALUE" \
+                          --cpu 0.25 \
+                          --memory 0.5Gi \
+                          --min-replicas 0 \
+                          --max-replicas 1 \
+                          --registry-server $(containerRegistry) \
+                          --registry-username "$ACR_USERNAME" \
+                          --registry-password "$ACR_PASSWORD" \
+                          --env-vars \
+                            SPRING_PROFILES_ACTIVE=prod \
+                            SERVER_PORT="$SERVER_PORT_VALUE" \
+                            APP_LOG_LEVEL="${APP_LOG_LEVEL:-INFO}" \
+                            GRAPHIQL_ENABLED="${GRAPHIQL_ENABLED:-false}"
+                      fi
+
+                      az containerapp registry set \
+                        --name $(containerAppName) \
+                        --resource-group $(RESOURCE_GROUP) \
+                        --server $(containerRegistry) \
+                        --username "$ACR_USERNAME" \
+                        --password "$ACR_PASSWORD"
+
+                      SECRET_ARGS=()
+                      append_secret "mongodb-uri" "$MONGODB_URI"
+                      append_secret "jwt-secret" "$JWT_SECRET"
+                      append_secret "spotify-client-secret" "$SPOTIFY_CLIENT_SECRET"
+                      append_secret "google-ai-api-key" "$GOOGLE_AI_API_KEY"
+                      append_secret "usda-fooddata-api-key" "$USDA_FOODDATA_API_KEY"
+                      append_secret "fatsecret-client-id" "$FATSECRET_CLIENT_ID"
+                      append_secret "fatsecret-client-secret" "$FATSECRET_CLIENT_SECRET"
+
+                      if [ ${#SECRET_ARGS[@]} -gt 0 ]; then
+                        az containerapp secret set \
+                          --name $(containerAppName) \
+                          --resource-group $(RESOURCE_GROUP) \
+                          --secrets "${SECRET_ARGS[@]}"
+                      fi
+
+                      az containerapp update \
+                        --name $(containerAppName) \
+                        --resource-group $(RESOURCE_GROUP) \
+                        --image "$IMAGE_REF" \
+                        --cpu 0.25 \
+                        --memory 0.5Gi \
+                        --min-replicas 0 \
+                        --max-replicas 1
+
+                      ENV_ARGS=()
+                      append_env "SPRING_PROFILES_ACTIVE" "prod"
+                      append_env "SERVER_PORT" "$SERVER_PORT_VALUE"
+                      append_env "CORS_ORIGINS" "$CORS_ORIGINS"
+                      append_env "APP_LOG_LEVEL" "${APP_LOG_LEVEL:-INFO}"
+                      append_env "GRAPHIQL_ENABLED" "${GRAPHIQL_ENABLED:-false}"
+                      append_env "JWT_ACCESS_EXPIRATION" "$JWT_ACCESS_EXPIRATION"
+                      append_env "JWT_REFRESH_EXPIRATION" "$JWT_REFRESH_EXPIRATION"
+                      append_env "GOOGLE_CLIENT_ID" "$GOOGLE_CLIENT_ID"
+                      append_env "SPOTIFY_CLIENT_ID" "$SPOTIFY_CLIENT_ID"
+                      append_env "GOOGLE_AI_MODEL" "$GOOGLE_AI_MODEL"
+
+                      if [ -n "$MONGODB_URI" ]; then
+                        ENV_ARGS+=("MONGODB_URI=secretref:mongodb-uri")
+                      fi
+                      if [ -n "$JWT_SECRET" ]; then
+                        ENV_ARGS+=("JWT_SECRET=secretref:jwt-secret")
+                      fi
+                      if [ -n "$SPOTIFY_CLIENT_SECRET" ]; then
+                        ENV_ARGS+=("SPOTIFY_CLIENT_SECRET=secretref:spotify-client-secret")
+                      fi
+                      if [ -n "$GOOGLE_AI_API_KEY" ]; then
+                        ENV_ARGS+=("GOOGLE_AI_API_KEY=secretref:google-ai-api-key")
+                      fi
+                      if [ -n "$USDA_FOODDATA_API_KEY" ]; then
+                        ENV_ARGS+=("USDA_FOODDATA_API_KEY=secretref:usda-fooddata-api-key")
+                      fi
+                      if [ -n "$FATSECRET_CLIENT_ID" ]; then
+                        ENV_ARGS+=("FATSECRET_CLIENT_ID=secretref:fatsecret-client-id")
+                      fi
+                      if [ -n "$FATSECRET_CLIENT_SECRET" ]; then
+                        ENV_ARGS+=("FATSECRET_CLIENT_SECRET=secretref:fatsecret-client-secret")
+                      fi
+
+                      if [ ${#ENV_ARGS[@]} -gt 0 ]; then
+                        az containerapp update \
+                          --name $(containerAppName) \
+                          --resource-group $(RESOURCE_GROUP) \
+                          --set-env-vars "${ENV_ARGS[@]}"
+                      fi
+                  env:
+                    MONGODB_URI: $(MONGODB_URI)
+                    JWT_SECRET: $(JWT_SECRET)
+                    JWT_ACCESS_EXPIRATION: $(JWT_ACCESS_EXPIRATION)
+                    JWT_REFRESH_EXPIRATION: $(JWT_REFRESH_EXPIRATION)
+                    GOOGLE_CLIENT_ID: $(GOOGLE_CLIENT_ID)
+                    GOOGLE_AI_API_KEY: $(GOOGLE_AI_API_KEY)
+                    GOOGLE_AI_MODEL: $(GOOGLE_AI_MODEL)
+                    SPOTIFY_CLIENT_ID: $(SPOTIFY_CLIENT_ID)
+                    SPOTIFY_CLIENT_SECRET: $(SPOTIFY_CLIENT_SECRET)
+                    USDA_FOODDATA_API_KEY: $(USDA_FOODDATA_API_KEY)
+                    FATSECRET_CLIENT_ID: $(FATSECRET_CLIENT_ID)
+                    FATSECRET_CLIENT_SECRET: $(FATSECRET_CLIENT_SECRET)
+                    CORS_ORIGINS: $(CORS_ORIGINS)
+                    SERVER_PORT: $(SERVER_PORT)
+                    APP_LOG_LEVEL: $(APP_LOG_LEVEL)
+                    GRAPHIQL_ENABLED: $(GRAPHIQL_ENABLED)
+                    AZURE_LOCATION: $(AZURE_LOCATION)
+                    CONTAINER_APP_ENVIRONMENT: $(CONTAINER_APP_ENVIRONMENT)
 
                 - task: AzureCLI@2
                   displayName: 'Health Check'
@@ -99,7 +248,7 @@ stages:
                     scriptLocation: 'inlineScript'
                     inlineScript: |
                       FQDN=$(az containerapp show \
-                        --name maxro-backend \
+                        --name $(containerAppName) \
                         --resource-group $(RESOURCE_GROUP) \
                         --query properties.configuration.ingress.fqdn -o tsv)
                       echo "Checking health at https://$FQDN/actuator/health"

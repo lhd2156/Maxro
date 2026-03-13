@@ -62,6 +62,39 @@ class PersonalRecordServiceImplTest {
     }
 
     @Test
+    void checkAndUpdatePRs_createsBodyweightPrUsingRepCount() {
+        Exercise ex = buildExercise("Push Up", 0, 25);
+        when(personalRecordRepository
+                .findTopByUserIdAndExerciseNameOrderByOneRepMaxLbsDesc("u1", "Push Up"))
+                .thenReturn(Optional.empty());
+        when(personalRecordRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<PersonalRecord> newPRs = prService.checkAndUpdatePRs("u1", "wk-1", List.of(ex));
+
+        assertEquals(1, newPRs.size());
+        assertEquals(0.0, newPRs.get(0).getWeightLbs());
+        assertEquals(25, newPRs.get(0).getReps());
+        assertEquals(25.0, newPRs.get(0).getOneRepMaxLbs());
+    }
+
+    @Test
+    void checkAndUpdatePRs_comparesBodyweightPrsByRepCount() {
+        Exercise ex = buildExercise("Push Up", 0, 22);
+
+        PersonalRecord existing = new PersonalRecord();
+        existing.setOneRepMaxLbs(20.0);
+        when(personalRecordRepository
+                .findTopByUserIdAndExerciseNameOrderByOneRepMaxLbsDesc("u1", "Push Up"))
+                .thenReturn(Optional.of(existing));
+        when(personalRecordRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<PersonalRecord> newPRs = prService.checkAndUpdatePRs("u1", "wk-1", List.of(ex));
+
+        assertEquals(1, newPRs.size());
+        assertEquals(22.0, newPRs.get(0).getOneRepMaxLbs());
+    }
+
+    @Test
     void checkAndUpdatePRs_skipsWhenBelowExisting() {
         Exercise ex = buildExercise("Curl", 30, 10);
 

@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -56,18 +57,18 @@ public class WorkoutServiceImpl implements WorkoutService {
     public Page<Workout> getWorkouts(String userId, LocalDate startDate, LocalDate endDate,
                                      int page, int size) {
         log.debug("Fetching workouts for user: {}, page: {}, size: {}", userId, page, size);
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
 
         if (startDate != null && endDate != null) {
-            return workoutRepository.findByUserIdAndDateBetweenOrderByDateDesc(
-                    userId, startDate, endDate, pageable);
+            return workoutRepository.findByUserIdAndDateBetweenFlexible(
+                    userId, startDate.toString(), endDate.toString(), startDate, endDate, pageable);
         }
         return workoutRepository.findByUserIdOrderByDateDesc(userId, pageable);
     }
 
     @Override
     public Page<Workout> getWorkoutsByExercise(String userId, String exerciseName,
-                                                int page, int size) {
+                                               int page, int size) {
         log.debug("Fetching workouts by exercise: {} for user: {}", exerciseName, userId);
         Pageable pageable = PageRequest.of(page, size);
         return workoutRepository.findByUserIdAndExerciseName(userId, exerciseName, pageable);

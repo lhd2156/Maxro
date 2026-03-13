@@ -7,6 +7,11 @@ import com.maxro.maxro_backend.repository.NutritionLogRepository;
 import com.maxro.maxro_backend.service.NutritionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -17,47 +22,28 @@ import java.util.List;
 public class NutritionServiceImpl implements NutritionService {
 
     private static final Logger log = LoggerFactory.getLogger(NutritionServiceImpl.class);
+    private static final FindAndModifyOptions UPSERT_AND_RETURN_NEW =
+            FindAndModifyOptions.options().upsert(true).returnNew(true);
 
     private final NutritionLogRepository nutritionLogRepository;
+    private final MongoTemplate mongoTemplate;
 
-    public NutritionServiceImpl(NutritionLogRepository nutritionLogRepository) {
+    public NutritionServiceImpl(NutritionLogRepository nutritionLogRepository,
+                                MongoTemplate mongoTemplate) {
         this.nutritionLogRepository = nutritionLogRepository;
+        this.mongoTemplate = mongoTemplate;
     }
 
     @Override
     public NutritionLog logNutrition(String userId, LocalDate date, List<FoodEntry> entries) {
         log.info("Logging nutrition for user: {} on date: {}", userId, date);
-
-        NutritionLog nutritionLog = nutritionLogRepository.findByUserIdAndDate(userId, date)
-                .orElseGet(() -> {
-                    NutritionLog newLog = new NutritionLog();
-                    newLog.setUserId(userId);
-                    newLog.setDate(date);
-                    newLog.setEntries(new ArrayList<>());
-                    return newLog;
-                });
-
-        nutritionLog.getEntries().addAll(entries);
-        NutritionLog saved = nutritionLogRepository.save(nutritionLog);
-        log.info("Nutrition logged with {} entries for date: {}", entries.size(), date);
-        return saved;
+        return appendEntries(userId, date, entries);
     }
 
     @Override
     public NutritionLog addFoodEntry(String userId, LocalDate date, FoodEntry entry) {
         log.info("Adding food entry for user: {} on date: {}", userId, date);
-
-        NutritionLog nutritionLog = nutritionLogRepository.findByUserIdAndDate(userId, date)
-                .orElseGet(() -> {
-                    NutritionLog newLog = new NutritionLog();
-                    newLog.setUserId(userId);
-                    newLog.setDate(date);
-                    newLog.setEntries(new ArrayList<>());
-                    return newLog;
-                });
-
-        nutritionLog.getEntries().add(entry);
-        return nutritionLogRepository.save(nutritionLog);
+        return appendEntries(userId, date, List.of(entry));
     }
 
     @Override
@@ -85,5 +71,43 @@ public class NutritionServiceImpl implements NutritionService {
     public List<NutritionLog> getNutritionLogs(String userId, LocalDate startDate, LocalDate endDate) {
         log.debug("Fetching nutrition logs for user: {} from {} to {}", userId, startDate, endDate);
         return nutritionLogRepository.findByUserIdAndDateBetweenFlexible(userId, startDate.toString(), endDate.toString(), startDate, endDate);
+    }
+
+    private NutritionLog appendEntries(String userId, LocalDate date, List<FoodEntry> entries) {
+        if (entries == null || entries.isEmpty()) {
+            return ensureLogExists(userId, date);
+        }
+
+        Object[] entryDocuments = entries.toArray();
+        Query query = userDateQuery(userId, date);
+        Update update = new Update()
+                .setOnInsert("userId", userId)
+                .setOnInsert("date", date)
+                .push("entries")
+                .each(entryDocuments);
+
+        NutritionLog updatedLog = mongoTemplate.findAndModify(
+                query,
+                update,
+                UPSERT_AND_RETURN_NEW,
+                NutritionLog.class
+        );
+
+        return updatedLog != null ? updatedLog : ensureLogExists(userId, date);
+    }
+
+    private NutritionLog ensureLogExists(String userId, LocalDate date) {
+        return nutritionLogRepository.findByUserIdAndDate(userId, date)
+                .orElseGet(() -> {
+                    NutritionLog newLog = new NutritionLog();
+                    newLog.setUserId(userId);
+                    newLog.setDate(date);
+                    newLog.setEntries(new ArrayList<>());
+                    return nutritionLogRepository.save(newLog);
+                });
+    }
+
+    private Query userDateQuery(String userId, LocalDate date) {
+        return Query.query(Criteria.where("userId").is(userId).and("date").is(date));
     }
 }

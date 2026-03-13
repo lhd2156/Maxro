@@ -94,9 +94,16 @@ export class AuthService {
   }
 
   logout(): void {
-    this.apollo.mutate({ mutation: LOGOUT_MUTATION }).subscribe();
+    this.apollo.mutate({ mutation: LOGOUT_MUTATION, errorPolicy: 'all' }).subscribe({
+      error: () => undefined,
+    });
+
     this.clearAuth();
-    this.router.navigate(['/login']);
+    void this.apollo.client.clearStore()
+      .catch(() => undefined)
+      .finally(() => {
+        void this.router.navigate(['/login']);
+      });
   }
 
   getAccessToken(): string | null {
@@ -108,13 +115,13 @@ export class AuthService {
   }
 
   updateCurrentUser(user: UserProfile): void {
-    const normalizedUser = { ...user, hasPassword: user.hasPassword ?? true };
+    const normalizedUser = this.normalizeUser(user);
     localStorage.setItem('user', JSON.stringify(normalizedUser));
     this.currentUserSubject.next(normalizedUser);
   }
 
   private storeAuth(payload: AuthPayload): void {
-    const normalizedUser = { ...payload.user, hasPassword: payload.user.hasPassword ?? true };
+    const normalizedUser = this.normalizeUser(payload.user);
     localStorage.setItem('accessToken', payload.accessToken);
     localStorage.setItem('refreshToken', payload.refreshToken);
     localStorage.setItem('user', JSON.stringify(normalizedUser));
@@ -133,7 +140,17 @@ export class AuthService {
     if (!raw) {
       return null;
     }
-    const user = JSON.parse(raw) as UserProfile;
+
+    try {
+      const user = JSON.parse(raw) as UserProfile;
+      return this.normalizeUser(user);
+    } catch {
+      localStorage.removeItem('user');
+      return null;
+    }
+  }
+
+  private normalizeUser(user: UserProfile): UserProfile {
     return { ...user, hasPassword: user.hasPassword ?? true };
   }
 }

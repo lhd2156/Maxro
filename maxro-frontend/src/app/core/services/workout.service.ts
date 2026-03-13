@@ -124,15 +124,21 @@ export class WorkoutService {
     return this.apollo.mutate<{ deleteWorkout: boolean }>({
       mutation: DELETE_WORKOUT,
       variables: { id },
+      refetchQueries: [{ query: GET_PERSONAL_RECORDS }],
+      awaitRefetchQueries: true,
     }).pipe(
       map(r => r.data!.deleteWorkout),
-      tap(() => this.refreshWorkoutsStore()),
+      tap(() => {
+        this.workoutSaved$.next();
+        this.refreshWorkoutsStore();
+      }),
     );
   }
 
   getPersonalRecords(): Observable<PersonalRecord[]> {
     return this.apollo.query<{ getPersonalRecords: PersonalRecord[] }>({
       query: GET_PERSONAL_RECORDS,
+      fetchPolicy: 'network-only',
     }).pipe(map(r => r.data.getPersonalRecords));
   }
 
