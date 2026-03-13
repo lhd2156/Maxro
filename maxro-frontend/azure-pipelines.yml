@@ -48,15 +48,20 @@ stages:
       - job: DeployFrontend
         displayName: 'Deploy Frontend'
         steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '20.x'
+            displayName: 'Install Node.js'
+
           - download: current
             artifact: frontend-build
 
-          - task: AzureStaticWebApp@0
+          - script: >
+              npx @azure/static-web-apps-cli@2.0.8 deploy
+              "$(Pipeline.Workspace)/frontend-build"
+              --deployment-token "$(SWA_DEPLOYMENT_TOKEN)"
+              --env production
             displayName: 'Deploy to Static Web Apps'
-            inputs:
-              azure_static_web_apps_api_token: '$(SWA_DEPLOYMENT_TOKEN)'
-              app_location: '$(Pipeline.Workspace)/frontend-build'
-              skip_app_build: true
 
           - powershell: |
               $swaUrl = 'https://$(SWA_HOSTNAME)'

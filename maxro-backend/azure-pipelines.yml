@@ -99,6 +99,15 @@ stages:
       - job: DeployBackend
         displayName: 'Deploy Backend'
         steps:
+          - powershell: |
+              $azureCliPath = 'C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin'
+              if (-not (Test-Path $azureCliPath)) {
+                throw "Azure CLI path not found: $azureCliPath"
+              }
+              Write-Host "##vso[task.prependpath]$azureCliPath"
+              & "$azureCliPath\az.cmd" version
+            displayName: 'Expose Azure CLI on PATH'
+
           - task: AzureCLI@2
             displayName: 'Deploy to Container Apps'
             inputs:
