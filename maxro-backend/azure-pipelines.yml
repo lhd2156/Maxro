@@ -248,6 +248,7 @@ stages:
 
                 if (-not [string]::IsNullOrWhiteSpace($env:MONGODB_URI)) {
                   $envArgs += 'MONGODB_URI=secretref:mongodb-uri'
+                  $envArgs += 'SPRING_DATA_MONGODB_URI=secretref:mongodb-uri'
                 }
                 if (-not [string]::IsNullOrWhiteSpace($env:JWT_SECRET)) {
                   $envArgs += 'JWT_SECRET=secretref:jwt-secret'
