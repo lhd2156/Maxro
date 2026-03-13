@@ -268,6 +268,7 @@ stages:
               AZURE_LOCATION: $(AZURE_LOCATION)
               CONTAINER_APP_ENVIRONMENT: $(CONTAINER_APP_ENVIRONMENT)
 
+
           - task: AzureCLI@2
             displayName: 'Health Check'
             inputs:
@@ -279,11 +280,13 @@ stages:
                   --name $(containerAppName) `
                   --resource-group $(RESOURCE_GROUP) `
                   --query properties.configuration.ingress.fqdn -o tsv
-                Write-Host "Checking health at https://$fqdn/actuator/health"
+
+                $url = "https://$fqdn/actuator/health"
+                Write-Host "Checking health at $url"
 
                 for ($i = 1; $i -le 30; $i++) {
                   try {
-                    $response = Invoke-WebRequest -Uri "https://$fqdn/actuator/health" -UseBasicParsing -TimeoutSec 30
+                    $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 30
                     if ($response.StatusCode -eq 200) {
                       Write-Host "Health check passed on attempt ${i}"
                       exit 0
@@ -295,9 +298,10 @@ stages:
                   Start-Sleep -Seconds 10
                 }
 
-                Write-Host "Health check failed. Dumping diagnostics..."
-                az containerapp show --name $(containerAppName) --resource-group $(RESOURCE_GROUP) -o jsonc
+                Write-Host "Health check failed. Diagnostics:"
                 az containerapp revision list --name $(containerAppName) --resource-group $(RESOURCE_GROUP) -o table
                 az containerapp logs show --name $(containerAppName) --resource-group $(RESOURCE_GROUP) --tail 200
                 az containerapp logs show --name $(containerAppName) --resource-group $(RESOURCE_GROUP) --type system --tail 200
                 exit 1
+
+
