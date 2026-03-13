@@ -287,12 +287,23 @@ stages:
               scriptType: 'ps'
               scriptLocation: 'inlineScript'
               inlineScript: |
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
                 $fqdn = az containerapp show `
                   --name $(containerAppName) `
                   --resource-group $(RESOURCE_GROUP) `
                   --query properties.configuration.ingress.fqdn -o tsv
+
+                if ([string]::IsNullOrWhiteSpace($fqdn)) {
+                  Write-Host 'Health check failed: container app FQDN is empty.'
+                  exit 1
+                }
+
                 Write-Host "Checking health at https://$fqdn/actuator/health"
-                for ($i = 1; $i -le 10; $i++) {
+                $maxAttempts = 30
+                $sleepSeconds = 10
+
+                for ($i = 1; $i -le $maxAttempts; $i++) {
                   try {
                     $response = Invoke-WebRequest -Uri "https://$fqdn/actuator/health" -UseBasicParsing -TimeoutSec 20
                     if ($response.StatusCode -eq 200) {
@@ -304,11 +315,26 @@ stages:
                     if ($_.Exception.Response) {
                       $status = [int]$_.Exception.Response.StatusCode
                     } else {
-                      $status = 'ERR'
+                      $status = "ERR: $($_.Exception.Message)"
                     }
                   }
                   Write-Host "Attempt ${i}: status $status, retrying..."
-                  Start-Sleep -Seconds 10
+                  if ($i -lt $maxAttempts) {
+                    Start-Sleep -Seconds $sleepSeconds
+                  }
                 }
                 Write-Host 'Health check failed'
+
+                $runningStatus = az containerapp show `
+                  --name $(containerAppName) `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --query properties.runningStatus -o tsv
+                $latestRevision = az containerapp show `
+                  --name $(containerAppName) `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --query properties.latestRevisionName -o tsv
+
+                Write-Host "Container App runningStatus: $runningStatus"
+                Write-Host "Container App latestRevisionName: $latestRevision"
+
                 exit 1
