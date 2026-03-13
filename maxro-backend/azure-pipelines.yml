@@ -115,6 +115,7 @@ stages:
               scriptType: 'ps'
               scriptLocation: 'inlineScript'
               failOnStandardError: false
+              powerShellIgnoreLASTEXITCODE: true
               inlineScript: |
                 function Add-SecretArg([string]$Key, [string]$Value) {
                   if (-not [string]::IsNullOrWhiteSpace($Value)) {
@@ -302,6 +303,7 @@ stages:
                 }
                 Write-Host 'Health check failed'
                 exit 1
+
 
 
 
