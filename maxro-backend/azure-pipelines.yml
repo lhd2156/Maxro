@@ -21,6 +21,10 @@ variables:
     value: 'maxro-env'
   - name: azureLocation
     value: 'centralus'
+  - name: javaToolOptions
+    value: '-Xms32m -Xmx128m -XX:+UseSerialGC'
+  - name: mavenOpts
+    value: '-Xms128m -Xmx512m -XX:+UseSerialGC -Djava.awt.headless=true'
 
 stages:
   - stage: Build
@@ -34,15 +38,20 @@ stages:
               $javaHome = Split-Path (Split-Path $javac -Parent) -Parent
               Write-Host "Using JAVA_HOME=$javaHome"
               Write-Host "##vso[task.setvariable variable=JAVA_HOME]$javaHome"
+              Write-Host "##vso[task.setvariable variable=JAVA_TOOL_OPTIONS]$(javaToolOptions)"
+              Write-Host "##vso[task.setvariable variable=MAVEN_OPTS]$(mavenOpts)"
               Write-Host "##vso[task.prependpath]$javaHome\bin"
+              $env:JAVA_TOOL_OPTIONS = '$(javaToolOptions)'
               & "$javaHome\bin\java.exe" -version
             displayName: 'Use Java 21 from agent'
 
-          - script: cmd /c mvnw.cmd test
+          - script: 'cmd /c mvnw.cmd -B test -DforkCount=1 -DreuseForks=true -DargLine="-Xms64m -Xmx256m -XX:+UseSerialGC"'
             displayName: 'Run Tests'
             workingDirectory: 'maxro-backend'
             env:
               JAVA_HOME: $(JAVA_HOME)
+              JAVA_TOOL_OPTIONS: $(JAVA_TOOL_OPTIONS)
+              MAVEN_OPTS: $(MAVEN_OPTS)
 
           - task: PublishTestResults@2
             displayName: 'Publish JUnit Results'
@@ -57,6 +66,8 @@ stages:
             workingDirectory: 'maxro-backend'
             env:
               JAVA_HOME: $(JAVA_HOME)
+              JAVA_TOOL_OPTIONS: $(JAVA_TOOL_OPTIONS)
+              MAVEN_OPTS: $(MAVEN_OPTS)
 
           - powershell: |
               $azureCliPath = 'C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin'
