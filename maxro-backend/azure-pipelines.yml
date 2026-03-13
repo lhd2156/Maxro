@@ -287,54 +287,53 @@ stages:
               scriptType: 'ps'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-
-                $fqdn = az containerapp show `
-                  --name $(containerAppName) `
-                  --resource-group $(RESOURCE_GROUP) `
-                  --query properties.configuration.ingress.fqdn -o tsv
-
-                if ([string]::IsNullOrWhiteSpace($fqdn)) {
-                  Write-Host 'Health check failed: container app FQDN is empty.'
-                  exit 1
-                }
-
-                Write-Host "Checking health at https://$fqdn/actuator/health"
                 $maxAttempts = 30
                 $sleepSeconds = 10
 
                 for ($i = 1; $i -le $maxAttempts; $i++) {
-                  try {
-                    $response = Invoke-WebRequest -Uri "https://$fqdn/actuator/health" -UseBasicParsing -TimeoutSec 20
-                    if ($response.StatusCode -eq 200) {
-                      Write-Host 'Health check passed'
-                      exit 0
-                    }
-                    $status = $response.StatusCode
-                  } catch {
-                    if ($_.Exception.Response) {
-                      $status = [int]$_.Exception.Response.StatusCode
-                    } else {
-                      $status = "ERR: $($_.Exception.Message)"
-                    }
+                  $appJson = az containerapp show `
+                    --name $(containerAppName) `
+                    --resource-group $(RESOURCE_GROUP) -o json
+
+                  $app = $appJson | ConvertFrom-Json
+                  $runningStatus = $app.properties.runningStatus
+                  $latestRevision = $app.properties.latestRevisionName
+                  $latestReadyRevision = $app.properties.latestReadyRevisionName
+
+                  Write-Host "Attempt ${i}: runningStatus=$runningStatus, latestRevision=$latestRevision, latestReadyRevision=$latestReadyRevision"
+
+                  if (
+                    $runningStatus -eq 'Running' -and
+                    -not [string]::IsNullOrWhiteSpace($latestRevision) -and
+                    $latestRevision -eq $latestReadyRevision
+                  ) {
+                    Write-Host 'Health check passed (latest revision is ready).'
+                    exit 0
                   }
-                  Write-Host "Attempt ${i}: status $status, retrying..."
+
                   if ($i -lt $maxAttempts) {
                     Start-Sleep -Seconds $sleepSeconds
                   }
                 }
-                Write-Host 'Health check failed'
 
-                $runningStatus = az containerapp show `
+                Write-Host 'Health check failed (revision never became ready).'
+                Write-Host 'Container app diagnostics:'
+
+                az containerapp show `
                   --name $(containerAppName) `
                   --resource-group $(RESOURCE_GROUP) `
-                  --query properties.runningStatus -o tsv
-                $latestRevision = az containerapp show `
+                  --query "{runningStatus:properties.runningStatus,latestRevisionName:properties.latestRevisionName,latestReadyRevisionName:properties.latestReadyRevisionName,fqdn:properties.configuration.ingress.fqdn}" -o table
+
+                Write-Host 'Latest revisions:'
+                az containerapp revision list `
                   --name $(containerAppName) `
                   --resource-group $(RESOURCE_GROUP) `
-                  --query properties.latestRevisionName -o tsv
+                  --query "[].{name:name,active:properties.active,createdTime:properties.createdTime,runningState:properties.runningState,healthState:properties.healthState,replicas:properties.replicas}" -o table
 
-                Write-Host "Container App runningStatus: $runningStatus"
-                Write-Host "Container App latestRevisionName: $latestRevision"
+                Write-Host 'Recent app logs:'
+                az containerapp logs show `
+                  --name $(containerAppName) `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --tail 100
 
                 exit 1
