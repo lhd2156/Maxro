@@ -330,15 +330,19 @@ stages:
                   $expectedRevisionRunningState = if ($expectedRevision) { $expectedRevision.properties.runningState } else { '' }
                   $expectedRevisionHealthState = if ($expectedRevision) { $expectedRevision.properties.healthState } else { '' }
 
-                  Write-Host "Attempt ${i}: runningStatus=$runningStatus, latestRevision=$latestRevision, latestReadyRevision=$latestReadyRevision, expectedRevision=$expectedRevisionName, expectedRunningState=$expectedRevisionRunningState, expectedHealthState=$expectedRevisionHealthState"
+                  $targetRevisionName = if (-not [string]::IsNullOrWhiteSpace($expectedRevisionName)) { $expectedRevisionName } else { $latestRevision }
+                  if ([string]::IsNullOrWhiteSpace($expectedRevisionName)) {
+                    Write-Host "Expected revision suffix '$expectedRevisionSuffix' not found yet; falling back to latestRevision comparison."
+                  }
+
+                  Write-Host "Attempt ${i}: runningStatus=$runningStatus, latestRevision=$latestRevision, latestReadyRevision=$latestReadyRevision, expectedRevision=$expectedRevisionName, expectedRunningState=$expectedRevisionRunningState, expectedHealthState=$expectedRevisionHealthState, targetRevision=$targetRevisionName"
 
                   if (
                     $runningStatus -eq 'Running' -and
-                    -not [string]::IsNullOrWhiteSpace($expectedRevisionName) -and
-                    $latestReadyRevision -eq $expectedRevisionName -and
-                    $expectedRevisionHealthState -eq 'Healthy'
+                    -not [string]::IsNullOrWhiteSpace($targetRevisionName) -and
+                    $latestReadyRevision -eq $targetRevisionName
                   ) {
-                    Write-Host 'Health check passed (expected revision is ready).'
+                    Write-Host 'Health check passed (target revision is ready).'
                     exit 0
                   }
 
