@@ -29,12 +29,24 @@ stages:
       - job: BuildAndTest
         displayName: 'Build and Test Spring Boot'
         steps:
+          - powershell: |
+              $javac = (Get-Command javac -ErrorAction Stop).Source
+              $javaHome = Split-Path (Split-Path $javac -Parent) -Parent
+              Write-Host "Using JAVA_HOME=$javaHome"
+              Write-Host "##vso[task.setvariable variable=JAVA_HOME]$javaHome"
+              Write-Host "##vso[task.prependpath]$javaHome\bin"
+              & "$javaHome\bin\java.exe" -version
+            displayName: 'Use Java 21 from agent'
+
           - script: cmd /c mvnw.cmd test
             displayName: 'Run Tests'
             workingDirectory: 'maxro-backend'
+            env:
+              JAVA_HOME: $(JAVA_HOME)
 
           - task: PublishTestResults@2
             displayName: 'Publish JUnit Results'
+            condition: succeededOrFailed()
             inputs:
               testResultsFormat: 'JUnit'
               testResultsFiles: 'maxro-backend/**/surefire-reports/TEST-*.xml'
@@ -43,6 +55,8 @@ stages:
           - script: cmd /c mvnw.cmd package -DskipTests
             displayName: 'Build JAR'
             workingDirectory: 'maxro-backend'
+            env:
+              JAVA_HOME: $(JAVA_HOME)
 
           - task: AzureCLI@2
             displayName: 'Build and Push Image with ACR'
