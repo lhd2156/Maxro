@@ -97,6 +97,8 @@ stages:
                   --password $acrToken
 
                 docker build `
+                  --pull `
+                  --no-cache `
                   --file maxro-backend/Dockerfile `
                   --tag "${loginServer}/$(imageName):$(Build.BuildId)" `
                   --tag "${loginServer}/$(imageName):latest" `
