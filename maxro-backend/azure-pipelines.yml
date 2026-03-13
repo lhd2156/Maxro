@@ -62,7 +62,7 @@ stages:
             displayName: 'Build and Push Image with ACR'
             inputs:
               azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
-              scriptType: 'pscore'
+              scriptType: 'ps'
               scriptLocation: 'inlineScript'
               inlineScript: |
                 $loginServer = az acr show --name $(ACR_NAME) --query loginServer -o tsv
@@ -98,7 +98,7 @@ stages:
                   displayName: 'Deploy to Container Apps'
                   inputs:
                     azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
-                    scriptType: 'pscore'
+                    scriptType: 'ps'
                     scriptLocation: 'inlineScript'
                     inlineScript: |
                       function Add-SecretArg([string]$Key, [string]$Value) {
@@ -250,7 +250,7 @@ stages:
                   displayName: 'Health Check'
                   inputs:
                     azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
-                    scriptType: 'pscore'
+                    scriptType: 'ps'
                     scriptLocation: 'inlineScript'
                     inlineScript: |
                       $fqdn = az containerapp show `
@@ -278,4 +278,5 @@ stages:
                       }
                       Write-Host 'Health check failed'
                       exit 1
+
 
