@@ -2,13 +2,16 @@ package com.maxro.maxro_backend.dto.user;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record UserProfileInput(
         @Size(min = 1, max = 50)
+        @Pattern(regexp = "^[A-Za-z]+(?:[ '-][A-Za-z]+)*$", message = "First name can only contain letters")
         String firstName,
 
         @Size(min = 1, max = 50)
+        @Pattern(regexp = "^[A-Za-z]+(?:[ '-][A-Za-z]+)*$", message = "Last name can only contain letters")
         String lastName,
 
         @Size(min = 2, max = 50, message = "Display name must be between 2 and 50 characters")

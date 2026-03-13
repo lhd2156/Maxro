@@ -13,7 +13,7 @@ class FitnessCalculatorTest {
 
     @Test
     void estimateOneRepMax_appliesEpleyFormulaForMultipleReps() {
-        // Epley: 225 * (1 + 5/30) = 225 * 1.1667 ≈ 262.5
+        // Epley: 225 * (1 + 5/30) = about 262.5
         double result = FitnessCalculator.estimateOneRepMax(225, 5);
         assertEquals(262.5, result, 0.01);
     }
@@ -23,6 +23,11 @@ class FitnessCalculatorTest {
         assertEquals(0.0, FitnessCalculator.estimateOneRepMax(0, 5));
         assertEquals(0.0, FitnessCalculator.estimateOneRepMax(100, 0));
         assertEquals(0.0, FitnessCalculator.estimateOneRepMax(-50, 3));
+    }
+
+    @Test
+    void scorePerformance_returnsRepCountForBodyweightSets() {
+        assertEquals(18.0, FitnessCalculator.scorePerformance(0, 18));
     }
 
     @Test

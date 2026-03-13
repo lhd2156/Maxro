@@ -1,27 +1,39 @@
 import { Injectable } from '@angular/core';
 import { Apollo, gql } from 'apollo-angular';
 import { Observable, map } from 'rxjs';
-import { FoodEntryInput, FoodSearchResult, NutritionLog } from '../models/nutrition.model';
+import { FoodEntryInput, FoodSearchPage, NutritionLog } from '../models/nutrition.model';
 
 const NUTRITION_FIELDS = `
   id userId date
   totalCalories totalProteinG totalCarbsG totalFatG
   totalFiberG totalSugarG totalSodiumMg totalCholesterolMg totalSaturatedFatG totalPotassiumMg
+  totalVitaminAMcg totalVitaminCMg totalVitaminDMcg totalCalciumMg totalIronMg totalMagnesiumMg
   entries {
     id foodName brandName mealType servingQty servingUnit
     calories proteinG carbsG fatG
     fiberG sugarG sodiumMg cholesterolMg saturatedFatG potassiumMg
+    vitaminAMcg vitaminCMg vitaminDMcg calciumMg ironMg magnesiumMg
     thumbnailUrl
   }
 `;
 
+const FOOD_SEARCH_RESULT_FIELDS = `
+  foodName brandName servingQty servingUnit
+  calories proteinG carbsG fatG
+  fiberG sugarG sodiumMg cholesterolMg saturatedFatG potassiumMg
+  vitaminAMcg vitaminCMg vitaminDMcg calciumMg ironMg magnesiumMg
+  thumbnailUrl
+`;
+
 const SEARCH_FOOD = gql`
-  query SearchFood($query: String!) {
-    searchFood(query: $query) {
-      foodName brandName servingQty servingUnit
-      calories proteinG carbsG fatG
-      fiberG sugarG sodiumMg cholesterolMg saturatedFatG potassiumMg
-      thumbnailUrl
+  query SearchFood($query: String!, $page: Int!, $size: Int!) {
+    searchFood(query: $query, page: $page, size: $size) {
+      currentPage
+      totalPages
+      totalHits
+      foods {
+        ${FOOD_SEARCH_RESULT_FIELDS}
+      }
     }
   }
 `;
@@ -54,10 +66,11 @@ const REMOVE_FOOD_ENTRY = gql`
 export class NutritionService {
   constructor(private readonly apollo: Apollo) {}
 
-  searchFood(query: string): Observable<FoodSearchResult[]> {
-    return this.apollo.query<{ searchFood: FoodSearchResult[] }>({
+  searchFood(query: string, page = 1, size = 5): Observable<FoodSearchPage> {
+    return this.apollo.query<{ searchFood: FoodSearchPage }>({
       query: SEARCH_FOOD,
-      variables: { query },
+      variables: { query, page, size },
+      fetchPolicy: 'no-cache',
     }).pipe(map(r => r.data.searchFood));
   }
 

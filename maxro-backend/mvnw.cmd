@@ -40,6 +40,7 @@
 @SET __MVNW_ARG0_NAME__=
 @SET MVNW_USERNAME=
 @SET MVNW_PASSWORD=
+@IF NOT "%JAVA_HOME%"=="" IF NOT EXIST "%JAVA_HOME%\bin\java.exe" SET JAVA_HOME=
 @IF NOT "%__MVNW_CMD__%"=="" ("%__MVNW_CMD__%" %*)
 @echo Cannot start maven from wrapper >&2 && exit /b 1
 @GOTO :EOF
@@ -88,11 +89,22 @@ if (-not (Test-Path -Path $MAVEN_M2_PATH)) {
     New-Item -Path $MAVEN_M2_PATH -ItemType Directory | Out-Null
 }
 
-$MAVEN_WRAPPER_DISTS = $null
-if ((Get-Item $MAVEN_M2_PATH).Target[0] -eq $null) {
-  $MAVEN_WRAPPER_DISTS = "$MAVEN_M2_PATH/wrapper/dists"
+$MAVEN_M2_ITEM = Get-Item $MAVEN_M2_PATH
+$MAVEN_M2_LINK_TARGET = $null
+if ($MAVEN_M2_ITEM.PSObject.Properties.Name -contains "Target") {
+  $targets = @($MAVEN_M2_ITEM.Target) | Where-Object { $_ }
+  if ($targets.Count -gt 0) {
+    $MAVEN_M2_LINK_TARGET = $targets[0]
+  }
+}
+if (-not $MAVEN_M2_LINK_TARGET -and $MAVEN_M2_ITEM.PSObject.Properties.Name -contains "LinkTarget" -and $MAVEN_M2_ITEM.LinkTarget) {
+  $MAVEN_M2_LINK_TARGET = $MAVEN_M2_ITEM.LinkTarget
+}
+
+$MAVEN_WRAPPER_DISTS = if ($MAVEN_M2_LINK_TARGET) {
+  $MAVEN_M2_LINK_TARGET + "/wrapper/dists"
 } else {
-  $MAVEN_WRAPPER_DISTS = (Get-Item $MAVEN_M2_PATH).Target[0] + "/wrapper/dists"
+  "$MAVEN_M2_PATH/wrapper/dists"
 }
 
 $MAVEN_HOME_PARENT = "$MAVEN_WRAPPER_DISTS/$distributionUrlNameMain"

@@ -8,7 +8,7 @@ const AUTH_FIELDS = `
   accessToken
   refreshToken
   user {
-    id email displayName bodyWeightLbs heightInches fitnessGoal
+    id email displayName firstName lastName hasPassword bodyWeightLbs heightInches fitnessGoal
     dailyCalorieTarget dailyProteinTarget dailyCarbTarget dailyFatTarget
     dailyWaterGoalOz dateOfBirth gender agreedToTerms profileComplete createdAt
   }
@@ -94,9 +94,16 @@ export class AuthService {
   }
 
   logout(): void {
-    this.apollo.mutate({ mutation: LOGOUT_MUTATION }).subscribe();
+    this.apollo.mutate({ mutation: LOGOUT_MUTATION, errorPolicy: 'all' }).subscribe({
+      error: () => undefined,
+    });
+
     this.clearAuth();
-    this.router.navigate(['/login']);
+    void this.apollo.client.clearStore()
+      .catch(() => undefined)
+      .finally(() => {
+        void this.router.navigate(['/login']);
+      });
   }
 
   getAccessToken(): string | null {
@@ -108,15 +115,17 @@ export class AuthService {
   }
 
   updateCurrentUser(user: UserProfile): void {
-    localStorage.setItem('user', JSON.stringify(user));
-    this.currentUserSubject.next(user);
+    const normalizedUser = this.normalizeUser(user);
+    localStorage.setItem('user', JSON.stringify(normalizedUser));
+    this.currentUserSubject.next(normalizedUser);
   }
 
   private storeAuth(payload: AuthPayload): void {
+    const normalizedUser = this.normalizeUser(payload.user);
     localStorage.setItem('accessToken', payload.accessToken);
     localStorage.setItem('refreshToken', payload.refreshToken);
-    localStorage.setItem('user', JSON.stringify(payload.user));
-    this.currentUserSubject.next(payload.user);
+    localStorage.setItem('user', JSON.stringify(normalizedUser));
+    this.currentUserSubject.next(normalizedUser);
   }
 
   private clearAuth(): void {
@@ -128,6 +137,20 @@ export class AuthService {
 
   private loadUser(): UserProfile | null {
     const raw = localStorage.getItem('user');
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      const user = JSON.parse(raw) as UserProfile;
+      return this.normalizeUser(user);
+    } catch {
+      localStorage.removeItem('user');
+      return null;
+    }
+  }
+
+  private normalizeUser(user: UserProfile): UserProfile {
+    return { ...user, hasPassword: user.hasPassword ?? true };
   }
 }

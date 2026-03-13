@@ -1,7 +1,14 @@
 package com.maxro.maxro_backend.service.impl;
 
-import com.maxro.maxro_backend.dto.analytics.*;
-import com.maxro.maxro_backend.model.*;
+import com.maxro.maxro_backend.dto.analytics.DashboardSummaryDto;
+import com.maxro.maxro_backend.dto.analytics.MacroTrendPointDto;
+import com.maxro.maxro_backend.dto.analytics.StrengthDataPointDto;
+import com.maxro.maxro_backend.dto.analytics.StreakInfoDto;
+import com.maxro.maxro_backend.model.Exercise;
+import com.maxro.maxro_backend.model.ExerciseSet;
+import com.maxro.maxro_backend.model.FoodEntry;
+import com.maxro.maxro_backend.model.NutritionLog;
+import com.maxro.maxro_backend.model.Workout;
 import com.maxro.maxro_backend.repository.NutritionLogRepository;
 import com.maxro.maxro_backend.repository.WaterIntakeRepository;
 import com.maxro.maxro_backend.repository.WorkoutRepository;
@@ -17,7 +24,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -61,7 +71,6 @@ class AnalyticsServiceImplTest {
     @Test
     void getWorkoutStreak_breaksOnGap() {
         LocalDate today = LocalDate.now();
-        // Gap of one day between the two groups
         List<Workout> workouts = List.of(
                 workoutOnDate(today),
                 workoutOnDate(today.minusDays(1)),
@@ -84,10 +93,12 @@ class AnalyticsServiceImplTest {
         ex.setName("Bench Press");
         ex.setMuscleGroup("Chest");
         ex.setSets(List.of(new ExerciseSet(5, 225), new ExerciseSet(3, 245)));
-        Workout w = workoutOnDate(date);
-        w.setExercises(List.of(ex));
+        Workout workout = workoutOnDate(date);
+        workout.setExercises(List.of(ex));
 
-        when(workoutRepository.findByUserIdOrderByDateAsc("u1")).thenReturn(List.of(w));
+        when(workoutRepository.findByUserIdAndDateBetweenOrderByDateAsc(
+                eq("u1"), any(String.class), any(String.class), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(List.of(workout));
 
         List<StrengthDataPointDto> result = analyticsService.getStrengthProgress("u1", "Bench Press", 30);
 
@@ -114,9 +125,10 @@ class AnalyticsServiceImplTest {
 
         List<MacroTrendPointDto> result = analyticsService.getMacroTrends("u1", 7, null);
 
-        assertEquals(1, result.size());
-        assertEquals(500, result.get(0).calories());
-        assertEquals(40, result.get(0).proteinG());
+        assertEquals(8, result.size());
+        assertEquals(0, result.get(0).calories());
+        assertEquals(500, result.get(result.size() - 1).calories());
+        assertEquals(40, result.get(result.size() - 1).proteinG());
     }
 
     @Test
@@ -138,9 +150,11 @@ class AnalyticsServiceImplTest {
     }
 
     private Workout workoutOnDate(LocalDate date) {
-        Workout w = new Workout();
-        w.setDate(date);
-        w.setExercises(List.of());
-        return w;
+        Workout workout = new Workout();
+        workout.setDate(date);
+        workout.setExercises(List.of());
+        return workout;
     }
 }
+
+

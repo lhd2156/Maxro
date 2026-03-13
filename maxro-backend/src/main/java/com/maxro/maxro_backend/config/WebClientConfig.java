@@ -9,14 +9,10 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class WebClientConfig {
 
     @Bean
-    public WebClient nutritionixWebClient(
-            @Value("${maxro.nutritionix.base-url:https://trackapi.nutritionix.com/v2}") String baseUrl,
-            @Value("${maxro.nutritionix.app-id:}") String appId,
-            @Value("${maxro.nutritionix.api-key:}") String apiKey) {
+    public WebClient foodDataCentralWebClient(
+            @Value("${maxro.usda.base-url:https://api.nal.usda.gov/fdc/v1}") String baseUrl) {
         return WebClient.builder()
                 .baseUrl(baseUrl)
-                .defaultHeader("x-app-id", appId)
-                .defaultHeader("x-app-key", apiKey)
                 .defaultHeader("Content-Type", "application/json")
                 .build();
     }

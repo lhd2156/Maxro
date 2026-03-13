@@ -28,10 +28,10 @@ import { MatIconModule } from '@angular/material/icon';
       background: var(--bg-surface);
       border: 1px solid rgba(255,255,255,0.06);
       border-radius: 12px;
-      padding: 20px;
+      padding: 12px;
       display: flex;
       align-items: flex-start;
-      gap: 16px;
+      gap: 10px;
       transition: border-color 0.2s ease;
       height: 100%;
       box-sizing: border-box;
@@ -43,9 +43,9 @@ import { MatIconModule } from '@angular/material/icon';
       border-color: rgba(200, 241, 53, 0.3);
     }
     .stat-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
       background: rgba(255,255,255,0.04);
       display: flex;
       align-items: center;
@@ -54,8 +54,8 @@ import { MatIconModule } from '@angular/material/icon';
     }
     .stat-icon mat-icon {
       color: var(--text-muted);
-      width: 20px;
-      height: 20px;
+      width: 17px;
+      height: 17px;
     }
     .accent .stat-icon {
       background: rgba(200, 241, 53, 0.1);
@@ -66,18 +66,18 @@ import { MatIconModule } from '@angular/material/icon';
     .stat-content {
       display: flex;
       flex-direction: column;
-      gap: 2px;
-      min-height: 60px;
+      gap: 0;
+      min-height: 42px;
     }
     .stat-label {
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 500;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
     .stat-value {
-      font-size: 28px;
+      font-size: 22px;
       font-weight: 700;
       color: var(--text-primary);
       line-height: 1.2;
@@ -86,7 +86,7 @@ import { MatIconModule } from '@angular/material/icon';
       color: var(--accent);
     }
     .stat-subtitle {
-      font-size: 12px;
+      font-size: 11.5px;
       color: var(--text-muted);
     }
   `],
@@ -98,3 +98,4 @@ export class StatCardComponent {
   @Input() subtitle = '';
   @Input() highlight = false;
 }
+

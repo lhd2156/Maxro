@@ -2,13 +2,19 @@ package com.maxro.maxro_backend.model;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
 @Document(collection = "personal_records")
-@CompoundIndex(name = "user_exercise_idx", def = "{'userId': 1, 'exerciseName': 1}")
+@CompoundIndexes({
+        @CompoundIndex(name = "user_exercise_idx", def = "{'userId': 1, 'exerciseName': 1}"),
+        @CompoundIndex(name = "user_achieved_at_idx", def = "{'userId': 1, 'achievedAt': -1}"),
+        @CompoundIndex(name = "user_exercise_achieved_at_idx", def = "{'userId': 1, 'exerciseName': 1, 'achievedAt': -1}"),
+        @CompoundIndex(name = "user_exercise_orm_idx", def = "{'userId': 1, 'exerciseName': 1, 'oneRepMaxLbs': -1}")
+})
 public class PersonalRecord {
 
     @Id
@@ -22,6 +28,8 @@ public class PersonalRecord {
     private int reps;
     private double oneRepMaxLbs;
     private Instant achievedAt;
+
+    @Indexed
     private String workoutId;
 
     public String getId() { return id; }

@@ -32,17 +32,17 @@ public class PersonalRecordServiceImpl implements PersonalRecordService {
         log.debug("Checking PRs for user: {} across {} exercises", userId, exercises.size());
         List<PersonalRecord> newPRs = new ArrayList<>();
 
-        // Compare each individual set's estimated 1RM against the user's
-        // best for that exercise. Using estimated 1RM (Epley) rather than
-        // raw weight so we can compare across rep ranges fairly.
         for (Exercise exercise : exercises) {
             for (ExerciseSet set : exercise.getSets()) {
-                double estimated1RM = FitnessCalculator.estimateOneRepMax(set.getWeightLbs(), set.getReps());
+                double performanceScore = FitnessCalculator.scorePerformance(set.getWeightLbs(), set.getReps());
+                if (performanceScore <= 0) {
+                    continue;
+                }
 
                 Optional<PersonalRecord> existingPR = personalRecordRepository
                         .findTopByUserIdAndExerciseNameOrderByOneRepMaxLbsDesc(userId, exercise.getName());
 
-                boolean isNewPR = existingPR.isEmpty() || estimated1RM > existingPR.get().getOneRepMaxLbs();
+                boolean isNewPR = existingPR.isEmpty() || performanceScore > existingPR.get().getOneRepMaxLbs();
 
                 if (isNewPR) {
                     PersonalRecord pr = new PersonalRecord();
@@ -51,13 +51,13 @@ public class PersonalRecordServiceImpl implements PersonalRecordService {
                     pr.setExerciseName(exercise.getName());
                     pr.setWeightLbs(set.getWeightLbs());
                     pr.setReps(set.getReps());
-                    pr.setOneRepMaxLbs(estimated1RM);
+                    pr.setOneRepMaxLbs(performanceScore);
                     pr.setAchievedAt(Instant.now());
 
                     PersonalRecord saved = personalRecordRepository.save(pr);
                     newPRs.add(saved);
-                    log.info("New PR for user: {} on {}: {} lbs x {} reps (est 1RM: {} lbs)",
-                            userId, exercise.getName(), set.getWeightLbs(), set.getReps(), estimated1RM);
+                    log.info("New PR for user: {} on {}: {} lbs x {} reps (score: {})",
+                            userId, exercise.getName(), set.getWeightLbs(), set.getReps(), performanceScore);
                 }
             }
         }

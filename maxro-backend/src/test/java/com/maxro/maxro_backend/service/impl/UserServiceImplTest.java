@@ -49,7 +49,7 @@ class UserServiceImplTest {
         when(userRepository.findById("u1")).thenReturn(Optional.of(user));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        // Only updating first/last name — calorie target should remain unchanged
+        // Only updating first/last name - calorie target should remain unchanged
         var input = new UserProfileInput("New", "Name", null, null, null, null,
                 null, null, null, null, null, null, null, null);
 

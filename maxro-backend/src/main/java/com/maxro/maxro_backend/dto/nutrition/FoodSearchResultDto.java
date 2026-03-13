@@ -15,5 +15,11 @@ public record FoodSearchResultDto(
         double cholesterolMg,
         double saturatedFatG,
         double potassiumMg,
+        double vitaminAMcg,
+        double vitaminCMg,
+        double vitaminDMcg,
+        double calciumMg,
+        double ironMg,
+        double magnesiumMg,
         String thumbnailUrl
 ) {}

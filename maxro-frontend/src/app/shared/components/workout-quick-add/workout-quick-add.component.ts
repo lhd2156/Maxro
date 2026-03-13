@@ -27,6 +27,7 @@ import { MUSCLE_GROUPS } from '../../../core/models/workout.model';
     MatIconModule,
     MatDatepickerModule,
     MatNativeDateModule,
+    NumericInputDirective,
   ],
   template: `
     <div class="quick-add-header">
@@ -132,7 +133,7 @@ import { MUSCLE_GROUPS } from '../../../core/models/workout.model';
     .save-btn { background: var(--accent) !important; color: #0D0D0D !important; font-weight: 600; }
   `],
 })
-export class WorkoutQuickAddComponent {
+export class WorkoutQuickAddComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
   private readonly workoutService = inject(WorkoutService);
@@ -230,7 +231,7 @@ export class WorkoutQuickAddComponent {
   }
 
   private sanitizeNumericFormValues(): void {
-    this.exercisesArray.controls.forEach((ex, i) => {
+    this.exercisesArray.controls.forEach((_, i) => {
       const sets = this.getSetsArray(i);
       sets.controls.forEach((set) => {
         const w = set.get('weightLbs');

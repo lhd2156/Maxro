@@ -1,7 +1,7 @@
-import { Component, DestroyRef, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { RouterLink, Router } from '@angular/router';
+import { AbstractControl, ReactiveFormsModule, FormsModule, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -64,10 +64,16 @@ import { UserProfile } from '../../core/models/user.model';
               <mat-form-field appearance="outline">
                 <mat-label>First Name</mat-label>
                 <input matInput formControlName="firstName">
+                @if (profileForm.controls['firstName'].touched && profileForm.controls['firstName'].hasError('pattern')) {
+                  <mat-error>First name can only use letters</mat-error>
+                }
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>Last Name</mat-label>
                 <input matInput formControlName="lastName">
+                @if (profileForm.controls['lastName'].touched && profileForm.controls['lastName'].hasError('pattern')) {
+                  <mat-error>Last name can only use letters</mat-error>
+                }
               </mat-form-field>
             </div>
             <div class="form-row">
@@ -173,6 +179,70 @@ import { UserProfile } from '../../core/models/user.model';
               <mat-slide-toggle [(ngModel)]="prCelebrations" [ngModelOptions]="{standalone: true}" (change)="onPrefChange('prCelebrations', prCelebrations)"></mat-slide-toggle>
             </div>
           </div>
+        </mat-card>
+
+        <mat-card class="settings-card">
+          <div class="card-header">
+            <mat-icon svgIcon="mx-shield" class="card-icon"></mat-icon>
+            <div>
+              <h3>Password</h3>
+              <p class="card-desc">Control how you sign into your account</p>
+            </div>
+          </div>
+          <form [formGroup]="passwordForm" (ngSubmit)="savePassword()" class="settings-form">
+            @if (user?.hasPassword) {
+              <mat-form-field appearance="outline">
+                <mat-label>Current Password</mat-label>
+                <input matInput formControlName="currentPassword" [type]="showCurrentPassword ? 'text' : 'password'" autocomplete="current-password">
+                <button mat-icon-button matSuffix type="button" (click)="showCurrentPassword = !showCurrentPassword">
+                  <mat-icon [svgIcon]="showCurrentPassword ? 'mx-eye-off' : 'mx-eye'"></mat-icon>
+                </button>
+                @if (passwordForm.controls['currentPassword'].touched && passwordForm.controls['currentPassword'].hasError('required')) {
+                  <mat-error>Current password is required</mat-error>
+                }
+              </mat-form-field>
+            } @else {
+              <p class="password-info">You signed up with Google, so you can set your first password here without entering an old one.</p>
+            }
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>New Password</mat-label>
+                <input matInput formControlName="newPassword" [type]="showNewPassword ? 'text' : 'password'" autocomplete="new-password">
+                <button mat-icon-button matSuffix type="button" (click)="showNewPassword = !showNewPassword">
+                  <mat-icon [svgIcon]="showNewPassword ? 'mx-eye-off' : 'mx-eye'"></mat-icon>
+                </button>
+                @if (passwordForm.controls['newPassword'].touched && passwordForm.controls['newPassword'].hasError('minlength')) {
+                  <mat-error>Password must be at least 8 characters</mat-error>
+                }
+                @if (passwordForm.controls['newPassword'].touched && passwordForm.controls['newPassword'].hasError('required')) {
+                  <mat-error>New password is required</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Confirm New Password</mat-label>
+                <input matInput formControlName="confirmNewPassword" [type]="showConfirmPassword ? 'text' : 'password'" autocomplete="new-password">
+                <button mat-icon-button matSuffix type="button" (click)="showConfirmPassword = !showConfirmPassword">
+                  <mat-icon [svgIcon]="showConfirmPassword ? 'mx-eye-off' : 'mx-eye'"></mat-icon>
+                </button>
+                @if (passwordForm.controls['confirmNewPassword'].touched && passwordForm.controls['confirmNewPassword'].hasError('required')) {
+                  <mat-error>Confirm your new password</mat-error>
+                }
+                @if (passwordForm.touched && passwordForm.hasError('passwordMismatch')) {
+                  <mat-error>Passwords must match</mat-error>
+                }
+              </mat-form-field>
+            </div>
+
+            @if (user?.hasPassword) {
+              <p class="password-info">Enter your current password to protect the change.</p>
+            }
+
+            <button mat-flat-button class="save-btn" type="submit" [disabled]="savingPassword || passwordForm.pristine || passwordForm.invalid">
+              {{ savingPassword ? 'Saving...' : (user?.hasPassword ? 'Update Password' : 'Set Password') }}
+            </button>
+          </form>
         </mat-card>
 
         <!-- Account & Privacy -->
@@ -318,6 +388,7 @@ import { UserProfile } from '../../core/models/user.model';
     .settings-form { display: flex; flex-direction: column; gap: 4px; }
     .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
     mat-form-field { width: 100%; }
+    .password-info { font-size: 12px; color: var(--text-muted); margin: 0 0 12px; line-height: 1.5; }
 
     .save-btn {
       align-self: flex-start;
@@ -409,35 +480,40 @@ import { UserProfile } from '../../core/models/user.model';
     }
   `],
 })
-export class SettingsComponent {
+export class SettingsComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   user: UserProfile | null = null;
 
   profileForm: FormGroup;
   nutritionForm: FormGroup;
+  passwordForm: FormGroup;
 
   savingProfile = false;
   savingNutrition = false;
+  savingPassword = false;
   showDeleteConfirm = false;
   confirmEmail = '';
   deleting = false;
+  showCurrentPassword = false;
+  showNewPassword = false;
+  showConfirmPassword = false;
 
   workoutReminders = localStorage.getItem('pref_workoutReminders') !== 'false';
   waterReminders = localStorage.getItem('pref_waterReminders') !== 'false';
   aiSuggestions = localStorage.getItem('pref_aiSuggestions') !== 'false';
   prCelebrations = localStorage.getItem('pref_prCelebrations') !== 'false';
   avatarPreviewUrl: string | null = localStorage.getItem('avatarUrl');
+  private readonly namePattern = /^[A-Za-z]+(?:[ '-][A-Za-z]+)*$/;
 
   constructor(
     private readonly fb: FormBuilder,
     private readonly userService: UserService,
     private readonly authService: AuthService,
-    private readonly router: Router,
     private readonly snackBar: MatSnackBar,
   ) {
     this.profileForm = this.fb.group({
-      firstName: [''],
-      lastName: [''],
+      firstName: ['', [Validators.pattern(this.namePattern)]],
+      lastName: ['', [Validators.pattern(this.namePattern)]],
       bodyWeightLbs: [null],
       heightInches: [null],
       fitnessGoal: [''],
@@ -451,10 +527,17 @@ export class SettingsComponent {
       dailyWaterGoalOz: [64],
     });
 
+    this.passwordForm = this.fb.group({
+      currentPassword: [''],
+      newPassword: ['', [Validators.required, Validators.minLength(8)]],
+      confirmNewPassword: ['', Validators.required],
+    }, { validators: this.passwordsMatchValidator });
+
     this.authService.currentUser$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(user => {
         this.user = user;
+        this.syncPasswordRequirements();
         if (user) {
           this.profileForm.patchValue({
             firstName: user.firstName ?? '',
@@ -479,6 +562,15 @@ export class SettingsComponent {
 
   get userInitial(): string {
     return (this.user?.firstName?.[0] ?? this.user?.displayName?.[0] ?? 'U').toUpperCase();
+  }
+
+  ngOnInit(): void {
+    this.userService.getProfile()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: user => this.authService.updateCurrentUser(user),
+        error: () => void 0,
+      });
   }
 
   onPrefChange(key: string, value: boolean): void {
@@ -513,6 +605,11 @@ export class SettingsComponent {
   }
 
   saveProfile(): void {
+    if (this.profileForm.invalid) {
+      this.profileForm.markAllAsTouched();
+      return;
+    }
+
     this.savingProfile = true;
     this.userService.updateProfile(this.profileForm.value)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -525,6 +622,37 @@ export class SettingsComponent {
         error: () => {
           this.savingProfile = false;
           this.snackBar.open('Failed to update profile', 'Close', { duration: 3000 });
+        },
+      });
+  }
+
+  savePassword(): void {
+    this.syncPasswordRequirements();
+    if (this.passwordForm.invalid) {
+      this.passwordForm.markAllAsTouched();
+      return;
+    }
+
+    this.savingPassword = true;
+    this.userService.changePassword({
+      currentPassword: this.passwordForm.value.currentPassword || undefined,
+      newPassword: this.passwordForm.value.newPassword,
+    }).pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.savingPassword = false;
+          this.passwordForm.reset({
+            currentPassword: '',
+            newPassword: '',
+            confirmNewPassword: '',
+          });
+          this.passwordForm.markAsPristine();
+          this.syncPasswordRequirements();
+          this.snackBar.open('Password updated', 'Close', { duration: 3000 });
+        },
+        error: (error) => {
+          this.savingPassword = false;
+          this.snackBar.open(error?.message || 'Failed to update password', 'Close', { duration: 3500 });
         },
       });
   }
@@ -560,5 +688,24 @@ export class SettingsComponent {
           this.snackBar.open('Failed to delete account', 'Close', { duration: 3000 });
         },
       });
+  }
+
+  private syncPasswordRequirements(): void {
+    const currentPasswordControl = this.passwordForm.controls['currentPassword'];
+    if (this.user?.hasPassword) {
+      currentPasswordControl.setValidators([Validators.required]);
+    } else {
+      currentPasswordControl.clearValidators();
+    }
+    currentPasswordControl.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private passwordsMatchValidator(control: AbstractControl): ValidationErrors | null {
+    const newPassword = control.get('newPassword')?.value;
+    const confirmPassword = control.get('confirmNewPassword')?.value;
+    if (!newPassword || !confirmPassword) {
+      return null;
+    }
+    return newPassword === confirmPassword ? null : { passwordMismatch: true };
   }
 }

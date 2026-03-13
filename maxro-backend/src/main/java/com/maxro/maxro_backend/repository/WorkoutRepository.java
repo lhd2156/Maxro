@@ -32,6 +32,12 @@ public interface WorkoutRepository extends MongoRepository<Workout, String> {
     @Query("{ 'userId' : ?0, $or : [ " +
            "{ 'date' : { $gte : ?1, $lte : ?2 } }, " +
            "{ 'date' : { $gte : ?3, $lte : ?4 } } ] }")
+    Page<Workout> findByUserIdAndDateBetweenFlexible(
+            String userId, String startStr, String endStr, LocalDate startDate, LocalDate endDate, Pageable pageable);
+
+    @Query("{ 'userId' : ?0, $or : [ " +
+           "{ 'date' : { $gte : ?1, $lte : ?2 } }, " +
+           "{ 'date' : { $gte : ?3, $lte : ?4 } } ] }")
     List<Workout> findByUserIdAndDateBetweenOrderByDateAsc(
             String userId, String startStr, String endStr, LocalDate startDate, LocalDate endDate);
 

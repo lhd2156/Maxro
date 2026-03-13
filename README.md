@@ -1,125 +1,99 @@
 # Maxro
 
-Full-stack fitness tracking platform — a Strava x MyFitnessPal hybrid for logging workouts, tracking PRs, monitoring nutrition, and managing daily water intake.
+Full-stack fitness tracking platform for logging workouts, tracking PRs, monitoring nutrition, managing water intake, and getting in-app fitness support.
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Angular 17, TypeScript, Angular Material, ngx-charts |
-| Backend | Spring Boot 3.5.11, Java 17+ |
-| API | GraphQL (Spring for GraphQL + Apollo Angular) |
+| Backend | Spring Boot 3.5.11, Java 21 |
+| API | GraphQL (Spring for GraphQL + Apollo Angular) plus a small REST config endpoint |
 | Database | MongoDB |
-| Food Data | Nutritionix API |
+| Food Data | USDA FoodData Central, FatSecret fallback support |
 | Deployment | Azure Container Apps (backend), Azure Static Web Apps (frontend) |
 | CI/CD | Azure DevOps Pipelines |
 | Containers | Docker, Docker Compose |
 
 ## Features
 
-- **Workout Logging** — exercises, sets, reps, weight, muscle groups
-- **PR Tracking** — automatic personal record detection with estimated 1RM
-- **Workout Streaks** — current and longest streak tracking
-- **Nutrition Logging** — Nutritionix API food search, per-meal tracking
-- **Macro Dashboard** — daily progress bars for calories, protein, carbs, fat
-- **Water Intake** — log glasses/oz with visual progress ring
-- **Analytics** — strength progress charts, macro trends, water consistency
-- **Dashboard** — daily summary of all fitness data in one view
-- **User Profile** — body weight, height, goals, macro/water targets
+- Workout logging with exercises, sets, reps, weight, and muscle groups
+- Automatic PR tracking, including bodyweight PR support
+- Workout streaks and dashboard summaries
+- Nutrition logging with meal-level tracking, macros, and micros
+- Water intake logging with quick add, custom add, and history
+- Analytics for strength, calories, protein, and water consistency
+- Spotify dashboard controls and saved-track actions
+- In-app AI help for Maxro navigation and fitness questions
 
 ## Prerequisites
 
-- Java 17+
+- Java 21
 - Node.js 20+
-- Docker & Docker Compose
-- MongoDB (or use Docker Compose)
+- Docker Desktop if you want local MongoDB through Docker
+- A `.env` file for local auth/API integrations
 
 ## Local Development
 
-### With Docker Compose (recommended)
+### Quick start on Windows
 
-```bash
-# Set Nutritionix API keys (optional for food search)
-export NUTRITIONIX_APP_ID=your_app_id
-export NUTRITIONIX_API_KEY=your_api_key
-
-# Start all services
-docker-compose up --build
+```powershell
+Copy-Item .env.example .env
+# Fill in at least JWT_SECRET. Add Google/Spotify IDs if you use those flows.
+.\start-dev.ps1
 ```
 
-- Frontend: http://localhost
-- Backend GraphiQL: http://localhost:8080/graphiql
-- MongoDB: localhost:27017
+This starts MongoDB when needed, then the backend on `http://localhost:8080` and the frontend on `http://127.0.0.1:4200`.
 
-### Manual Setup
+### Manual start
 
-**1. Start the backend first** (required for GraphQL):
+```powershell
+# MongoDB (required if you are not using Atlas)
+docker-compose up -d mongodb
 
-```bash
+# Backend
 cd maxro-backend
-./mvnw spring-boot:run
-```
+.\mvnw.cmd spring-boot:run
 
-**2. Start the frontend** (proxies /graphql to backend):
-
-```bash
-cd maxro-frontend
+# Frontend (new terminal)
+cd ..\maxro-frontend
 npm install
 npm start
 ```
 
-- Frontend: http://localhost:4200
-- Backend: http://localhost:8080
-- GraphQL requests from the frontend are proxied to the backend via `proxy.conf.json`
+## Auth and Public Client IDs
 
-## Project Structure
+Google and Spotify client IDs are no longer compiled into the frontend bundle.
 
-```
-Maxro/
-├── maxro-backend/
-│   ├── src/main/java/com/maxro/maxro_backend/
-│   │   ├── config/          # Security, CORS, WebClient, MongoDB config
-│   │   ├── model/           # MongoDB document models
-│   │   ├── repository/      # Spring Data MongoDB repositories
-│   │   ├── service/         # Business logic (interfaces + implementations)
-│   │   ├── resolver/        # GraphQL query/mutation resolvers
-│   │   ├── dto/             # Request/response DTOs (Java records)
-│   │   ├── security/        # JWT filter, token provider
-│   │   ├── exception/       # Custom exceptions, global handler
-│   │   └── util/            # Fitness calculators
-│   ├── src/main/resources/
-│   │   ├── graphql/schema.graphqls
-│   │   └── application.properties
-│   ├── Dockerfile
-│   └── azure-pipelines.yml
-├── maxro-frontend/
-│   ├── src/app/
-│   │   ├── core/            # Services, models, guards, GraphQL config
-│   │   ├── features/        # Feature components (auth, dashboard, workouts, etc.)
-│   │   └── shared/          # Reusable UI components
-│   ├── Dockerfile
-│   ├── nginx.conf
-│   └── azure-pipelines.yml
-├── docker-compose.yml
-└── README.md
-```
-
-## Troubleshooting
-
-**"Http failure response: 0 Unknown Error"** — Backend or MongoDB isn't running. Start MongoDB first (`docker-compose up -d mongodb`), then the backend. See [docs/SETUP.md](docs/SETUP.md) for details.
-
-**"Google Sign-In requires a Client ID"** — Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com/apis/credentials) and add the Client ID to both frontend (`environment.ts`) and backend (`GOOGLE_CLIENT_ID` env var). Full step-by-step: [docs/SETUP.md](docs/SETUP.md).
+- Set `GOOGLE_CLIENT_ID` and `SPOTIFY_CLIENT_ID` on the backend environment
+- The frontend loads them at startup from `GET /api/public-config`
+- Spotify client secret stays backend-only as `SPOTIFY_CLIENT_SECRET`
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/maxro` |
-| `GOOGLE_CLIENT_ID` | Google OAuth Client ID (for Sign-In) | — |
-| `JWT_SECRET` | JWT signing secret (min 256 bits) | dev default |
-| `JWT_ACCESS_EXPIRATION` | Access token TTL (ms) | `900000` (15 min) |
-| `JWT_REFRESH_EXPIRATION` | Refresh token TTL (ms) | `604800000` (7 days) |
-| `NUTRITIONIX_APP_ID` | Nutritionix API app ID | — |
-| `NUTRITIONIX_API_KEY` | Nutritionix API key | — |
-| `CORS_ORIGINS` | Allowed CORS origins | `http://localhost:4200` |
-| `SERVER_PORT` | Backend server port | `8080` |
+| Variable | Description |
+|----------|-------------|
+| `MONGODB_URI` | MongoDB connection string |
+| `JWT_SECRET` | JWT signing secret, required for backend startup |
+| `JWT_ACCESS_EXPIRATION` | Access token TTL in ms |
+| `JWT_REFRESH_EXPIRATION` | Refresh token TTL in ms |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
+| `SPOTIFY_CLIENT_ID` | Spotify OAuth client ID |
+| `SPOTIFY_CLIENT_SECRET` | Spotify OAuth client secret |
+| `USDA_FOODDATA_API_KEY` | USDA FoodData Central key |
+| `FATSECRET_CLIENT_ID` | FatSecret client ID |
+| `FATSECRET_CLIENT_SECRET` | FatSecret client secret |
+| `GOOGLE_AI_API_KEY` | Gemini API key for in-app AI help |
+| `GOOGLE_AI_MODEL` | Gemini model override |
+| `CORS_ORIGINS` | Allowed origins for backend CORS |
+| `SERVER_PORT` | Backend server port |
+
+## Troubleshooting
+
+- `Http failure response: 0 Unknown Error`: backend or MongoDB is not running.
+- `Google Sign-In is not configured yet`: add `GOOGLE_CLIENT_ID` to your backend environment and restart Maxro.
+- `Spotify Client ID is missing`: add `SPOTIFY_CLIENT_ID` to your backend environment and restart Maxro.
+
+## Launch Checklist
+
+See [docs/PRODUCTION_SMOKE_TESTS.md](docs/PRODUCTION_SMOKE_TESTS.md) for the final regression checklist before deployment.

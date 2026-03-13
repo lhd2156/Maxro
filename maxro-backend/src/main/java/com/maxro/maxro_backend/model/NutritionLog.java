@@ -73,4 +73,28 @@ public class NutritionLog {
     public double getTotalPotassiumMg() {
         return entries.stream().mapToDouble(FoodEntry::getPotassiumMg).sum();
     }
+
+    public double getTotalVitaminAMcg() {
+        return entries.stream().mapToDouble(FoodEntry::getVitaminAMcg).sum();
+    }
+
+    public double getTotalVitaminCMg() {
+        return entries.stream().mapToDouble(FoodEntry::getVitaminCMg).sum();
+    }
+
+    public double getTotalVitaminDMcg() {
+        return entries.stream().mapToDouble(FoodEntry::getVitaminDMcg).sum();
+    }
+
+    public double getTotalCalciumMg() {
+        return entries.stream().mapToDouble(FoodEntry::getCalciumMg).sum();
+    }
+
+    public double getTotalIronMg() {
+        return entries.stream().mapToDouble(FoodEntry::getIronMg).sum();
+    }
+
+    public double getTotalMagnesiumMg() {
+        return entries.stream().mapToDouble(FoodEntry::getMagnesiumMg).sum();
+    }
 }

@@ -1,13 +1,16 @@
 package com.maxro.maxro_backend.service.impl;
 
+import com.maxro.maxro_backend.dto.user.ChangePasswordInput;
 import com.maxro.maxro_backend.dto.user.UserProfileInput;
 import com.maxro.maxro_backend.dto.user.UserProfileResponse;
+import com.maxro.maxro_backend.exception.AuthenticationException;
 import com.maxro.maxro_backend.exception.ResourceNotFoundException;
 import com.maxro.maxro_backend.model.User;
 import com.maxro.maxro_backend.repository.*;
 import com.maxro.maxro_backend.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -21,6 +24,7 @@ public class UserServiceImpl implements UserService {
     private final NutritionLogRepository nutritionLogRepository;
     private final WaterIntakeRepository waterIntakeRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public UserServiceImpl(
             UserRepository userRepository,
@@ -28,13 +32,15 @@ public class UserServiceImpl implements UserService {
             PersonalRecordRepository personalRecordRepository,
             NutritionLogRepository nutritionLogRepository,
             WaterIntakeRepository waterIntakeRepository,
-            RefreshTokenRepository refreshTokenRepository) {
+            RefreshTokenRepository refreshTokenRepository,
+            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.workoutRepository = workoutRepository;
         this.personalRecordRepository = personalRecordRepository;
         this.nutritionLogRepository = nutritionLogRepository;
         this.waterIntakeRepository = waterIntakeRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -82,6 +88,26 @@ public class UserServiceImpl implements UserService {
         log.info("Updating daily water goal for user: {} to {} oz", userId, goalOz);
         User user = findUserById(userId);
         user.setDailyWaterGoalOz(goalOz);
+        user = userRepository.save(user);
+        return UserProfileResponse.fromUser(user);
+    }
+
+    @Override
+    public UserProfileResponse changePassword(String userId, ChangePasswordInput input) {
+        log.info("Changing password for user: {}", userId);
+        User user = findUserById(userId);
+        boolean hasPassword = user.getPassword() != null && !user.getPassword().isBlank();
+
+        if (hasPassword) {
+            if (input.currentPassword() == null || input.currentPassword().isBlank()) {
+                throw new AuthenticationException("Current password is required");
+            }
+            if (!passwordEncoder.matches(input.currentPassword(), user.getPassword())) {
+                throw new AuthenticationException("Current password is incorrect");
+            }
+        }
+
+        user.setPassword(passwordEncoder.encode(input.newPassword().trim()));
         user = userRepository.save(user);
         return UserProfileResponse.fromUser(user);
     }

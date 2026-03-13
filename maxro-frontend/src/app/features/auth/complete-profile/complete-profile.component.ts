@@ -42,11 +42,11 @@ import { UserService } from '../../../core/services/user.service';
           <form [formGroup]="form" (ngSubmit)="onSubmit()">
             <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('dateOfBirth')">
               <mat-label>Date of Birth</mat-label>
-              <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth" [max]="maxDate" readonly (click)="dobPicker.open()">
+              <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth" [max]="maxDate" placeholder="MM/DD/YYYY" autocomplete="bday">
               <mat-datepicker-toggle matSuffix [for]="dobPicker"><mat-icon svgIcon="mx-calendar"></mat-icon></mat-datepicker-toggle>
               <mat-datepicker #dobPicker startView="multi-year" [startAt]="startDate"></mat-datepicker>
               @if (isFieldInvalid('dateOfBirth')) {
-                <mat-error>Date of birth is required</mat-error>
+                <mat-error>{{ fieldErrorMessage('dateOfBirth') }}</mat-error>
               }
             </mat-form-field>
 
@@ -59,7 +59,7 @@ import { UserService } from '../../../core/services/user.service';
                 <mat-option value="Prefer not to say">Prefer not to say</mat-option>
               </mat-select>
               @if (isFieldInvalid('gender')) {
-                <mat-error>Gender is required</mat-error>
+                <mat-error>{{ fieldErrorMessage('gender') }}</mat-error>
               }
             </mat-form-field>
 
@@ -162,6 +162,31 @@ export class CompleteProfileComponent {
     return ctrl.invalid && (ctrl.touched || this.submitted);
   }
 
+  fieldErrorMessage(field: string): string {
+    const control = this.form.controls[field];
+    if (!this.isFieldInvalid(field)) {
+      return '';
+    }
+
+    if (field === 'dateOfBirth') {
+      if (control.hasError('required')) {
+        return 'Date of birth is required';
+      }
+      if (control.hasError('matDatepickerParse')) {
+        return 'Enter a valid date';
+      }
+      if (control.hasError('matDatepickerMax')) {
+        return 'Date of birth cannot be in the future';
+      }
+    }
+
+    if (field === 'gender' && control.hasError('required')) {
+      return 'Gender is required';
+    }
+
+    return 'This field is required';
+  }
+
   onSubmit(): void {
     this.submitted = true;
     if (this.form.invalid) {
@@ -191,3 +216,5 @@ export class CompleteProfileComponent {
       });
   }
 }
+
+

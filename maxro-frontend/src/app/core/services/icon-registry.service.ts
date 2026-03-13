@@ -5,10 +5,10 @@ import { DomSanitizer } from '@angular/platform-browser';
 /**
  * Registers custom SVG icons with MatIconRegistry on app init so every
  * icon in the UI is a consistent, stroke-based line icon instead of
- * the stock Material "emoji-style" filled glyphs.
+ * the stock Material filled glyphs.
  *
  * All SVGs use a 24x24 viewBox, 2px strokes, round caps/joins, and
- * inherit color via currentColor — matching the dark flat aesthetic.
+ * inherit color via currentColor - matching the dark flat aesthetic.
  */
 @Injectable({ providedIn: 'root' })
 export class IconRegistryService {
@@ -177,6 +177,53 @@ export class IconRegistryService {
         <path d="M9 18V5l12-2v13"/>
         <circle cx="6" cy="18" r="3"/>
         <circle cx="18" cy="16" r="3"/>
+      </svg>`,
+    'mx-play': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+        <path d="M8 5.5v13l10-6.5z"/>
+      </svg>`,
+    'mx-pause': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+        <rect x="7" y="5" width="4" height="14" rx="1"/>
+        <rect x="13" y="5" width="4" height="14" rx="1"/>
+      </svg>`,
+    'mx-skip-forward': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+        <path d="M5 6l8 6-8 6z"/>
+        <path d="M12 6l8 6-8 6z"/>
+      </svg>`,
+    'mx-skip-back': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+        <path d="M19 6l-8 6 8 6z"/>
+        <path d="M12 6L4 12l8 6z"/>
+      </svg>`,
+    'mx-repeat': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 2l4 4-4 4"/>
+        <path d="M3 11V9a3 3 0 013-3h15"/>
+        <path d="M7 22l-4-4 4-4"/>
+        <path d="M21 13v2a3 3 0 01-3 3H3"/>
+      </svg>`,
+    'mx-shuffle': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 3h5v5"/>
+        <path d="M4 20l7-7"/>
+        <path d="M21 3l-8.5 8.5"/>
+        <path d="M16 16h5v5"/>
+        <path d="M21 21l-8.5-8.5"/>
+        <path d="M4 4l5 5"/>
+      </svg>`,
+    'mx-mic': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="3" width="6" height="11" rx="3"/>
+        <path d="M5 10a7 7 0 0014 0"/>
+        <path d="M12 17v4"/>
+        <path d="M8 21h8"/>
+      </svg>`,
+    'mx-stop': `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" stroke="none"/>
       </svg>`,
     'mx-ai': `
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

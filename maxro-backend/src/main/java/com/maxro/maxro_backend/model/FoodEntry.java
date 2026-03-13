@@ -20,6 +20,12 @@ public class FoodEntry {
     private double cholesterolMg;
     private double saturatedFatG;
     private double potassiumMg;
+    private double vitaminAMcg;
+    private double vitaminCMg;
+    private double vitaminDMcg;
+    private double calciumMg;
+    private double ironMg;
+    private double magnesiumMg;
     private String thumbnailUrl;
 
     public FoodEntry() {
@@ -73,6 +79,24 @@ public class FoodEntry {
 
     public double getPotassiumMg() { return potassiumMg; }
     public void setPotassiumMg(double potassiumMg) { this.potassiumMg = potassiumMg; }
+
+    public double getVitaminAMcg() { return vitaminAMcg; }
+    public void setVitaminAMcg(double vitaminAMcg) { this.vitaminAMcg = vitaminAMcg; }
+
+    public double getVitaminCMg() { return vitaminCMg; }
+    public void setVitaminCMg(double vitaminCMg) { this.vitaminCMg = vitaminCMg; }
+
+    public double getVitaminDMcg() { return vitaminDMcg; }
+    public void setVitaminDMcg(double vitaminDMcg) { this.vitaminDMcg = vitaminDMcg; }
+
+    public double getCalciumMg() { return calciumMg; }
+    public void setCalciumMg(double calciumMg) { this.calciumMg = calciumMg; }
+
+    public double getIronMg() { return ironMg; }
+    public void setIronMg(double ironMg) { this.ironMg = ironMg; }
+
+    public double getMagnesiumMg() { return magnesiumMg; }
+    public void setMagnesiumMg(double magnesiumMg) { this.magnesiumMg = magnesiumMg; }
 
     public String getThumbnailUrl() { return thumbnailUrl; }
     public void setThumbnailUrl(String thumbnailUrl) { this.thumbnailUrl = thumbnailUrl; }

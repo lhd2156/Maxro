@@ -1,4 +1,5 @@
-import { Component, HostListener, ElementRef, ViewChild } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,6 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../../core/services/auth.service';
+import { UserProfile } from '../../../core/models/user.model';
 
 @Component({
   selector: 'app-layout',
@@ -68,10 +70,6 @@ import { AuthService } from '../../../core/services/auth.service';
                 </div>
               </div>
               <div class="menu-divider"></div>
-              <button mat-menu-item routerLink="/profile">
-                <mat-icon svgIcon="mx-user"></mat-icon>
-                <span>Profile</span>
-              </button>
               <button mat-menu-item routerLink="/settings">
                 <mat-icon svgIcon="mx-settings"></mat-icon>
                 <span>Settings</span>
@@ -93,12 +91,18 @@ import { AuthService } from '../../../core/services/auth.service';
   styles: [`
     .app-shell {
       display: flex;
+      width: 100%;
+      min-width: 0;
+      min-height: 100vh;
       height: 100vh;
+      height: 100dvh;
       background: var(--bg-primary);
+      overflow: hidden;
     }
 
     .sidenav {
       background: var(--bg-surface);
+      padding-left: env(safe-area-inset-left);
       border-right: 1px solid rgba(255,255,255,0.06);
       display: flex;
       flex-direction: column;
@@ -189,17 +193,20 @@ import { AuthService } from '../../../core/services/auth.service';
 
     .main-area {
       flex: 1;
+      min-width: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
 
     .topbar {
-      height: 52px;
+      min-height: 52px;
+      height: calc(52px + env(safe-area-inset-top));
       display: flex;
       align-items: center;
-      padding: 0 24px;
+      padding: env(safe-area-inset-top) calc(24px + env(safe-area-inset-right)) 0 calc(24px + env(safe-area-inset-left));
       flex-shrink: 0;
+      box-sizing: border-box;
     }
     .topbar-spacer { flex: 1; }
     .topbar-actions { display: flex; align-items: center; }
@@ -232,8 +239,10 @@ import { AuthService } from '../../../core/services/auth.service';
     .content {
       flex: 1;
       min-height: 0;
-      padding: 28px 32px;
+      min-width: 0;
+      padding: 28px calc(32px + env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) calc(32px + env(safe-area-inset-left));
       overflow-y: auto;
+      overflow-x: hidden;
       animation: content-fade-in 0.2s ease-out;
     }
     @keyframes content-fade-in {
@@ -241,14 +250,45 @@ import { AuthService } from '../../../core/services/auth.service';
       to { opacity: 1; }
     }
 
+    @media (max-width: 1200px) {
+      .topbar {
+      min-height: 52px;
+      height: calc(52px + env(safe-area-inset-top));
+      display: flex;
+      align-items: center;
+      padding: env(safe-area-inset-top) calc(24px + env(safe-area-inset-right)) 0 calc(24px + env(safe-area-inset-left));
+      flex-shrink: 0;
+      box-sizing: border-box;
+    }
+      .content {
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      padding: 28px calc(32px + env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) calc(32px + env(safe-area-inset-left));
+      overflow-y: auto;
+      overflow-x: hidden;
+      animation: content-fade-in 0.2s ease-out;
+    }
+    }
     @media (max-width: 768px) {
-      .content { padding: 16px; }
+      .content {
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      padding: 28px calc(32px + env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) calc(32px + env(safe-area-inset-left));
+      overflow-y: auto;
+      overflow-x: hidden;
+      animation: content-fade-in 0.2s ease-out;
+    }
     }
   `],
 })
-export class LayoutComponent {
+export class LayoutComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
   sidenavWidth = 240;
   private resizing = false;
+  private userSized = false;
+  private userSnapshot: UserProfile | null = null;
 
   readonly navItems = [
     { route: '/dashboard', icon: 'mx-grid', label: 'Dashboard', exact: true },
@@ -261,24 +301,31 @@ export class LayoutComponent {
 
   constructor(private readonly authService: AuthService) {}
 
+  ngOnInit(): void {
+    this.authService.currentUser$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(user => this.userSnapshot = user);
+
+    this.applyResponsiveSidebar(window.innerWidth);
+  }
+
   get avatarUrl(): string | null {
     return localStorage.getItem('avatarUrl');
   }
 
   get userInitial(): string {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    return (user?.firstName?.[0] ?? user?.displayName?.[0] ?? 'U').toUpperCase();
+    return (this.userSnapshot?.firstName?.[0] ?? this.userSnapshot?.displayName?.[0] ?? 'U').toUpperCase();
   }
 
   get userName(): string {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user?.firstName && user?.lastName) return user.firstName + ' ' + user.lastName;
-    return user?.displayName ?? 'User';
+    if (this.userSnapshot?.firstName && this.userSnapshot?.lastName) {
+      return this.userSnapshot.firstName + ' ' + this.userSnapshot.lastName;
+    }
+    return this.userSnapshot?.displayName ?? 'User';
   }
 
   get userEmail(): string {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    return user?.email ?? '';
+    return this.userSnapshot?.email ?? '';
   }
 
   onResizeStart(event: MouseEvent): void {
@@ -293,10 +340,16 @@ export class LayoutComponent {
     this.sidenavWidth = newWidth;
   }
 
+  @HostListener('window:resize', ['$event'])
+  onWindowResize(event: UIEvent): void {
+    this.applyResponsiveSidebar((event.target as Window).innerWidth);
+  }
+
   @HostListener('document:mouseup')
   onMouseUp(): void {
     if (!this.resizing) return;
     this.resizing = false;
+    this.userSized = true;
     if (this.sidenavWidth < 120) {
       this.sidenavWidth = 64;
     } else if (this.sidenavWidth < 200) {
@@ -307,4 +360,22 @@ export class LayoutComponent {
   logout(): void {
     this.authService.logout();
   }
+
+  private applyResponsiveSidebar(viewportWidth: number): void {
+    if (viewportWidth <= 900) {
+      this.sidenavWidth = 64;
+      return;
+    }
+
+    if (viewportWidth <= 1200) {
+      this.sidenavWidth = 88;
+      return;
+    }
+
+    if (!this.userSized) {
+      this.sidenavWidth = 240;
+    }
+  }
 }
+
+

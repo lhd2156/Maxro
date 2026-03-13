@@ -10,7 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../core/services/auth.service';
-import { environment } from '../../../../environments/environment';
+import { PublicConfigService } from '../../../core/services/public-config.service';
 
 @Component({
   selector: 'app-login',
@@ -28,46 +28,47 @@ import { environment } from '../../../../environments/environment';
         }
       </div>
       <div class="auth-container fade-in">
-        <div class="brand">
-          <a routerLink="/" class="brand-link"><span class="brand-text">MAXRO</span></a>
-          <p class="brand-tagline">Track. Lift. Fuel. Repeat.</p>
+        <div class="auth-topbar">
+          <a routerLink="/" class="corner-logo" aria-label="Go to home page">
+            <img src="favicon.svg" alt="" class="corner-logo-img">
+
+          </a>
+          <a routerLink="/register" class="top-action">Sign up</a>
         </div>
+        <a routerLink="/" class="auth-brand-block" aria-label="Go to home page">
+          <span class="brand-text">MAXRO</span>
+          <span class="brand-tagline">Track. Lift. Fuel. Repeat.</span>
+        </a>
         <mat-card class="auth-card slide-up">
           <div class="auth-card-header">
             <h2>Sign In</h2>
             <p class="auth-subtitle">Welcome back to your fitness journey</p>
           </div>
 
-          <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
-            <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('email')">
-              <mat-label>Email</mat-label>
-              <input matInput formControlName="email" type="email" autocomplete="email">
-              @if (isFieldInvalid('email')) {
-                @if (form.controls['email'].hasError('required')) {
-                  <mat-error>Email is required</mat-error>
-                } @else if (form.controls['email'].hasError('pattern')) {
-                  <mat-error>Invalid email format</mat-error>
-                }
-              }
-            </mat-form-field>
-            <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('password')">
-              <mat-label>Password</mat-label>
-              <input matInput formControlName="password" [type]="hidePassword ? 'password' : 'text'" autocomplete="current-password">
-              <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
-                <mat-icon [svgIcon]="hidePassword ? 'mx-eye-off' : 'mx-eye'"></mat-icon>
-              </button>
-              @if (isFieldInvalid('password')) {
-                <mat-error>Password is required</mat-error>
-              }
-            </mat-form-field>
+          <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form" novalidate>
+            <div class="field-stack">
+              <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('email') || authFailed">
+                <mat-label>Email</mat-label>
+                <input matInput formControlName="email" type="text" inputmode="email" autocomplete="email">
+              </mat-form-field>
+              <div class="field-note error" [class.visible]="!!emailErrorMessage">{{ emailErrorMessage || ' ' }}</div>
+            </div>
+            <div class="field-stack">
+              <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('password') || authFailed">
+                <mat-label>Password</mat-label>
+                <input matInput formControlName="password" [type]="hidePassword ? 'password' : 'text'" autocomplete="current-password">
+                <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
+                  <mat-icon [svgIcon]="hidePassword ? 'mx-eye-off' : 'mx-eye'"></mat-icon>
+                </button>
+              </mat-form-field>
+              <div class="field-note error" [class.visible]="!!passwordErrorMessage">{{ passwordErrorMessage || ' ' }}</div>
+            </div>
             <button mat-flat-button class="submit-btn" type="submit" [disabled]="loading">
               {{ loading ? 'Signing in...' : 'Sign In' }}
             </button>
           </form>
 
-          @if (useGisButton) {
-            <div id="google-signin-btn" class="google-btn-wrapper"></div>
-          } @else {
+          <div class="google-btn-shell">
             <button type="button" class="custom-google-btn" (click)="onCustomGoogleClick()">
               <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -77,7 +78,10 @@ import { environment } from '../../../../environments/environment';
               </svg>
               Continue with Google
             </button>
-          }
+            @if (useGisButton) {
+              <div id="google-signin-btn" class="google-btn-wrapper" aria-hidden="true"></div>
+            }
+          </div>
 
           <p class="auth-switch">
             Don't have an account? <a routerLink="/register">Create one</a>
@@ -94,7 +98,7 @@ import { environment } from '../../../../environments/environment';
     .auth-page {
       min-height: 100vh; background: var(--bg-primary);
       display: flex; align-items: center; justify-content: center;
-      padding: 24px; position: relative; overflow: hidden;
+      padding: 96px 24px 24px; position: relative; overflow: hidden;
     }
     .bg-grid {
       position: absolute; inset: 0;
@@ -110,15 +114,50 @@ import { environment } from '../../../../environments/environment';
     .fade-in { animation: fade-in 0.6s ease-out; }
     .slide-up { animation: slide-up 0.5s ease-out 0.2s both; }
 
-    .auth-container { width: 100%; max-width: 360px; position: relative; z-index: 1; }
-    .brand { text-align: center; margin-bottom: 20px; }
-    .brand-link { text-decoration: none; }
-    .brand-text { font-size: 26px; font-weight: 800; letter-spacing: 6px; color: var(--accent); }
-    .brand-tagline { color: var(--text-muted); font-size: 13px; margin-top: 6px; }
+    .auth-container {
+      width: 100%;
+      max-width: 960px;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: clamp(18px, 4vh, 36px);
+    }
+    .auth-topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 20px 40px;
+      box-sizing: border-box;
+    }
+    .corner-logo { display: inline-flex; align-items: center; gap: 0; text-decoration: none; }
+    .corner-logo-img { width: 30px; height: 30px; border-radius: 6px; flex-shrink: 0; }
+    .auth-brand-block {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 22px;
+      text-decoration: none;
+      text-align: center;
+    }
+    .brand-text { font-size: clamp(28px, 4vw, 34px); font-weight: 800; letter-spacing: 7px; color: var(--accent); line-height: 1; }
+    .brand-tagline { color: var(--text-muted); font-size: 13px; line-height: 1.2; }
+    .top-action { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 22px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); background: rgba(12,12,12,0.72); color: var(--text-primary); text-decoration: none; font-size: 13px; font-weight: 700; transition: border-color 0.18s ease, color 0.18s ease, transform 0.18s ease, background 0.18s ease; }
+    .top-action:hover { border-color: var(--accent); color: var(--text-primary); background: rgba(16,16,16,0.88); transform: translateY(-1px); }
     .auth-card {
       background: var(--bg-surface);
       border: 1px solid rgba(255,255,255,0.06);
       border-radius: 14px; padding: 28px 32px;
+      width: min(100%, 360px);
+      margin: 0 auto;
     }
     .auth-card-header { text-align: center; margin-bottom: 24px; }
     .auth-card-header h2 {
@@ -127,18 +166,75 @@ import { environment } from '../../../../environments/environment';
     }
     .auth-subtitle { color: var(--text-muted); font-size: 14px; margin: 0; }
 
-    .auth-form { display: flex; flex-direction: column; gap: 0; }
-    :host ::ng-deep .auth-form .mat-mdc-form-field { margin-bottom: 20px; }
+    .auth-form { display: flex; flex-direction: column; gap: 8px; }
+    .field-stack { display: grid; grid-template-rows: auto 16px; row-gap: 4px; }
+    :host ::ng-deep .auth-form .mat-mdc-form-field { margin-bottom: 0; }
     mat-form-field { width: 100%; }
+    :host ::ng-deep .auth-form .mat-mdc-text-field-wrapper {
+      align-items: center;
+      min-height: 58px;
+    }
+    :host ::ng-deep .auth-form .mat-mdc-form-field-infix {
+      min-height: 24px;
+      padding-top: 16px !important;
+      padding-bottom: 16px !important;
+    }
+    :host ::ng-deep .auth-form .mat-mdc-input-element {
+      margin: 0 !important;
+      line-height: 1.3;
+    }
+    :host ::ng-deep .auth-form .mat-mdc-form-field-icon-suffix {
+      align-self: center;
+      padding-right: 4px;
+    }
     :host ::ng-deep .mat-mdc-form-field-subscript-wrapper {
       min-height: 0 !important;
     }
     :host ::ng-deep .mat-mdc-form-field:not(.field-error) .mat-mdc-form-field-subscript-wrapper {
       display: none;
     }
+    :host ::ng-deep .mat-mdc-form-field.field-error .mdc-notched-outline .mdc-notched-outline__leading,
+    :host ::ng-deep .mat-mdc-form-field.field-error .mdc-notched-outline .mdc-notched-outline__notch,
+    :host ::ng-deep .mat-mdc-form-field.field-error .mdc-notched-outline .mdc-notched-outline__trailing {
+      border-color: #ff5252 !important;
+    }
+    :host ::ng-deep .mat-mdc-form-field.field-error.mdc-text-field--focused .mdc-notched-outline .mdc-notched-outline__leading,
+    :host ::ng-deep .mat-mdc-form-field.field-error.mdc-text-field--focused .mdc-notched-outline .mdc-notched-outline__notch,
+    :host ::ng-deep .mat-mdc-form-field.field-error.mdc-text-field--focused .mdc-notched-outline .mdc-notched-outline__trailing {
+      border-color: #ff5252 !important;
+    }
+    :host ::ng-deep .mat-mdc-form-field.field-error .mdc-floating-label {
+      color: #ff5252 !important;
+    }
     :host ::ng-deep .mat-mdc-form-field.field-error .mat-mdc-input-element,
     :host ::ng-deep .mat-mdc-form-field.field-error input {
       caret-color: var(--text-primary) !important;
+    }
+    :host ::ng-deep .auth-form input:-webkit-autofill,
+    :host ::ng-deep .auth-form input:-webkit-autofill:hover,
+    :host ::ng-deep .auth-form input:-webkit-autofill:focus,
+    :host ::ng-deep .auth-form input:-webkit-autofill:active {
+      -webkit-text-fill-color: var(--text-primary) !important;
+      caret-color: var(--text-primary) !important;
+      transition: background-color 9999s ease-in-out 0s;
+      box-shadow: 0 0 0 1000px #111214 inset !important;
+      -webkit-box-shadow: 0 0 0 1000px #111214 inset !important;
+      border-radius: inherit;
+    }
+    .field-note {
+      margin: 0 0 0 4px;
+      min-height: 16px;
+      display: flex;
+      align-items: center;
+      font-size: 11px;
+      line-height: 1.25;
+      visibility: hidden;
+    }
+    .field-note.visible {
+      visibility: visible;
+    }
+    .field-note.error {
+      color: #ff6f61;
     }
     .submit-btn {
       width: 100%; height: 40px;
@@ -147,14 +243,24 @@ import { environment } from '../../../../environments/environment';
     }
     .submit-btn:disabled { opacity: 0.5; }
 
-    .google-btn-wrapper { display: flex; justify-content: center; margin-top: 12px; }
+    .google-btn-shell { position: relative; margin-top: 12px; }
+    .google-btn-wrapper {
+      position: absolute; inset: 0; z-index: 1;
+      opacity: 0; overflow: hidden; border-radius: 20px;
+      pointer-events: none;
+    }
+    :host ::ng-deep #google-signin-btn > div {
+      width: 100% !important;
+      min-width: 100% !important;
+    }
     .custom-google-btn {
-      width: 100%; height: 40px; margin-top: 12px;
+      width: 100%; height: 40px;
       display: flex; align-items: center; justify-content: center; gap: 10px;
       background: #fff; color: #3c4043;
       border: none; border-radius: 20px;
       font-size: 13px; font-weight: 500; font-family: 'Roboto', sans-serif;
       cursor: pointer; transition: box-shadow 0.2s, background 0.2s;
+      position: relative; z-index: 2;
     }
     .custom-google-btn:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.3); background: #f7f8f8; }
     .google-icon { flex-shrink: 0; }
@@ -162,15 +268,29 @@ import { environment } from '../../../../environments/environment';
     .auth-switch { text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 14px; }
     .auth-switch a { color: var(--accent); text-decoration: none; font-weight: 600; }
     .auth-switch a:hover { text-decoration: underline; }
+    @media (max-width: 700px) {
+      .auth-page { padding: 84px 16px 16px; align-items: flex-start; }
+      .auth-topbar { padding: 18px 16px; }
+      .auth-brand-block { margin-bottom: 18px; }
+      .brand-text { font-size: 18px; letter-spacing: 4px; }
+      .brand-tagline { font-size: 11px; }
+    .corner-logo-img { width: 30px; height: 30px; border-radius: 6px; flex-shrink: 0; }
+      .top-action { min-height: 40px; padding: 0 16px; font-size: 12px; }
+      .field-stack { grid-template-rows: auto 14px; }
+      .field-note { min-height: 14px; font-size: 10px; }
+      .auth-card { padding: 24px 22px; }
+    }
   `],
 })
 export class LoginComponent implements AfterViewInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly ngZone = inject(NgZone);
+  private readonly publicConfig = inject(PublicConfigService);
   form: FormGroup;
   loading = false;
   hidePassword = true;
   submitted = false;
+  authFailed = false;
   gridDots = Array.from({ length: 96 }, (_, i) => i);
   useGisButton = false;
 
@@ -181,9 +301,17 @@ export class LoginComponent implements AfterViewInit {
     private readonly snackBar: MatSnackBar,
   ) {
     this.form = this.fb.group({
-      email: ['', [Validators.required, Validators.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+[^.]$/)]],
+      email: ['', [Validators.required, Validators.pattern(/^[^\s@]+@(?!\.)[^\s@]+$/)]],
       password: ['', Validators.required],
     });
+
+    this.form.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (this.authFailed) {
+          this.authFailed = false;
+        }
+      });
   }
 
   isFieldInvalid(field: string): boolean {
@@ -191,8 +319,21 @@ export class LoginComponent implements AfterViewInit {
     return ctrl.invalid && (ctrl.touched || this.submitted);
   }
 
+  get emailErrorMessage(): string {
+    const control = this.form.controls['email'];
+    if (!this.isFieldInvalid('email')) return '';
+    if (control.hasError('required')) return 'Email is required';
+    if (control.hasError('pattern')) return 'Enter a valid email';
+    return '';
+  }
+
+  get passwordErrorMessage(): string {
+    if (!this.isFieldInvalid('password')) return '';
+    return 'Password is required';
+  }
+
   ngAfterViewInit(): void {
-    if (!environment.googleClientId) return;
+    if (!this.publicConfig.googleClientId) return;
     this.waitForGoogleAndInit();
   }
 
@@ -201,13 +342,14 @@ export class LoginComponent implements AfterViewInit {
       this.useGisButton = true;
       setTimeout(() => {
         const google = (window as any).google;
-        if (google?.accounts?.id?.initialize) {
+        const el = document.getElementById('google-signin-btn');
+        if (google?.accounts?.id?.initialize && el) {
           google.accounts.id.initialize({
-            client_id: environment.googleClientId,
+            client_id: this.publicConfig.googleClientId,
             callback: (response: any) => this.handleGoogleResponse(response),
           });
-          const el = document.getElementById('google-signin-btn');
-          if (el) google.accounts.id.renderButton(el, { theme: 'filled_black', size: 'large', width: 356, text: 'continue_with', shape: 'pill' });
+          const width = Math.max(Math.round(el.getBoundingClientRect().width || 320), 280);
+          google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', width, text: 'signin_with', shape: 'pill' });
         }
       });
       return;
@@ -218,11 +360,35 @@ export class LoginComponent implements AfterViewInit {
   }
 
   onCustomGoogleClick(): void {
-    if (environment.googleClientId && typeof (window as any).google !== 'undefined') {
-      this.waitForGoogleAndInit();
+    if (!this.publicConfig.googleClientId) {
+      this.snackBar.open('Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID on the backend so Maxro can load it.', 'Close', { duration: 5000 });
       return;
     }
-    this.snackBar.open('Google Sign-In requires a Client ID. Add it to environment.ts and .env (GOOGLE_CLIENT_ID).', 'Close', { duration: 5000 });
+    this.waitForGoogleAndInit();
+    setTimeout(() => {
+      if (!this.clickGoogleButton('google-signin-btn')) {
+        this.promptGoogleFallback();
+      }
+    }, 150);
+  }
+
+  private clickGoogleButton(containerId: string): boolean {
+    const host = document.getElementById(containerId);
+    const clickable = host?.querySelector('div[role="button"], button') as HTMLElement | null;
+    if (!clickable) {
+      return false;
+    }
+    clickable.click();
+    return true;
+  }
+
+  private promptGoogleFallback(): void {
+    const google = (window as any).google;
+    if (google?.accounts?.id?.prompt) {
+      google.accounts.id.prompt();
+      return;
+    }
+    this.snackBar.open('Google Sign-In is still loading. Try again in a second.', 'Close', { duration: 3000 });
   }
 
   handleGoogleResponse(response: any): void {
@@ -253,6 +419,7 @@ export class LoginComponent implements AfterViewInit {
       this.form.markAllAsTouched();
       return;
     }
+    this.authFailed = false;
     this.loading = true;
     this.authService.login(this.form.value)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -266,9 +433,19 @@ export class LoginComponent implements AfterViewInit {
         },
         error: (err) => {
           this.loading = false;
+          this.authFailed = true;
+          this.form.controls['email'].markAsTouched();
+          this.form.controls['password'].markAsTouched();
           const message = err?.message || 'Login failed. Please try again.';
           this.snackBar.open(message, 'Close', { duration: 4000 });
         },
       });
   }
 }
+
+
+
+
+
+
+

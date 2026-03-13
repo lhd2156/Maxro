@@ -28,3 +28,18 @@ dist/
 
 # Docker
 docker-compose.override.yml
+# Local tooling
+.m2/
+.codex-runs/
+# Test artifacts
+maxro-frontend/test-results/
+maxro-frontend/playwright-report/
+# Local runtime logs and temp files
+backend-run.err.log
+tmp-*.log
+tmp-*.txt
+temp_*.txt
+maxro-backend/backend-dev.err.log
+maxro-backend/backend-dev.out.log
+maxro-backend/spring-boot.out
+.azurecli/

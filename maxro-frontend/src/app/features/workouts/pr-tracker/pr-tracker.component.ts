@@ -34,8 +34,8 @@ import { PersonalRecord } from '../../../core/models/workout.model';
               </div>
               <div class="pr-stats">
                 <div class="pr-stat">
-                  <span class="pr-value">{{ group.best.weightLbs }}</span>
-                  <span class="pr-label">lbs</span>
+                  <span class="pr-value">{{ formatPRPrimaryValue(group.best) }}</span>
+                  <span class="pr-label">{{ formatPRPrimaryLabel(group.best) }}</span>
                 </div>
                 <div class="pr-divider"></div>
                 <div class="pr-stat">
@@ -45,7 +45,7 @@ import { PersonalRecord } from '../../../core/models/workout.model';
                 <div class="pr-divider"></div>
                 <div class="pr-stat">
                   <span class="pr-value accent">{{ group.best.oneRepMaxLbs | number:'1.0-0' }}</span>
-                  <span class="pr-label">est 1RM</span>
+                  <span class="pr-label">{{ formatPRScoreLabel(group.best) }}</span>
                 </div>
               </div>
               <span class="pr-date">{{ group.best.achievedAt | date:'mediumDate' }}</span>
@@ -61,12 +61,39 @@ import { PersonalRecord } from '../../../core/models/workout.model';
     </div>
   `,
   styles: [`
-    .page { max-width: 1000px; margin: 0 auto; }
-    .page-header { margin-bottom: 28px; }
+    :host {
+      display: block;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .page {
+      max-width: 1000px;
+      height: 100%;
+      min-height: 0;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .page-header { margin-bottom: 28px; flex-shrink: 0; }
     h1 { color: var(--text-primary); font-size: 24px; font-weight: 700; margin: 0; }
     .subtitle { color: var(--text-muted); font-size: 14px; margin: 4px 0 0; }
+    .page > app-loading-spinner,
+    .page > app-empty-state {
+      display: block;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .pr-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      padding-right: 4px;
+      align-content: start;
     }
     .pr-card {
       background: var(--bg-surface);
@@ -123,5 +150,21 @@ export class PrTrackerComponent implements OnInit {
     return Array.from(map.entries())
       .map(([exercise, best]) => ({ exercise, best }))
       .sort((a, b) => a.exercise.localeCompare(b.exercise));
+  }
+
+  formatPRPrimaryValue(pr: PersonalRecord): string {
+    return this.isBodyweightPR(pr) ? 'Body' : String(pr.weightLbs);
+  }
+
+  formatPRPrimaryLabel(pr: PersonalRecord): string {
+    return this.isBodyweightPR(pr) ? 'weight' : 'lbs';
+  }
+
+  formatPRScoreLabel(pr: PersonalRecord): string {
+    return this.isBodyweightPR(pr) ? 'rep PR' : 'est 1RM';
+  }
+
+  private isBodyweightPR(pr: PersonalRecord): boolean {
+    return pr.weightLbs <= 0;
   }
 }
