@@ -100,14 +100,6 @@ stages:
         displayName: 'Deploy Backend'
         steps:
           - powershell: |
-              $azureCliPath = 'C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin'
-              if (-not (Test-Path $azureCliPath)) {
-                throw "Azure CLI path not found: $azureCliPath"
-              }
-              Write-Host "##vso[task.prependpath]$azureCliPath"
-              & "$azureCliPath\az.cmd" version
-            displayName: 'Expose Azure CLI on PATH'
-
           - task: AzureCLI@2
             displayName: 'Deploy to Container Apps'
             inputs:
@@ -134,8 +126,11 @@ stages:
                 $serverPortValue = if ($env:SERVER_PORT) { $env:SERVER_PORT } else { '8080' }
                 $imageRef = "$(containerRegistry)/$(imageName):$(Build.BuildId)"
 
-                az containerapp env show --name $appEnvironment --resource-group $(RESOURCE_GROUP) 1>$null 2>$null
-                if ($LASTEXITCODE -ne 0) {
+                $existingEnv = az resource list `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --resource-type Microsoft.App/managedEnvironments `
+                  --query "[?name=='$appEnvironment'].name | [0]" -o tsv
+                if ([string]::IsNullOrWhiteSpace($existingEnv)) {
                   az containerapp env create `
                     --name $appEnvironment `
                     --resource-group $(RESOURCE_GROUP) `
@@ -147,8 +142,11 @@ stages:
                 $acrUsername = az acr credential show --name $(ACR_NAME) --query username -o tsv
                 $acrPassword = az acr credential show --name $(ACR_NAME) --query "passwords[0].value" -o tsv
 
-                az containerapp show --name $(containerAppName) --resource-group $(RESOURCE_GROUP) 1>$null 2>$null
-                if ($LASTEXITCODE -ne 0) {
+                $existingApp = az resource list `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --resource-type Microsoft.App/containerApps `
+                  --query "[?name=='$(containerAppName)'].name | [0]" -o tsv
+                if ([string]::IsNullOrWhiteSpace($existingApp)) {
                   az containerapp create `
                     --name $(containerAppName) `
                     --resource-group $(RESOURCE_GROUP) `
@@ -262,14 +260,6 @@ stages:
               AZURE_LOCATION: $(AZURE_LOCATION)
               CONTAINER_APP_ENVIRONMENT: $(CONTAINER_APP_ENVIRONMENT)
 
-          - powershell: |
-              $azureCliPath = 'C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin'
-              if (-not (Test-Path $azureCliPath)) {
-                throw "Azure CLI path not found: $azureCliPath"
-              }
-              Write-Host "##vso[task.prependpath]$azureCliPath"
-              & "$azureCliPath\az.cmd" version
-            displayName: 'Expose Azure CLI on PATH'
 
           - task: AzureCLI@2
             displayName: 'Health Check'
