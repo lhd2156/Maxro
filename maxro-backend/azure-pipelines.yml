@@ -114,6 +114,7 @@ stages:
               azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
               scriptType: 'ps'
               scriptLocation: 'inlineScript'
+              failOnStandardError: false
               inlineScript: |
                 function Add-SecretArg([string]$Key, [string]$Value) {
                   if (-not [string]::IsNullOrWhiteSpace($Value)) {
@@ -301,5 +302,6 @@ stages:
                 }
                 Write-Host 'Health check failed'
                 exit 1
+
 
 
