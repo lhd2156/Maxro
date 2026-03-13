@@ -58,6 +58,15 @@ stages:
             env:
               JAVA_HOME: $(JAVA_HOME)
 
+          - powershell: |
+              $azureCliPath = 'C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin'
+              if (-not (Test-Path $azureCliPath)) {
+                throw "Azure CLI path not found: $azureCliPath"
+              }
+              Write-Host "##vso[task.prependpath]$azureCliPath"
+              & "$azureCliPath\az.cmd" version
+            displayName: 'Expose Azure CLI on PATH'
+
           - task: AzureCLI@2
             displayName: 'Build and Push Image with ACR'
             inputs:
@@ -94,6 +103,15 @@ stages:
           runOnce:
             deploy:
               steps:
+                - powershell: |
+                    $azureCliPath = 'C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin'
+                    if (-not (Test-Path $azureCliPath)) {
+                      throw "Azure CLI path not found: $azureCliPath"
+                    }
+                    Write-Host "##vso[task.prependpath]$azureCliPath"
+                    & "$azureCliPath\az.cmd" version
+                  displayName: 'Expose Azure CLI on PATH'
+
                 - task: AzureCLI@2
                   displayName: 'Deploy to Container Apps'
                   inputs:
@@ -245,6 +263,15 @@ stages:
                     GRAPHIQL_ENABLED: $(GRAPHIQL_ENABLED)
                     AZURE_LOCATION: $(AZURE_LOCATION)
                     CONTAINER_APP_ENVIRONMENT: $(CONTAINER_APP_ENVIRONMENT)
+
+                - powershell: |
+                    $azureCliPath = 'C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin'
+                    if (-not (Test-Path $azureCliPath)) {
+                      throw "Azure CLI path not found: $azureCliPath"
+                    }
+                    Write-Host "##vso[task.prependpath]$azureCliPath"
+                    & "$azureCliPath\az.cmd" version
+                  displayName: 'Expose Azure CLI on PATH'
 
                 - task: AzureCLI@2
                   displayName: 'Health Check'
