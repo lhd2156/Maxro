@@ -21,10 +21,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.Instant;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {
@@ -45,8 +49,8 @@ class AuthServiceImplTest {
 
     @Test
     void register_createsUserAndReturnsTokens() {
-        var input = new RegisterInput("test@example.com", "password123", "Test", "User", "2000-01-01", "Male", true, null, null, null, null, null);
-        when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        var input = new RegisterInput(" Test@Example.com ", "password123", "Test", "User", "2000-01-01", "Male", true, null, null, null, null, null);
+        when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(false);
         when(passwordEncoder.encode("password123")).thenReturn("hashed");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> {
             User u = inv.getArgument(0);
@@ -62,16 +66,16 @@ class AuthServiceImplTest {
         assertNotNull(result.refreshToken());
         assertEquals("test@example.com", result.user().email());
 
-        // Verify password is stored hashed, never in plain text
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
         assertEquals("hashed", userCaptor.getValue().getPassword());
+        assertEquals("test@example.com", userCaptor.getValue().getEmail());
     }
 
     @Test
-    void register_throwsOnDuplicateEmail() {
-        var input = new RegisterInput("taken@example.com", "pass", "First", "Last", null, null, true, null, null, null, null, null);
-        when(userRepository.existsByEmail("taken@example.com")).thenReturn(true);
+    void register_throwsOnDuplicateEmailIgnoringCaseAndWhitespace() {
+        var input = new RegisterInput(" Taken@Example.com ", "pass", "First", "Last", null, null, true, null, null, null, null, null);
+        when(userRepository.existsByEmailIgnoreCase("taken@example.com")).thenReturn(true);
 
         assertThrows(DuplicateResourceException.class, () -> authService.register(input));
         verify(userRepository, never()).save(any());
@@ -79,9 +83,9 @@ class AuthServiceImplTest {
 
     @Test
     void login_returnsTokensForValidCredentials() {
-        var input = new LoginInput("user@test.com", "correct");
+        var input = new LoginInput(" User@Test.com ", "correct");
         User user = buildUser("id-1", "user@test.com", "encoded-pw");
-        when(userRepository.findByEmail("user@test.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCase("user@test.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("correct", "encoded-pw")).thenReturn(true);
         when(jwtTokenProvider.generateAccessToken(anyString(), anyString())).thenReturn("jwt");
         when(refreshTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -93,10 +97,19 @@ class AuthServiceImplTest {
     }
 
     @Test
+    void login_throwsOnGoogleOnlyAccount() {
+        var input = new LoginInput("user@test.com", "correct");
+        User user = buildUser("id-1", "user@test.com", "");
+        when(userRepository.findByEmailIgnoreCase("user@test.com")).thenReturn(Optional.of(user));
+
+        assertThrows(AuthenticationException.class, () -> authService.login(input));
+    }
+
+    @Test
     void login_throwsOnWrongPassword() {
         var input = new LoginInput("user@test.com", "wrong");
         User user = buildUser("id-1", "user@test.com", "encoded-pw");
-        when(userRepository.findByEmail("user@test.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailIgnoreCase("user@test.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong", "encoded-pw")).thenReturn(false);
 
         assertThrows(AuthenticationException.class, () -> authService.login(input));
@@ -105,7 +118,7 @@ class AuthServiceImplTest {
     @Test
     void login_throwsOnUnknownEmail() {
         var input = new LoginInput("nobody@test.com", "pass");
-        when(userRepository.findByEmail("nobody@test.com")).thenReturn(Optional.empty());
+        when(userRepository.findByEmailIgnoreCase("nobody@test.com")).thenReturn(Optional.empty());
 
         assertThrows(AuthenticationException.class, () -> authService.login(input));
     }

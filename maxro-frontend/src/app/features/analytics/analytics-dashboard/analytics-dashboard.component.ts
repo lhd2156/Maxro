@@ -38,8 +38,8 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
     EmptyStateComponent,
   ],
   template: `
-    <div class="page" #pageContainer>
-      <div class="page-header">
+    <div class="page" [class.single-column]="isSingleColumnLayout" [class.compact-height]="isCompactHeightLayout" #pageContainer>
+      <div class="page-header" #pageHeader>
         <h1>Analytics</h1>
         <div class="controls-row">
           <mat-button-toggle-group name="rangeToggle" [(value)]="selectedDays" (change)="onDaysChange($event)">
@@ -64,8 +64,13 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
 
       <div class="analytics-grid">
         <mat-card class="chart-card strength-card">
-          <div class="chart-card-header">
-            <h3>Strength Progress</h3>
+          <div class="chart-card-header chart-card-header-strength">
+            <div class="chart-card-title-group">
+              <h3>Strength Progress</h3>
+              @if (exerciseNames.length === 0) {
+                <p class="chart-card-helper">Log workouts to unlock your exercise list.</p>
+              }
+            </div>
             <mat-form-field appearance="outline" class="exercise-select">
               <mat-label>Exercise</mat-label>
               <mat-select [(value)]="selectedExercise" (selectionChange)="loadStrengthData()" [disabled]="exerciseNames.length === 0">
@@ -73,20 +78,17 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
                   <mat-option [value]="name">{{ name }}</mat-option>
                 }
               </mat-select>
-              @if (exerciseNames.length === 0) {
-                <mat-hint>Log workouts to see your exercises</mat-hint>
-              }
             </mat-form-field>
           </div>
           @if (strengthChartLoading) {
-            <div class="chart-loading" [style.width.px]="gridChartWidth" style="height: 280px;">
+            <div class="chart-loading" [style.width.px]="gridChartWidth" [style.height.px]="chartViewHeight" [style.min-height.px]="chartViewHeight">
               <app-loading-spinner></app-loading-spinner>
             </div>
           } @else if (strengthChartData.length > 0 && strengthChartData[0].series.length > 0) {
-            <div class="chart-container">
+            <div class="chart-container" [style.min-height.px]="chartViewHeight">
               <ngx-charts-line-chart
                 [results]="strengthChartData"
-                [view]="[gridChartWidth, 280]"
+                [view]="[gridChartWidth, chartViewHeight]"
                 [scheme]="$any(chartScheme)"
                 [xAxis]="true"
                 [yAxis]="true"
@@ -122,16 +124,20 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
         </mat-card>
 
         <mat-card class="chart-card calorie-card">
-          <h3>Calorie Trends</h3>
+          <div class="chart-card-header chart-card-header-simple">
+            <div class="chart-card-title-group">
+              <h3>Calorie Trends</h3>
+            </div>
+          </div>
           @if (macroChartLoading) {
-            <div class="chart-loading" [style.width.px]="gridChartWidth" style="height: 240px;">
+            <div class="chart-loading" [style.width.px]="gridChartWidth" [style.height.px]="chartViewHeight" [style.min-height.px]="chartViewHeight">
               <app-loading-spinner></app-loading-spinner>
             </div>
           } @else if (calorieChartData.length > 0 && calorieChartData[0].series.length >= 1) {
-            <div class="chart-container chart-container-half">
+            <div class="chart-container" [style.min-height.px]="chartViewHeight">
               <ngx-charts-line-chart
                 [results]="calorieChartData"
-                [view]="[gridChartWidth, 240]"
+                [view]="[gridChartWidth, chartViewHeight]"
                 [scheme]="$any(calorieScheme)"
                 [xAxis]="true"
                 [yAxis]="true"
@@ -167,17 +173,21 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
         </mat-card>
 
         <mat-card class="chart-card protein-card">
-          <h3>Protein Intake</h3>
+          <div class="chart-card-header chart-card-header-simple">
+            <div class="chart-card-title-group">
+              <h3>Protein Intake</h3>
+            </div>
+          </div>
           @if (macroChartLoading) {
-            <div class="chart-loading" [style.width.px]="gridChartWidth" style="height: 240px;">
+            <div class="chart-loading" [style.width.px]="gridChartWidth" [style.height.px]="chartViewHeight" [style.min-height.px]="chartViewHeight">
               <app-loading-spinner></app-loading-spinner>
             </div>
           } @else if (proteinChartData.length > 0 && proteinChartData[0].series.length >= 1) {
-            <div class="chart-container chart-container-half">
+            <div class="chart-container" [style.min-height.px]="chartViewHeight">
               <ngx-charts-line-chart
                 [results]="proteinChartData"
                 [activeEntries]="proteinChartData"
-                [view]="[gridChartWidth, 240]"
+                [view]="[gridChartWidth, chartViewHeight]"
                 [scheme]="$any(proteinScheme)"
                 [xAxis]="true"
                 [yAxis]="true"
@@ -212,17 +222,21 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
         </mat-card>
 
         <mat-card class="chart-card water-card">
-          <h3>Water Consistency</h3>
+          <div class="chart-card-header chart-card-header-simple">
+            <div class="chart-card-title-group">
+              <h3>Water Consistency</h3>
+            </div>
+          </div>
           @if (waterChartLoading) {
-            <div class="chart-loading" [style.width.px]="gridChartWidth" style="height: 280px;">
+            <div class="chart-loading" [style.width.px]="gridChartWidth" [style.height.px]="chartViewHeight" [style.min-height.px]="chartViewHeight">
               <app-loading-spinner></app-loading-spinner>
             </div>
           } @else if (waterChartData.length > 0 && waterChartData[0].series.length >= 1) {
-            <div class="chart-container">
+            <div class="chart-container" [style.min-height.px]="chartViewHeight">
               <ngx-charts-line-chart
                 [results]="waterChartData"
                 [activeEntries]="waterChartData"
-                [view]="[gridChartWidth, 280]"
+                [view]="[gridChartWidth, chartViewHeight]"
                 [scheme]="$any(waterScheme)"
                 [xAxis]="true"
                 [yAxis]="true"
@@ -260,19 +274,20 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
     </div>
   `,
   styles: [`
-    .page { width: 100%; max-width: 1120px; margin: 0 auto; }
+    :host { display: block; min-height: 0; height: 100%; overflow: hidden; }
+    .page { width: 100%; max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; min-height: 0; height: 100%; box-sizing: border-box; overflow: hidden; }
     .page-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
+      align-items: flex-start;
+      margin-bottom: 20px;
       flex-wrap: wrap;
       gap: 12px;
     }
     .controls-row {
       display: flex;
       gap: 16px;
-      align-items: center;
+      align-items: flex-start;
       flex-wrap: wrap;
     }
     .custom-range-field {
@@ -358,27 +373,25 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
       display: flex;
       flex-direction: column;
       min-width: 0;
+      min-height: 0;
       height: 100%;
     }
     .chart-loading {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
-      min-height: 200px;
+      min-height: 244px;
     }
     .chart-container {
-      min-height: 280px;
-    }
-    .chart-container.chart-container-half {
-      min-height: 240px;
+      min-height: 244px;
     }
     .chart-tooltip-date { display: block; font-weight: 600; margin-bottom: 2px; }
     .chart-tooltip-value { display: block; font-size: 12px; color: var(--text-muted); }
-    h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0 0 16px; }
+    h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0; }
     .single-data-point {
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
       text-align: center;
       background: rgba(255,255,255,0.02);
@@ -404,18 +417,18 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
     .chart-card-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       flex-wrap: wrap;
       gap: 12px;
       margin-bottom: 16px;
+      min-height: 60px;
     }
     .chart-card-header h3 { margin: 0; }
-    .strength-card { padding-top: 12px; }
-    .strength-card .chart-card-header {
-      margin-top: -4px;
-      margin-left: -4px;
-    }
-    .exercise-select { width: 200px; flex-shrink: 0; }
+    .chart-card-title-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .chart-card-header-strength { align-items: flex-start; }
+    .chart-card-header-simple { align-items: flex-start; }
+    .chart-card-helper { margin: 0; font-size: 12px; line-height: 1.4; color: var(--text-muted); max-width: 280px; }
+    .exercise-select { width: 208px; flex-shrink: 0; margin-left: auto; }
     ::ng-deep .exercise-select .mat-mdc-form-field-focus-overlay { background: rgba(255,255,255,0.04) !important; }
     ::ng-deep .exercise-select .mat-mdc-select-arrow-wrapper .mat-mdc-select-arrow { color: var(--text-muted) !important; }
     .analytics-grid {
@@ -423,7 +436,21 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
       align-items: stretch;
+      grid-auto-rows: 1fr;
+      flex: 1;
+      min-height: 0;
     }
+    .page.compact-height .page-header { margin-bottom: 12px; gap: 10px; }
+    .page.compact-height .controls-row { gap: 12px; }
+    .page.compact-height .analytics-grid { gap: 12px; }
+    .page.compact-height .chart-card { padding: 14px 16px 16px; }
+    .page.compact-height .chart-card-header { gap: 8px; margin-bottom: 10px; min-height: 48px; }
+    .page.compact-height .chart-card-helper { font-size: 11px; line-height: 1.3; }
+    .page.compact-height .exercise-select { width: 196px; }
+    .page.single-column .controls-row,
+    .page.single-column .custom-range-field,
+    .page.single-column .exercise-select { width: 100%; margin-left: 0; }
+    .page.single-column .analytics-grid { grid-template-columns: 1fr; }
     ::ng-deep .ngx-charts {
       display: block;
       width: 100% !important;
@@ -440,10 +467,12 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
       stroke-width: 3px !important;
       transition: none !important;
     }
-    @media (max-width: 900px) {
+    @media (max-width: 920px) {
+      :host { height: auto; min-height: 100%; overflow: visible; }
+      .page { height: auto; overflow: visible; padding-bottom: 16px; }
       .controls-row,
       .custom-range-field,
-      .exercise-select { width: 100%; }
+      .exercise-select { width: 100%; margin-left: 0; }
       .analytics-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 768px) {
@@ -457,6 +486,7 @@ export class AnalyticsDashboardComponent implements OnInit, OnDestroy, AfterView
   private resizeObserver: ResizeObserver | null = null;
 
   @ViewChild('pageContainer') pageContainer?: ElementRef<HTMLElement>;
+  @ViewChild('pageHeader') pageHeader?: ElementRef<HTMLElement>;
 
   strengthChartLoading = false;
   macroChartLoading = false;
@@ -478,10 +508,13 @@ export class AnalyticsDashboardComponent implements OnInit, OnDestroy, AfterView
   waterChartData: any[] = [];
 
   pageWidth = 1000;
+  availableContentHeight = 0;
+  pageHeaderHeight = 0;
   chartWidth = 700;
   chartHalfWidth = 440;
-  private waterRequestId = 0;
-  private macroRequestId = 0;
+  readonly maxChartViewHeight = 244;
+  readonly minChartViewHeight = 170;
+  readonly singleColumnBreakpoint = 920;
   private strengthRequestId = 0;
 
   /** ngx-charts accepts { domain: string[] } at runtime; typings expect string | Color */
@@ -491,7 +524,25 @@ export class AnalyticsDashboardComponent implements OnInit, OnDestroy, AfterView
   readonly waterScheme: any = { domain: ['#00BCD4'] };
 
   get gridChartWidth(): number {
-    return this.pageWidth <= 900 ? this.chartWidth : this.chartHalfWidth;
+    return this.isSingleColumnLayout ? this.chartWidth : this.chartHalfWidth;
+  }
+
+  get isSingleColumnLayout(): boolean {
+    return this.pageWidth <= this.singleColumnBreakpoint;
+  }
+
+  get chartViewHeight(): number {
+    if (this.isSingleColumnLayout) return this.maxChartViewHeight;
+    const availableHeight = this.availableContentHeight || 0;
+    const headerHeight = this.pageHeaderHeight || 72;
+    if (availableHeight <= 0) return this.maxChartViewHeight;
+    const rowHeight = (availableHeight - headerHeight - 12 - 12 - 8) / 2;
+    const fittedHeight = Math.floor(rowHeight - 104);
+    return Math.max(this.minChartViewHeight, Math.min(this.maxChartViewHeight, fittedHeight));
+  }
+
+  get isCompactHeightLayout(): boolean {
+    return !this.isSingleColumnLayout && this.chartViewHeight < this.maxChartViewHeight;
   }
 
   constructor(
@@ -544,20 +595,32 @@ export class AnalyticsDashboardComponent implements OnInit, OnDestroy, AfterView
   private setupChartResizeObserver(): void {
     if (typeof ResizeObserver === 'undefined' || !this.pageContainer?.nativeElement) return;
     const el = this.pageContainer.nativeElement;
-    this.updateChartWidthFromElement(el);
+    const contentEl = el.parentElement as HTMLElement | null;
+    const headerEl = this.pageHeader?.nativeElement ?? null;
+    this.updateChartMetrics(el, contentEl, headerEl);
     this.resizeObserver = new ResizeObserver(() => {
-      this.updateChartWidthFromElement(el);
+      this.updateChartMetrics(el, contentEl, headerEl);
       this.cdr.markForCheck();
     });
     this.resizeObserver.observe(el);
+    if (contentEl) this.resizeObserver.observe(contentEl);
+    if (headerEl) this.resizeObserver.observe(headerEl);
   }
 
-  private updateChartWidthFromElement(el: HTMLElement): void {
+  private updateChartMetrics(el: HTMLElement, contentEl: HTMLElement | null, headerEl: HTMLElement | null): void {
     const w = el.clientWidth || el.offsetWidth || 0;
     if (w > 0) {
       this.pageWidth = w;
-      this.chartWidth = Math.max(300, Math.min(w - 40, 960));
-      this.chartHalfWidth = Math.max(220, Math.min((w - 72) / 2, 500));
+      this.chartWidth = Math.max(320, Math.min(w - 48, 1040));
+      this.chartHalfWidth = Math.max(260, Math.min((w - 88) / 2, 520));
+    }
+    const contentHeight = el.clientHeight || contentEl?.clientHeight || el.parentElement?.clientHeight || 0;
+    if (contentHeight > 0) {
+      this.availableContentHeight = contentHeight;
+    }
+    const headerHeight = headerEl?.offsetHeight || 0;
+    if (headerHeight > 0) {
+      this.pageHeaderHeight = headerHeight;
     }
   }
 
@@ -618,7 +681,7 @@ export class AnalyticsDashboardComponent implements OnInit, OnDestroy, AfterView
       });
   }
 
-  /** Y-axis max from data so the chart scales to what the user logged (e.g. 24oz → axis ~30). */
+  /** Y-axis max from data so the chart scales to what the user logged (e.g. 24oz -> axis ~30). */
   get waterYMax(): number {
     if (this.waterTrends.length === 0) return 64;
     const max = Math.max(...this.waterTrends.map(d => d.totalOz), 1);
@@ -773,14 +836,14 @@ export class AnalyticsDashboardComponent implements OnInit, OnDestroy, AfterView
   /** Get date for tooltip - tries name then label (ngx-charts model varies by point value). */
   tooltipDate(model: any): string {
     const m = Array.isArray(model) ? model[0] : model;
-    return this.formatTooltipDate(m?.name ?? m?.label) || '—';
+    return this.formatTooltipDate(m?.name ?? m?.label) || '--';
   }
 
   /** Get value for tooltip - handles both single model and array (chart area hover vs dot hover). */
   tooltipValue(model: any): number | string {
     const m = Array.isArray(model) ? model[0] : model;
     const val = m?.value;
-    return val != null ? val : '—';
+    return val != null ? val : '--';
   }
 
   /** Get series name for tooltip - handles both single model and array. */
@@ -894,5 +957,11 @@ export class AnalyticsDashboardComponent implements OnInit, OnDestroy, AfterView
     console.error('Analytics: getWaterTrends failed', err);
   }
 }
+
+
+
+
+
+
 
 

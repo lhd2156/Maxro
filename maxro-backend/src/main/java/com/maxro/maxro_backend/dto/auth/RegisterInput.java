@@ -32,4 +32,28 @@ public record RegisterInput(
         Integer dailyCarbTarget,
         Integer dailyFatTarget,
         Double dailyWaterGoalOz
-) {}
+) {
+    public RegisterInput {
+        email = trimToNull(email);
+        firstName = trimToNull(firstName);
+        lastName = trimToNull(lastName);
+        dateOfBirth = trimOptional(dateOfBirth);
+        gender = trimOptional(gender);
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static String trimOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+}

@@ -26,7 +26,10 @@ import { Workout, WorkoutPage } from '../../../core/models/workout.model';
   template: `
     <div class="page">
       <div class="page-header">
-        <h1>Workout History</h1>
+        <div class="page-header-copy">
+          <h1>Workout History</h1>
+          <p class="subtitle">Your logged training sessions and recent activity</p>
+        </div>
         <a mat-flat-button routerLink="/workouts/log" class="action-btn">
           <mat-icon svgIcon="mx-plus"></mat-icon> Log Workout
         </a>
@@ -84,17 +87,48 @@ import { Workout, WorkoutPage } from '../../../core/models/workout.model';
     </div>
   `,
   styles: [`
-    .page { max-width: 800px; margin: 0 auto; }
-    .page-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 24px;
+    :host {
+      display: block;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
+    .page {
+      max-width: 1000px;
+      height: 100%;
+      min-height: 0;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .page-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 28px;
+      flex-shrink: 0;
+    }
+    .page-header-copy { display: flex; flex-direction: column; gap: 4px; }
     h1 { color: var(--text-primary); font-size: 24px; font-weight: 700; margin: 0; }
+    .subtitle { color: var(--text-muted); font-size: 14px; margin: 0; }
+    .page > app-loading-spinner,
+    .page > app-empty-state {
+      display: block;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
     .action-btn {
       background: var(--accent) !important; color: #0D0D0D !important;
-      font-weight: 600; border-radius: 10px;
+      font-weight: 600; border-radius: 10px; margin-top: 2px;
     }
-    .workout-list { display: flex; flex-direction: column; gap: 12px; }
+    .workout-list {
+      display: flex;
+      flex: 1 1 auto;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+      overflow: auto;
+      padding-right: 4px;
+    }
     .workout-card {
       background: var(--bg-surface); border: 1px solid rgba(255,255,255,0.06);
       border-radius: 12px; padding: 20px;
@@ -122,6 +156,7 @@ import { Workout, WorkoutPage } from '../../../core/models/workout.model';
       font-size: 14px; font-weight: 500; color: var(--text-primary); flex: 1;
     }
     .ex-detail { font-size: 13px; color: var(--text-muted); }
+    mat-paginator { flex-shrink: 0; }
   `],
 })
 export class WorkoutHistoryComponent implements OnInit {

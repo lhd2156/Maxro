@@ -5,9 +5,14 @@ import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import { routes } from './app.routes';
 import { provideGraphQL } from './core/graphql/graphql.module';
 import { IconRegistryService } from './core/services/icon-registry.service';
+import { PublicConfigService } from './core/services/public-config.service';
 
 function initializeIcons(iconRegistry: IconRegistryService): () => void {
   return () => iconRegistry.registerAll();
+}
+
+function loadPublicConfig(publicConfigService: PublicConfigService): () => Promise<void> {
+  return () => publicConfigService.load();
 }
 
 export const appConfig: ApplicationConfig = {
@@ -20,6 +25,12 @@ export const appConfig: ApplicationConfig = {
       provide: APP_INITIALIZER,
       useFactory: initializeIcons,
       deps: [IconRegistryService],
+      multi: true,
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: loadPublicConfig,
+      deps: [PublicConfigService],
       multi: true,
     },
   ],

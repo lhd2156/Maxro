@@ -66,7 +66,6 @@ class WorkoutServiceImplTest {
         w.setUserId("other-user");
         when(workoutRepository.findById("wk-1")).thenReturn(Optional.of(w));
 
-        // Ownership check prevents users from reading each other's workouts
         assertThrows(ResourceNotFoundException.class,
                 () -> workoutService.getWorkout("user-1", "wk-1"));
     }
@@ -80,22 +79,23 @@ class WorkoutServiceImplTest {
         Page<Workout> result = workoutService.getWorkouts("u1", null, null, 0, 20);
 
         assertEquals(1, result.getContent().size());
-        verify(workoutRepository, never()).findByUserIdAndDateBetweenOrderByDateDesc(
-                any(), any(), any(), any());
+        verify(workoutRepository, never()).findByUserIdAndDateBetweenFlexible(
+                any(), any(), any(), any(), any(), any());
     }
 
     @Test
-    void getWorkouts_withDateRange_queriesFiltered() {
+    void getWorkouts_withDateRange_queriesFlexibleRange() {
         LocalDate start = LocalDate.of(2025, 1, 1);
         LocalDate end = LocalDate.of(2025, 1, 31);
         Page<Workout> page = new PageImpl<>(List.of());
-        when(workoutRepository.findByUserIdAndDateBetweenOrderByDateDesc(
-                eq("u1"), eq(start), eq(end), any(Pageable.class))).thenReturn(page);
+        when(workoutRepository.findByUserIdAndDateBetweenFlexible(
+                eq("u1"), eq("2025-01-01"), eq("2025-01-31"), eq(start), eq(end), any(Pageable.class)))
+                .thenReturn(page);
 
         workoutService.getWorkouts("u1", start, end, 0, 20);
 
-        verify(workoutRepository).findByUserIdAndDateBetweenOrderByDateDesc(
-                eq("u1"), eq(start), eq(end), any(Pageable.class));
+        verify(workoutRepository).findByUserIdAndDateBetweenFlexible(
+                eq("u1"), eq("2025-01-01"), eq("2025-01-31"), eq(start), eq(end), any(Pageable.class));
     }
 
     @Test

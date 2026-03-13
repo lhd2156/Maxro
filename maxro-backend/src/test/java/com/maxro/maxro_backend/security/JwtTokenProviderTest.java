@@ -54,7 +54,7 @@ class JwtTokenProviderTest {
 
     @Test
     void validateToken_rejectsExpiredToken() {
-        // Provider with 0 ms expiration — token is already expired on creation
+        // Provider with 0 ms expiration - token is already expired on creation
         JwtTokenProvider expiredProvider = new JwtTokenProvider(SECRET, 0L);
         String token = expiredProvider.generateAccessToken("u1", "a@b.com");
 

@@ -24,7 +24,7 @@ import { MUSCLE_GROUPS } from '../../../core/models/workout.model';
     CommonModule, ReactiveFormsModule,
     MatCardModule, MatFormFieldModule, MatInputModule, MatSelectModule,
     MatButtonModule, MatIconModule, MatSnackBarModule,
-    MatDatepickerModule, MatNativeDateModule,
+    MatDatepickerModule, MatNativeDateModule, NumericInputDirective,
   ],
   template: `
     <div class="page">

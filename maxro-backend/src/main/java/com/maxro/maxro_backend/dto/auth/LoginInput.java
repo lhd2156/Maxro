@@ -10,4 +10,16 @@ public record LoginInput(
 
         @NotBlank(message = "Password is required")
         String password
-) {}
+) {
+    public LoginInput {
+        email = trimToNull(email);
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+}

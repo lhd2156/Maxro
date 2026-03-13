@@ -1,5 +1,6 @@
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -17,7 +18,7 @@ import { UserProfile } from '../../../core/models/user.model';
   selector: 'app-water-tracker',
   standalone: true,
   imports: [
-    CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatSnackBarModule,
+    CommonModule, FormsModule, MatCardModule, MatButtonModule, MatIconModule, MatSnackBarModule,
     StatCardComponent, LoadingSpinnerComponent,
   ],
   template: `
@@ -58,13 +59,64 @@ import { UserProfile } from '../../../core/models/user.model';
 
         <mat-card class="quick-add-card">
           <h3>Quick Add</h3>
-          <div class="quick-buttons">
-            @for (amount of quickAmounts; track amount) {
-              <button mat-stroked-button class="quick-btn" (click)="addWater(amount)" [disabled]="addingWater">
-                <mat-icon svgIcon="mx-droplet"></mat-icon>
-                {{ amount }} oz
+          <div class="quick-add-body">
+            <div class="quick-controls-grid">
+              @for (amount of quickAmounts; track amount) {
+                <button
+                  mat-stroked-button
+                  class="quick-btn"
+                  (click)="applyQuickAmount(amount)"
+                  [disabled]="addingWater || (quickAdjustMode === 'remove' && (water?.totalOz || 0) <= 0)">
+                  {{ amount }} oz
+                </button>
+              }
+              <button
+                type="button"
+                class="quick-mode-btn quick-mode-minus"
+                [class.active]="quickAdjustMode === 'remove'"
+                (click)="setQuickAdjustMode('remove')"
+                aria-label="Switch to remove mode">
+                <mat-icon svgIcon="mx-minus"></mat-icon>
               </button>
-            }
+              <button
+                type="button"
+                class="quick-mode-btn quick-mode-plus"
+                [class.active]="quickAdjustMode === 'add'"
+                (click)="setQuickAdjustMode('add')"
+                aria-label="Switch to add mode">
+                <mat-icon svgIcon="mx-plus"></mat-icon>
+              </button>
+            </div>
+
+            <div class="quick-custom-wrap">
+              <button
+                type="button"
+                class="quick-custom-btn"
+                [class.active]="showCustomInput"
+                (click)="toggleCustomInput()">
+                Custom
+              </button>
+
+              <div class="quick-custom-panel" [class.open]="showCustomInput">
+                <div class="quick-custom-entry">
+                  <input
+                    type="text"
+                    class="quick-custom-input"
+                    inputmode="decimal"
+                    maxlength="5"
+                    placeholder="Enter oz"
+                    [(ngModel)]="customAmountInput"
+                    (keydown.enter)="applyCustomAmount()" />
+                  <button
+                    mat-stroked-button
+                    class="quick-custom-apply"
+                    (click)="applyCustomAmount()"
+                    [disabled]="addingWater || !hasCustomAmount || (quickAdjustMode === 'remove' && (water?.totalOz || 0) <= 0)">
+                    Apply
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </mat-card>
       </div>
@@ -96,23 +148,37 @@ import { UserProfile } from '../../../core/models/user.model';
     </div>
   `,
   styles: [`
-    .page { max-width: 800px; margin: 0 auto; }
+    :host {
+      display: block;
+      height: 100%;
+      overflow: hidden;
+    }
+    .page {
+      max-width: 860px;
+      height: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow: hidden;
+    }
     .page-header {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 24px;
+      flex-shrink: 0;
     }
     h1 { color: var(--text-primary); font-size: 24px; font-weight: 700; margin: 0; }
     .date-nav { display: flex; align-items: center; gap: 8px; }
     .date-nav button { color: var(--text-muted); }
-    .current-date { font-size: 15px; font-weight: 600; color: var(--text-primary); min-width: 120px; text-align: center; }
+    .current-date { font-size: 14px; font-weight: 600; color: var(--text-primary); min-width: 108px; text-align: center; }
     .water-main {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+      flex-shrink: 0;
     }
     .water-ring-card, .quick-add-card, .log-card {
       background: var(--bg-surface); border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 12px; padding: 24px;
+      border-radius: 12px; padding: 20px;
     }
-    .ring-container { position: relative; width: 200px; height: 200px; margin: 0 auto; }
+    .ring-container { position: relative; width: 188px; height: 188px; margin: 0 auto; }
     .ring-svg { width: 100%; height: 100%; }
     .progress-ring { transition: stroke-dashoffset 0.6s ease; }
     .ring-center {
@@ -129,18 +195,180 @@ import { UserProfile } from '../../../core/models/user.model';
       font-size: 14px; font-weight: 600;
     }
     h3 { font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0 0 16px; }
-    .quick-buttons {
-      display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    .quick-add-card {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+    }
+    .quick-add-card h3 {
+      align-self: flex-start;
+      text-align: left;
+      margin-bottom: 14px;
+    }
+    .quick-add-body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      margin-top: auto;
+      margin-bottom: auto;
+    }
+    .quick-controls-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(70px, auto));
+      justify-content: center;
+      align-items: center;
+      column-gap: 10px;
+      row-gap: 12px;
     }
     .quick-btn {
-      border-color: rgba(255,255,255,0.1) !important; color: var(--text-primary) !important;
-      border-radius: 10px; height: 48px; font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-color: rgba(255,255,255,0.1) !important;
+      color: var(--text-primary) !important;
+      border-radius: 999px;
+      height: 36px;
+      min-width: 70px;
+      padding: 0 14px;
+      font-weight: 700;
     }
     .quick-btn:hover {
-      border-color: var(--accent) !important; color: var(--accent) !important;
+      border-color: var(--accent) !important;
+      color: var(--accent) !important;
     }
-    .log-card { margin-bottom: 16px; }
-    .entries { display: flex; flex-direction: column; gap: 6px; }
+    .quick-mode-btn {
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.04);
+      color: var(--text-muted);
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .quick-mode-minus {
+      grid-column: 2;
+      justify-self: center;
+    }
+    .quick-mode-plus {
+      grid-column: 3;
+      justify-self: center;
+    }
+    .quick-mode-btn:hover:not(.active) {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(200,241,53,0.06);
+    }
+    .quick-mode-btn.active {
+      border-color: transparent;
+      background: var(--accent);
+      color: #0d0d0d;
+      box-shadow: 0 10px 20px rgba(200,241,53,0.18);
+    }
+    .quick-mode-btn mat-icon {
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+    }
+    .quick-custom-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+    .quick-custom-panel {
+      width: 100%;
+      min-height: 38px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    .quick-custom-panel:not(.open) {
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .quick-custom-btn,
+    .quick-custom-apply {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      height: 34px;
+      padding: 0 16px;
+      font-weight: 700;
+    }
+    .quick-custom-btn {
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .quick-custom-btn:hover,
+    .quick-custom-btn.active {
+      border-color: var(--accent);
+      color: #0d0d0d;
+      background: var(--accent);
+      box-shadow: 0 10px 20px rgba(200,241,53,0.16);
+    }
+    .quick-custom-entry {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      max-width: 280px;
+    }
+    .quick-custom-input {
+      width: 100%;
+      height: 38px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: var(--text-primary);
+      padding: 0 14px;
+      outline: none;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .quick-custom-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(200,241,53,0.08);
+    }
+    .quick-custom-input::placeholder {
+      color: var(--text-muted);
+    }
+    .quick-custom-apply {
+      min-width: 84px;
+      border-color: rgba(255,255,255,0.12) !important;
+      color: var(--text-primary) !important;
+    }
+    .quick-custom-apply:hover:not(:disabled) {
+      border-color: var(--accent) !important;
+      color: var(--accent) !important;
+    }
+    .log-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .entries {
+      display: flex; flex-direction: column; gap: 6px;
+      max-height: 144px;
+      min-height: 0;
+      overflow: auto;
+      padding-right: 4px;
+    }
     .entry-row {
       display: flex; align-items: center; gap: 12px;
       padding: 10px 12px; background: rgba(255,255,255,0.02); border-radius: 8px;
@@ -154,11 +382,32 @@ import { UserProfile } from '../../../core/models/user.model';
     .entry-amount { flex: 1; font-size: 14px; font-weight: 500; color: var(--text-primary); }
     .entry-time { font-size: 13px; color: var(--text-muted); }
     .stats-row {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+      flex-shrink: 0;
+    }
+    @media (max-width: 768px), (max-height: 880px) {
+      :host {
+        height: auto;
+        min-height: 100%;
+        overflow: visible;
+      }
+      .page {
+        height: auto;
+        min-height: 100%;
+        overflow: visible;
+        padding-bottom: 16px;
+      }
     }
     @media (max-width: 768px) {
       .water-main { grid-template-columns: 1fr; }
       .stats-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 520px) {
+      .quick-controls-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+      .quick-mode-minus { grid-column: 1; justify-self: end; }
+      .quick-mode-plus { grid-column: 2; justify-self: start; }
+      .quick-custom-entry { flex-direction: column; max-width: 100%; }
+      .quick-custom-apply { width: 100%; }
     }
   `],
 })
@@ -169,6 +418,13 @@ export class WaterTrackerComponent implements OnInit {
   currentDate = new Date();
   addingWater = false;
   quickAmounts = [8, 12, 16, 24];
+  quickAdjustMode: 'add' | 'remove' = 'add';
+  showCustomInput = false;
+  customAmountInput = '';
+
+  get hasCustomAmount(): boolean {
+    return this.customAmountInput.trim().length > 0;
+  }
 
   readonly circumference = 2 * Math.PI * 85;
 
@@ -213,8 +469,48 @@ export class WaterTrackerComponent implements OnInit {
   }
 
   addWater(amountOz: number): void {
+    this.adjustWater(amountOz);
+  }
+
+  setQuickAdjustMode(mode: 'add' | 'remove'): void {
+    this.quickAdjustMode = mode;
+  }
+
+  toggleCustomInput(): void {
+    this.showCustomInput = !this.showCustomInput;
+    if (!this.showCustomInput) {
+      this.customAmountInput = '';
+    }
+  }
+
+  applyQuickAmount(amountOz: number): void {
+    this.adjustWater(this.quickAdjustMode === 'remove' ? -amountOz : amountOz);
+  }
+
+  applyCustomAmount(): void {
+    const parsedAmount = Number.parseFloat(this.customAmountInput.trim());
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      this.snackBar.open('Enter a valid amount of water in oz.', 'Close', { duration: 2500 });
+      return;
+    }
+
+    this.adjustWater(this.quickAdjustMode === 'remove' ? -parsedAmount : parsedAmount);
+    this.customAmountInput = '';
+    this.showCustomInput = false;
+  }
+
+  adjustWater(amountOz: number): void {
+    const currentOz = this.water?.totalOz || 0;
+    if (amountOz < 0 && currentOz <= 0) {
+      return;
+    }
+
+    const delta = amountOz < 0
+      ? -Math.min(Math.abs(amountOz), currentOz)
+      : amountOz;
+
     this.addingWater = true;
-    this.waterService.logWater(this.dateStr, amountOz)
+    this.waterService.logWater(this.dateStr, delta)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: water => {
@@ -226,12 +522,13 @@ export class WaterTrackerComponent implements OnInit {
             this.snackBar.open('Daily water goal reached!', 'Nice!', { duration: 4000 });
             this.confettiService.burst();
           } else {
-            this.snackBar.open(`+${amountOz} oz logged`, 'Close', { duration: 2000 });
+            const message = delta > 0 ? `+${delta} oz logged` : `${Math.abs(delta)} oz removed`;
+            this.snackBar.open(message, 'Close', { duration: 2000 });
           }
         },
         error: () => {
           this.addingWater = false;
-          this.snackBar.open('Failed to log water', 'Close', { duration: 3000 });
+          this.snackBar.open('Failed to update water', 'Close', { duration: 3000 });
         },
       });
   }

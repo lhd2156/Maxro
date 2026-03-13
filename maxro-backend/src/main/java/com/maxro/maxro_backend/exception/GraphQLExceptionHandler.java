@@ -45,7 +45,7 @@ public class GraphQLExceptionHandler {
     @GraphQlExceptionHandler(ExternalApiException.class)
     public GraphQLError handleExternalApi(ExternalApiException ex, DataFetchingEnvironment env) {
         log.error("External API error: {}", ex.getMessage());
-        // Intentionally vague user-facing message — don't leak third-party error details.
+        // Intentionally vague user-facing message - don't leak third-party error details.
         return GraphqlErrorBuilder.newError(env)
                 .message("External service temporarily unavailable. Please try again.")
                 .errorType(graphql.ErrorType.DataFetchingException)

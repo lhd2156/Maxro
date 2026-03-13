@@ -83,13 +83,14 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
             throw new AuthenticationException("Google account has no email");
         }
 
-        User user = userRepository.findByEmail(email.toLowerCase().trim())
+        String normalizedEmail = email.trim().toLowerCase();
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
                 .orElseGet(() -> {
-                    log.info("Creating new user from Google sign-in: {}", email);
+                    log.info("Creating new user from Google sign-in: {}", normalizedEmail);
                     User newUser = new User();
-                    newUser.setEmail(email.toLowerCase().trim());
+                    newUser.setEmail(normalizedEmail);
                     newUser.setPassword("");
-                    newUser.setDisplayName(name != null ? name : email.split("@")[0]);
+                    newUser.setDisplayName(name != null ? name : normalizedEmail.split("@")[0]);
                     newUser.setAgreedToTerms(true);
                     newUser.setProfileComplete(false);
                     newUser.setGender("Prefer not to say");

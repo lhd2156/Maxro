@@ -17,7 +17,6 @@ import org.springframework.stereotype.Controller;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Controller
 public class WorkoutResolver {
@@ -80,24 +79,9 @@ public class WorkoutResolver {
         workout.setDate(LocalDate.parse((String) input.get("date")));
         workout.setNotes((String) input.get("notes"));
 
-        List<Map<String, Object>> exercisesInput = (List<Map<String, Object>>) input.get("exercises");
-        List<Exercise> exercises = exercisesInput.stream().map(exInput -> {
-            Exercise ex = new Exercise();
-            ex.setName((String) exInput.get("name"));
-            ex.setMuscleGroup((String) exInput.get("muscleGroup"));
-
-            List<Map<String, Object>> setsInput = (List<Map<String, Object>>) exInput.get("sets");
-            List<ExerciseSet> sets = setsInput.stream().map(setInput -> {
-                ExerciseSet set = new ExerciseSet();
-                set.setReps((Integer) setInput.get("reps"));
-                set.setWeightLbs(((Number) setInput.get("weightLbs")).doubleValue());
-                return set;
-            }).collect(Collectors.toList());
-
-            ex.setSets(sets);
-            return ex;
-        }).collect(Collectors.toList());
-
+        List<Exercise> exercises = asObjectMapList(input.get("exercises")).stream()
+                .map(this::toExercise)
+                .toList();
         workout.setExercises(exercises);
 
         Workout savedWorkout = workoutService.logWorkout(userId, workout);
@@ -110,5 +94,29 @@ public class WorkoutResolver {
     public boolean deleteWorkout(@Argument String id) {
         workoutService.deleteWorkout(securityContextHelper.getCurrentUserId(), id);
         return true;
+    }
+
+    private Exercise toExercise(Map<String, Object> exerciseInput) {
+        Exercise exercise = new Exercise();
+        exercise.setName((String) exerciseInput.get("name"));
+        exercise.setMuscleGroup((String) exerciseInput.get("muscleGroup"));
+
+        List<ExerciseSet> sets = asObjectMapList(exerciseInput.get("sets")).stream()
+                .map(this::toExerciseSet)
+                .toList();
+        exercise.setSets(sets);
+        return exercise;
+    }
+
+    private ExerciseSet toExerciseSet(Map<String, Object> setInput) {
+        ExerciseSet set = new ExerciseSet();
+        set.setReps((Integer) setInput.get("reps"));
+        set.setWeightLbs(((Number) setInput.get("weightLbs")).doubleValue());
+        return set;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> asObjectMapList(Object value) {
+        return value == null ? List.of() : (List<Map<String, Object>>) value;
     }
 }
