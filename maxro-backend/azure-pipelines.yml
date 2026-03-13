@@ -183,6 +183,7 @@ stages:
                     --resource-group $(RESOURCE_GROUP) `
                     --environment $appEnvironment `
                     --image $imageRef `
+                    --revision-suffix r$(Build.BuildId) `
                     --ingress external `
                     --target-port $serverPortValue `
                     --cpu $(containerCpu) `
@@ -222,15 +223,6 @@ stages:
                     --secrets $secretArgs
                 }
 
-                az containerapp update `
-                  --name $(containerAppName) `
-                  --resource-group $(RESOURCE_GROUP) `
-                  --image $imageRef `
-                  --cpu $(containerCpu) `
-                  --memory $(containerMemory) `
-                  --min-replicas 0 `
-                  --max-replicas 1
-
                 $envArgs = @()
                 Add-EnvArg 'SPRING_PROFILES_ACTIVE' 'prod'
                 Add-EnvArg 'SERVER_PORT' $serverPortValue
@@ -269,7 +261,23 @@ stages:
                   az containerapp update `
                     --name $(containerAppName) `
                     --resource-group $(RESOURCE_GROUP) `
+                    --image $imageRef `
+                    --revision-suffix r$(Build.BuildId) `
+                    --cpu $(containerCpu) `
+                    --memory $(containerMemory) `
+                    --min-replicas 0 `
+                    --max-replicas 1 `
                     --set-env-vars $envArgs
+                } else {
+                  az containerapp update `
+                    --name $(containerAppName) `
+                    --resource-group $(RESOURCE_GROUP) `
+                    --image $imageRef `
+                    --revision-suffix r$(Build.BuildId) `
+                    --cpu $(containerCpu) `
+                    --memory $(containerMemory) `
+                    --min-replicas 0 `
+                    --max-replicas 1
                 }
             env:
               MONGODB_URI: $(MONGODB_URI)
@@ -299,6 +307,7 @@ stages:
               scriptType: 'ps'
               scriptLocation: 'inlineScript'
               inlineScript: |
+                $expectedRevisionSuffix = "r$(Build.BuildId)"
                 $maxAttempts = 12
                 $sleepSeconds = 10
 
@@ -312,14 +321,24 @@ stages:
                   $latestRevision = $app.properties.latestRevisionName
                   $latestReadyRevision = $app.properties.latestReadyRevisionName
 
-                  Write-Host "Attempt ${i}: runningStatus=$runningStatus, latestRevision=$latestRevision, latestReadyRevision=$latestReadyRevision"
+                  $revisionsJson = az containerapp revision list `
+                    --name $(containerAppName) `
+                    --resource-group $(RESOURCE_GROUP) -o json
+                  $revisions = $revisionsJson | ConvertFrom-Json
+                  $expectedRevision = $revisions | Where-Object { $_.name -like "*--$expectedRevisionSuffix" } | Select-Object -First 1
+                  $expectedRevisionName = if ($expectedRevision) { $expectedRevision.name } else { '' }
+                  $expectedRevisionRunningState = if ($expectedRevision) { $expectedRevision.properties.runningState } else { '' }
+                  $expectedRevisionHealthState = if ($expectedRevision) { $expectedRevision.properties.healthState } else { '' }
+
+                  Write-Host "Attempt ${i}: runningStatus=$runningStatus, latestRevision=$latestRevision, latestReadyRevision=$latestReadyRevision, expectedRevision=$expectedRevisionName, expectedRunningState=$expectedRevisionRunningState, expectedHealthState=$expectedRevisionHealthState"
 
                   if (
                     $runningStatus -eq 'Running' -and
-                    -not [string]::IsNullOrWhiteSpace($latestRevision) -and
-                    $latestRevision -eq $latestReadyRevision
+                    -not [string]::IsNullOrWhiteSpace($expectedRevisionName) -and
+                    $latestReadyRevision -eq $expectedRevisionName -and
+                    $expectedRevisionHealthState -eq 'Healthy'
                   ) {
-                    Write-Host 'Health check passed (latest revision is ready).'
+                    Write-Host 'Health check passed (expected revision is ready).'
                     exit 0
                   }
 
