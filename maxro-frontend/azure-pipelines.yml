@@ -7,7 +7,7 @@ trigger:
       - maxro-frontend/**
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: 'Default'
 
 variables:
   - group: maxro-secrets
@@ -62,18 +62,27 @@ stages:
                     app_location: '$(Pipeline.Workspace)/frontend-build'
                     skip_app_build: true
 
-                - script: |
-                    SWA_URL="https://$(SWA_HOSTNAME)"
-                    echo "Checking health at $SWA_URL"
-                    for i in {1..10}; do
-                      STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SWA_URL")
-                      if [ "$STATUS" = "200" ]; then
-                        echo "Health check passed"
-                        exit 0
-                      fi
-                      echo "Attempt $i: status $STATUS, retrying..."
-                      sleep 5
-                    done
-                    echo "Health check failed"
+                - powershell: |
+                    $swaUrl = 'https://$(SWA_HOSTNAME)'
+                    Write-Host ('Checking health at ' + $swaUrl)
+                    for ($i = 1; $i -le 10; $i++) {
+                      try {
+                        $response = Invoke-WebRequest -Uri $swaUrl -UseBasicParsing -TimeoutSec 20
+                        if ($response.StatusCode -eq 200) {
+                          Write-Host 'Health check passed'
+                          exit 0
+                        }
+                        $status = $response.StatusCode
+                      } catch {
+                        if ($_.Exception.Response) {
+                          $status = [int]$_.Exception.Response.StatusCode
+                        } else {
+                          $status = 'ERR'
+                        }
+                      }
+                      Write-Host ('Attempt ' + $i + ': status ' + $status + ', retrying...')
+                      Start-Sleep -Seconds 5
+                    }
+                    Write-Host 'Health check failed'
                     exit 1
                   displayName: 'Health Check'
