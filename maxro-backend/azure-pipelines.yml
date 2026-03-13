@@ -157,6 +157,14 @@ stages:
                   }
                 }
 
+                if ($env:JWT_SECRET.Length -lt 32) {
+                  throw "JWT_SECRET must be at least 32 characters for HS256. Current length: $($env:JWT_SECRET.Length)"
+                }
+
+                if ($env:MONGODB_URI -notmatch '^mongodb(\+srv)?:\/\/') {
+                  throw "MONGODB_URI must start with mongodb:// or mongodb+srv://"
+                }
+
                 $existingEnv = az resource list `
                   --resource-group $(RESOURCE_GROUP) `
                   --resource-type Microsoft.App/managedEnvironments `
@@ -384,6 +392,29 @@ stages:
                   --name $(containerAppName) `
                   --resource-group $(RESOURCE_GROUP) `
                   --tail 100
+
+                $failedRevisionName = az containerapp show `
+                  --name $(containerAppName) `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --query properties.latestRevisionName -o tsv
+
+                if (-not [string]::IsNullOrWhiteSpace($failedRevisionName)) {
+                  Write-Host "Recent app logs for failing latest revision ($failedRevisionName):"
+                  az containerapp logs show `
+                    --name $(containerAppName) `
+                    --resource-group $(RESOURCE_GROUP) `
+                    --revision $failedRevisionName `
+                    --type console `
+                    --tail 200
+
+                  Write-Host "Recent system logs for failing latest revision ($failedRevisionName):"
+                  az containerapp logs show `
+                    --name $(containerAppName) `
+                    --resource-group $(RESOURCE_GROUP) `
+                    --revision $failedRevisionName `
+                    --type system `
+                    --tail 200
+                }
 
                 Write-Host 'Recent system logs:'
                 az containerapp logs show `
