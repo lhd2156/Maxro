@@ -287,7 +287,7 @@ stages:
               scriptType: 'ps'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                $maxAttempts = 30
+                $maxAttempts = 12
                 $sleepSeconds = 10
 
                 for ($i = 1; $i -le $maxAttempts; $i++) {
