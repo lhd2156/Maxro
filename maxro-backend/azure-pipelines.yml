@@ -149,6 +149,14 @@ stages:
                 $serverPortValue = if ($env:SERVER_PORT) { $env:SERVER_PORT } else { '8080' }
                 $imageRef = "$(containerRegistry)/$(imageName):$(Build.BuildId)"
 
+                $requiredSecrets = @('MONGODB_URI', 'JWT_SECRET')
+                foreach ($requiredSecret in $requiredSecrets) {
+                  $secretValue = (Get-Item -Path "env:$requiredSecret" -ErrorAction SilentlyContinue).Value
+                  if ([string]::IsNullOrWhiteSpace($secretValue)) {
+                    throw "Missing required pipeline secret variable: $requiredSecret"
+                  }
+                }
+
                 $existingEnv = az resource list `
                   --resource-group $(RESOURCE_GROUP) `
                   --resource-type Microsoft.App/managedEnvironments `
