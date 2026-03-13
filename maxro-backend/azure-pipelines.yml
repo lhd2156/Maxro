@@ -99,7 +99,6 @@ stages:
       - job: DeployBackend
         displayName: 'Deploy Backend'
         steps:
-          - powershell: |
           - task: AzureCLI@2
             displayName: 'Deploy to Container Apps'
             inputs:
