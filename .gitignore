@@ -43,3 +43,4 @@ maxro-backend/backend-dev.err.log
 maxro-backend/backend-dev.out.log
 maxro-backend/spring-boot.out
 .azurecli/
+.azurecli-fresh/

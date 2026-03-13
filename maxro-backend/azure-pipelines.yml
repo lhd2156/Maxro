@@ -7,7 +7,7 @@ trigger:
       - maxro-backend/**
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: 'Default'
 
 variables:
   - group: maxro-secrets
@@ -29,41 +29,33 @@ stages:
       - job: BuildAndTest
         displayName: 'Build and Test Spring Boot'
         steps:
-          - task: JavaToolInstaller@0
-            inputs:
-              versionSpec: '21'
-              jdkArchitectureOption: 'x64'
-              jdkSourceOption: 'PreInstalled'
-
-          - task: Maven@4
+          - script: cmd /c mvnw.cmd test
             displayName: 'Run Tests'
-            inputs:
-              mavenPomFile: 'maxro-backend/pom.xml'
-              goals: 'test'
-              options: '-B'
-              publishJUnitResults: true
-              testResultsFiles: '**/surefire-reports/TEST-*.xml'
+            workingDirectory: 'maxro-backend'
 
-          - task: Maven@4
-            displayName: 'Build JAR'
+          - task: PublishTestResults@2
+            displayName: 'Publish JUnit Results'
             inputs:
-              mavenPomFile: 'maxro-backend/pom.xml'
-              goals: 'package'
-              options: '-B -DskipTests'
+              testResultsFormat: 'JUnit'
+              testResultsFiles: 'maxro-backend/**/surefire-reports/TEST-*.xml'
+              failTaskOnFailedTests: true
+
+          - script: cmd /c mvnw.cmd package -DskipTests
+            displayName: 'Build JAR'
+            workingDirectory: 'maxro-backend'
 
           - task: AzureCLI@2
             displayName: 'Build and Push Image with ACR'
             inputs:
               azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
-              scriptType: 'bash'
+              scriptType: 'pscore'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                set -euo pipefail
-                az acr build \
-                  --registry $(ACR_NAME) \
-                  --image $(imageName):$(Build.BuildId) \
-                  --image $(imageName):latest \
-                  --file maxro-backend/Dockerfile \
+                az acr build `
+                  --registry $(ACR_NAME) `
+                  --image $(imageName):$(Build.BuildId) `
+                  --image $(imageName):latest `
+                  --file maxro-backend/Dockerfile `
                   maxro-backend
 
   - stage: Deploy
@@ -82,144 +74,134 @@ stages:
                   displayName: 'Deploy to Container Apps'
                   inputs:
                     azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
-                    scriptType: 'bash'
+                    scriptType: 'pscore'
                     scriptLocation: 'inlineScript'
                     inlineScript: |
-                      set -euo pipefail
-
-                      append_secret() {
-                        local key="$1"
-                        local value="$2"
-                        if [ -n "$value" ]; then
-                          SECRET_ARGS+=("${key}=${value}")
-                        fi
+                      function Add-SecretArg([string]$Key, [string]$Value) {
+                        if (-not [string]::IsNullOrWhiteSpace($Value)) {
+                          $script:secretArgs += "$Key=$Value"
+                        }
                       }
 
-                      append_env() {
-                        local key="$1"
-                        local value="$2"
-                        if [ -n "$value" ]; then
-                          ENV_ARGS+=("${key}=${value}")
-                        fi
+                      function Add-EnvArg([string]$Key, [string]$Value) {
+                        if (-not [string]::IsNullOrWhiteSpace($Value)) {
+                          $script:envArgs += "$Key=$Value"
+                        }
                       }
 
-                      LOCATION="${AZURE_LOCATION:-$(azureLocation)}"
-                      APP_ENVIRONMENT="${CONTAINER_APP_ENVIRONMENT:-$(containerAppEnvironment)}"
-                      SERVER_PORT_VALUE="${SERVER_PORT:-8080}"
-                      IMAGE_REF="$(containerRegistry)/$(imageName):$(Build.BuildId)"
+                      $location = if ($env:AZURE_LOCATION) { $env:AZURE_LOCATION } else { '$(azureLocation)' }
+                      $appEnvironment = if ($env:CONTAINER_APP_ENVIRONMENT) { $env:CONTAINER_APP_ENVIRONMENT } else { '$(containerAppEnvironment)' }
+                      $serverPortValue = if ($env:SERVER_PORT) { $env:SERVER_PORT } else { '8080' }
+                      $imageRef = "$(containerRegistry)/$(imageName):$(Build.BuildId)"
 
-                      if ! az containerapp env show \
-                        --name "$APP_ENVIRONMENT" \
-                        --resource-group $(RESOURCE_GROUP) \
-                        >/dev/null 2>&1; then
-                        az containerapp env create \
-                          --name "$APP_ENVIRONMENT" \
-                          --resource-group $(RESOURCE_GROUP) \
-                          --location "$LOCATION" \
+                      az containerapp env show --name $appEnvironment --resource-group $(RESOURCE_GROUP) 1>$null 2>$null
+                      if ($LASTEXITCODE -ne 0) {
+                        az containerapp env create `
+                          --name $appEnvironment `
+                          --resource-group $(RESOURCE_GROUP) `
+                          --location $location `
                           --logs-destination none
-                      fi
+                      }
 
-                      az acr update --name $(ACR_NAME) --admin-enabled true >/dev/null
-                      ACR_USERNAME=$(az acr credential show --name $(ACR_NAME) --query username -o tsv)
-                      ACR_PASSWORD=$(az acr credential show --name $(ACR_NAME) --query "passwords[0].value" -o tsv)
+                      az acr update --name $(ACR_NAME) --admin-enabled true 1>$null
+                      $acrUsername = az acr credential show --name $(ACR_NAME) --query username -o tsv
+                      $acrPassword = az acr credential show --name $(ACR_NAME) --query "passwords[0].value" -o tsv
 
-                      if ! az containerapp show \
-                        --name $(containerAppName) \
-                        --resource-group $(RESOURCE_GROUP) \
-                        >/dev/null 2>&1; then
-                        az containerapp create \
-                          --name $(containerAppName) \
-                          --resource-group $(RESOURCE_GROUP) \
-                          --environment "$APP_ENVIRONMENT" \
-                          --image "$IMAGE_REF" \
-                          --ingress external \
-                          --target-port "$SERVER_PORT_VALUE" \
-                          --cpu 0.25 \
-                          --memory 0.5Gi \
-                          --min-replicas 0 \
-                          --max-replicas 1 \
-                          --registry-server $(containerRegistry) \
-                          --registry-username "$ACR_USERNAME" \
-                          --registry-password "$ACR_PASSWORD" \
-                          --env-vars \
-                            SPRING_PROFILES_ACTIVE=prod \
-                            SERVER_PORT="$SERVER_PORT_VALUE" \
-                            APP_LOG_LEVEL="${APP_LOG_LEVEL:-INFO}" \
-                            GRAPHIQL_ENABLED="${GRAPHIQL_ENABLED:-false}"
-                      fi
+                      az containerapp show --name $(containerAppName) --resource-group $(RESOURCE_GROUP) 1>$null 2>$null
+                      if ($LASTEXITCODE -ne 0) {
+                        az containerapp create `
+                          --name $(containerAppName) `
+                          --resource-group $(RESOURCE_GROUP) `
+                          --environment $appEnvironment `
+                          --image $imageRef `
+                          --ingress external `
+                          --target-port $serverPortValue `
+                          --cpu 0.25 `
+                          --memory 0.5Gi `
+                          --min-replicas 0 `
+                          --max-replicas 1 `
+                          --registry-server $(containerRegistry) `
+                          --registry-username $acrUsername `
+                          --registry-password $acrPassword `
+                          --env-vars `
+                            SPRING_PROFILES_ACTIVE=prod `
+                            SERVER_PORT=$serverPortValue `
+                            APP_LOG_LEVEL=$(APP_LOG_LEVEL) `
+                            GRAPHIQL_ENABLED=$(GRAPHIQL_ENABLED)
+                      }
 
-                      az containerapp registry set \
-                        --name $(containerAppName) \
-                        --resource-group $(RESOURCE_GROUP) \
-                        --server $(containerRegistry) \
-                        --username "$ACR_USERNAME" \
-                        --password "$ACR_PASSWORD"
+                      az containerapp registry set `
+                        --name $(containerAppName) `
+                        --resource-group $(RESOURCE_GROUP) `
+                        --server $(containerRegistry) `
+                        --username $acrUsername `
+                        --password $acrPassword
 
-                      SECRET_ARGS=()
-                      append_secret "mongodb-uri" "$MONGODB_URI"
-                      append_secret "jwt-secret" "$JWT_SECRET"
-                      append_secret "spotify-client-secret" "$SPOTIFY_CLIENT_SECRET"
-                      append_secret "google-ai-api-key" "$GOOGLE_AI_API_KEY"
-                      append_secret "usda-fooddata-api-key" "$USDA_FOODDATA_API_KEY"
-                      append_secret "fatsecret-client-id" "$FATSECRET_CLIENT_ID"
-                      append_secret "fatsecret-client-secret" "$FATSECRET_CLIENT_SECRET"
+                      $secretArgs = @()
+                      Add-SecretArg 'mongodb-uri' $env:MONGODB_URI
+                      Add-SecretArg 'jwt-secret' $env:JWT_SECRET
+                      Add-SecretArg 'spotify-client-secret' $env:SPOTIFY_CLIENT_SECRET
+                      Add-SecretArg 'google-ai-api-key' $env:GOOGLE_AI_API_KEY
+                      Add-SecretArg 'usda-fooddata-api-key' $env:USDA_FOODDATA_API_KEY
+                      Add-SecretArg 'fatsecret-client-id' $env:FATSECRET_CLIENT_ID
+                      Add-SecretArg 'fatsecret-client-secret' $env:FATSECRET_CLIENT_SECRET
 
-                      if [ ${#SECRET_ARGS[@]} -gt 0 ]; then
-                        az containerapp secret set \
-                          --name $(containerAppName) \
-                          --resource-group $(RESOURCE_GROUP) \
-                          --secrets "${SECRET_ARGS[@]}"
-                      fi
+                      if ($secretArgs.Count -gt 0) {
+                        az containerapp secret set `
+                          --name $(containerAppName) `
+                          --resource-group $(RESOURCE_GROUP) `
+                          --secrets $secretArgs
+                      }
 
-                      az containerapp update \
-                        --name $(containerAppName) \
-                        --resource-group $(RESOURCE_GROUP) \
-                        --image "$IMAGE_REF" \
-                        --cpu 0.25 \
-                        --memory 0.5Gi \
-                        --min-replicas 0 \
+                      az containerapp update `
+                        --name $(containerAppName) `
+                        --resource-group $(RESOURCE_GROUP) `
+                        --image $imageRef `
+                        --cpu 0.25 `
+                        --memory 0.5Gi `
+                        --min-replicas 0 `
                         --max-replicas 1
 
-                      ENV_ARGS=()
-                      append_env "SPRING_PROFILES_ACTIVE" "prod"
-                      append_env "SERVER_PORT" "$SERVER_PORT_VALUE"
-                      append_env "CORS_ORIGINS" "$CORS_ORIGINS"
-                      append_env "APP_LOG_LEVEL" "${APP_LOG_LEVEL:-INFO}"
-                      append_env "GRAPHIQL_ENABLED" "${GRAPHIQL_ENABLED:-false}"
-                      append_env "JWT_ACCESS_EXPIRATION" "$JWT_ACCESS_EXPIRATION"
-                      append_env "JWT_REFRESH_EXPIRATION" "$JWT_REFRESH_EXPIRATION"
-                      append_env "GOOGLE_CLIENT_ID" "$GOOGLE_CLIENT_ID"
-                      append_env "SPOTIFY_CLIENT_ID" "$SPOTIFY_CLIENT_ID"
-                      append_env "GOOGLE_AI_MODEL" "$GOOGLE_AI_MODEL"
+                      $envArgs = @()
+                      Add-EnvArg 'SPRING_PROFILES_ACTIVE' 'prod'
+                      Add-EnvArg 'SERVER_PORT' $serverPortValue
+                      Add-EnvArg 'CORS_ORIGINS' $env:CORS_ORIGINS
+                      Add-EnvArg 'APP_LOG_LEVEL' '$(APP_LOG_LEVEL)'
+                      Add-EnvArg 'GRAPHIQL_ENABLED' '$(GRAPHIQL_ENABLED)'
+                      Add-EnvArg 'JWT_ACCESS_EXPIRATION' $env:JWT_ACCESS_EXPIRATION
+                      Add-EnvArg 'JWT_REFRESH_EXPIRATION' $env:JWT_REFRESH_EXPIRATION
+                      Add-EnvArg 'GOOGLE_CLIENT_ID' $env:GOOGLE_CLIENT_ID
+                      Add-EnvArg 'SPOTIFY_CLIENT_ID' $env:SPOTIFY_CLIENT_ID
+                      Add-EnvArg 'GOOGLE_AI_MODEL' $env:GOOGLE_AI_MODEL
 
-                      if [ -n "$MONGODB_URI" ]; then
-                        ENV_ARGS+=("MONGODB_URI=secretref:mongodb-uri")
-                      fi
-                      if [ -n "$JWT_SECRET" ]; then
-                        ENV_ARGS+=("JWT_SECRET=secretref:jwt-secret")
-                      fi
-                      if [ -n "$SPOTIFY_CLIENT_SECRET" ]; then
-                        ENV_ARGS+=("SPOTIFY_CLIENT_SECRET=secretref:spotify-client-secret")
-                      fi
-                      if [ -n "$GOOGLE_AI_API_KEY" ]; then
-                        ENV_ARGS+=("GOOGLE_AI_API_KEY=secretref:google-ai-api-key")
-                      fi
-                      if [ -n "$USDA_FOODDATA_API_KEY" ]; then
-                        ENV_ARGS+=("USDA_FOODDATA_API_KEY=secretref:usda-fooddata-api-key")
-                      fi
-                      if [ -n "$FATSECRET_CLIENT_ID" ]; then
-                        ENV_ARGS+=("FATSECRET_CLIENT_ID=secretref:fatsecret-client-id")
-                      fi
-                      if [ -n "$FATSECRET_CLIENT_SECRET" ]; then
-                        ENV_ARGS+=("FATSECRET_CLIENT_SECRET=secretref:fatsecret-client-secret")
-                      fi
+                      if (-not [string]::IsNullOrWhiteSpace($env:MONGODB_URI)) {
+                        $envArgs += 'MONGODB_URI=secretref:mongodb-uri'
+                      }
+                      if (-not [string]::IsNullOrWhiteSpace($env:JWT_SECRET)) {
+                        $envArgs += 'JWT_SECRET=secretref:jwt-secret'
+                      }
+                      if (-not [string]::IsNullOrWhiteSpace($env:SPOTIFY_CLIENT_SECRET)) {
+                        $envArgs += 'SPOTIFY_CLIENT_SECRET=secretref:spotify-client-secret'
+                      }
+                      if (-not [string]::IsNullOrWhiteSpace($env:GOOGLE_AI_API_KEY)) {
+                        $envArgs += 'GOOGLE_AI_API_KEY=secretref:google-ai-api-key'
+                      }
+                      if (-not [string]::IsNullOrWhiteSpace($env:USDA_FOODDATA_API_KEY)) {
+                        $envArgs += 'USDA_FOODDATA_API_KEY=secretref:usda-fooddata-api-key'
+                      }
+                      if (-not [string]::IsNullOrWhiteSpace($env:FATSECRET_CLIENT_ID)) {
+                        $envArgs += 'FATSECRET_CLIENT_ID=secretref:fatsecret-client-id'
+                      }
+                      if (-not [string]::IsNullOrWhiteSpace($env:FATSECRET_CLIENT_SECRET)) {
+                        $envArgs += 'FATSECRET_CLIENT_SECRET=secretref:fatsecret-client-secret'
+                      }
 
-                      if [ ${#ENV_ARGS[@]} -gt 0 ]; then
-                        az containerapp update \
-                          --name $(containerAppName) \
-                          --resource-group $(RESOURCE_GROUP) \
-                          --set-env-vars "${ENV_ARGS[@]}"
-                      fi
+                      if ($envArgs.Count -gt 0) {
+                        az containerapp update `
+                          --name $(containerAppName) `
+                          --resource-group $(RESOURCE_GROUP) `
+                          --set-env-vars $envArgs
+                      }
                   env:
                     MONGODB_URI: $(MONGODB_URI)
                     JWT_SECRET: $(JWT_SECRET)
@@ -244,22 +226,31 @@ stages:
                   displayName: 'Health Check'
                   inputs:
                     azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
-                    scriptType: 'bash'
+                    scriptType: 'pscore'
                     scriptLocation: 'inlineScript'
                     inlineScript: |
-                      FQDN=$(az containerapp show \
-                        --name $(containerAppName) \
-                        --resource-group $(RESOURCE_GROUP) \
-                        --query properties.configuration.ingress.fqdn -o tsv)
-                      echo "Checking health at https://$FQDN/actuator/health"
-                      for i in {1..10}; do
-                        STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$FQDN/actuator/health")
-                        if [ "$STATUS" = "200" ]; then
-                          echo "Health check passed"
-                          exit 0
-                        fi
-                        echo "Attempt $i: status $STATUS, retrying..."
-                        sleep 10
-                      done
-                      echo "Health check failed"
+                      $fqdn = az containerapp show `
+                        --name $(containerAppName) `
+                        --resource-group $(RESOURCE_GROUP) `
+                        --query properties.configuration.ingress.fqdn -o tsv
+                      Write-Host "Checking health at https://$fqdn/actuator/health"
+                      for ($i = 1; $i -le 10; $i++) {
+                        try {
+                          $response = Invoke-WebRequest -Uri "https://$fqdn/actuator/health" -UseBasicParsing -TimeoutSec 20
+                          if ($response.StatusCode -eq 200) {
+                            Write-Host 'Health check passed'
+                            exit 0
+                          }
+                          $status = $response.StatusCode
+                        } catch {
+                          if ($_.Exception.Response) {
+                            $status = [int]$_.Exception.Response.StatusCode
+                          } else {
+                            $status = 'ERR'
+                          }
+                        }
+                        Write-Host "Attempt $i: status $status, retrying..."
+                        Start-Sleep -Seconds 10
+                      }
+                      Write-Host 'Health check failed'
                       exit 1
