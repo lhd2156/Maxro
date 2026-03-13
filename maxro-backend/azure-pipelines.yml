@@ -65,12 +65,22 @@ stages:
               scriptType: 'pscore'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                az acr build `
-                  --registry $(ACR_NAME) `
-                  --image $(imageName):$(Build.BuildId) `
-                  --image $(imageName):latest `
+                $loginServer = az acr show --name $(ACR_NAME) --query loginServer -o tsv
+                $acrToken = az acr login --name $(ACR_NAME) --expose-token --query accessToken -o tsv
+
+                docker login $loginServer `
+                  --username 00000000-0000-0000-0000-000000000000 `
+                  --password $acrToken
+
+                docker build `
                   --file maxro-backend/Dockerfile `
+                  --tag "${loginServer}/$(imageName):$(Build.BuildId)" `
+                  --tag "${loginServer}/$(imageName):latest" `
                   maxro-backend
+
+                docker push "${loginServer}/$(imageName):$(Build.BuildId)"
+                docker push "${loginServer}/$(imageName):latest"
+                docker logout $loginServer
 
   - stage: Deploy
     displayName: 'Deploy to Azure Container Apps'
@@ -268,3 +278,4 @@ stages:
                       }
                       Write-Host 'Health check failed'
                       exit 1
+
