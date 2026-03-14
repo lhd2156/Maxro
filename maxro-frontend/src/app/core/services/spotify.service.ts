@@ -95,8 +95,8 @@ export class SpotifyService {
   get redirectUri(): string {
     const configuredRedirectUri = environment.spotifyRedirectUri?.trim();
     if (configuredRedirectUri) return configuredRedirectUri;
-    if (typeof window !== 'undefined' && window.location?.origin) return `${window.location.origin}/auth/spotify-callback`;
-    return '/auth/spotify-callback';
+    if (typeof window !== 'undefined' && window.location?.origin) return `${window.location.origin}/oauth2/callback`;
+    return '/oauth2/callback';
   }
 
   isConnected(): boolean {

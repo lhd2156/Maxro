@@ -539,9 +539,10 @@ export class SettingsComponent implements OnInit {
         this.user = user;
         this.syncPasswordRequirements();
         if (user) {
+          const { firstName, lastName } = this.deriveNameParts(user);
           this.profileForm.patchValue({
-            firstName: user.firstName ?? '',
-            lastName: user.lastName ?? '',
+            firstName,
+            lastName,
             bodyWeightLbs: user.bodyWeightLbs,
             heightInches: user.heightInches,
             fitnessGoal: user.fitnessGoal,
@@ -610,8 +611,17 @@ export class SettingsComponent implements OnInit {
       return;
     }
 
+    const values = this.profileForm.getRawValue();
+    const profilePayload = {
+      firstName: this.normalizeOptionalName(values.firstName),
+      lastName: this.normalizeOptionalName(values.lastName),
+      bodyWeightLbs: this.toNullableNumber(values.bodyWeightLbs),
+      heightInches: this.toNullableNumber(values.heightInches),
+      fitnessGoal: this.normalizeOptionalText(values.fitnessGoal),
+    };
+
     this.savingProfile = true;
-    this.userService.updateProfile(this.profileForm.value)
+    this.userService.updateProfile(profilePayload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
@@ -619,9 +629,9 @@ export class SettingsComponent implements OnInit {
           this.profileForm.markAsPristine();
           this.snackBar.open('Profile updated', 'Close', { duration: 3000 });
         },
-        error: () => {
+        error: (error) => {
           this.savingProfile = false;
-          this.snackBar.open('Failed to update profile', 'Close', { duration: 3000 });
+          this.snackBar.open(error?.message || 'Failed to update profile', 'Close', { duration: 3000 });
         },
       });
   }
@@ -721,6 +731,53 @@ export class SettingsComponent implements OnInit {
       return null;
     }
     return newPassword === confirmPassword ? null : { passwordMismatch: true };
+  }
+
+  private deriveNameParts(user: UserProfile): { firstName: string; lastName: string } {
+    const firstName = this.normalizeOptionalName(user.firstName) ?? '';
+    const lastName = this.normalizeOptionalName(user.lastName) ?? '';
+    if (firstName || lastName) {
+      return { firstName, lastName };
+    }
+
+    const displayName = this.normalizeOptionalText(user.displayName);
+    if (!displayName) {
+      return { firstName: '', lastName: '' };
+    }
+
+    const parts = displayName.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) {
+      return { firstName: '', lastName: '' };
+    }
+    if (parts.length === 1) {
+      return { firstName: parts[0], lastName: '' };
+    }
+
+    return {
+      firstName: parts[0],
+      lastName: parts.slice(1).join(' '),
+    };
+  }
+
+  private normalizeOptionalName(value: unknown): string | undefined {
+    const normalized = this.normalizeOptionalText(value);
+    return normalized ? normalized : undefined;
+  }
+
+  private normalizeOptionalText(value: unknown): string | undefined {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  private toNullableNumber(value: unknown): number | undefined {
+    if (value === null || value === undefined || value === '') {
+      return undefined;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
   }
 
   private toInteger(value: unknown): number {
