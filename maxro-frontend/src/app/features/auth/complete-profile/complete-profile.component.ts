@@ -42,7 +42,7 @@ import { UserService } from '../../../core/services/user.service';
           <form [formGroup]="form" (ngSubmit)="onSubmit()">
             <mat-form-field appearance="outline" [class.field-error]="isFieldInvalid('dateOfBirth')">
               <mat-label>Date of Birth</mat-label>
-              <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth" [max]="maxDate" placeholder="MM/DD/YYYY" autocomplete="bday">
+              <input matInput [matDatepicker]="dobPicker" formControlName="dateOfBirth" [max]="maxDate" placeholder="MM/DD/YYYY" autocomplete="bday" (input)="onDobInput($event)">
               <mat-datepicker-toggle matSuffix [for]="dobPicker"><mat-icon svgIcon="mx-calendar"></mat-icon></mat-datepicker-toggle>
               <mat-datepicker #dobPicker startView="multi-year" [startAt]="startDate"></mat-datepicker>
               @if (isFieldInvalid('dateOfBirth')) {
@@ -214,6 +214,51 @@ export class CompleteProfileComponent {
           this.snackBar.open('Failed to save profile', 'Close', { duration: 3000 });
         },
       });
+  }
+
+  onDobInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const normalized = this.normalizeCompactDateInput(input.value);
+    if (!normalized) {
+      return;
+    }
+
+    const date = this.parseUsDate(normalized);
+    if (date) {
+      this.form.controls['dateOfBirth'].setValue(date);
+      input.value = normalized;
+      this.form.controls['dateOfBirth'].markAsDirty();
+      this.form.controls['dateOfBirth'].updateValueAndValidity();
+    }
+  }
+
+  private normalizeCompactDateInput(raw: string): string | null {
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length !== 8) {
+      return null;
+    }
+
+    const month = digits.slice(0, 2);
+    const day = digits.slice(2, 4);
+    const year = digits.slice(4, 8);
+    return `${month}/${day}/${year}`;
+  }
+
+  private parseUsDate(value: string): Date | null {
+    const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!match) {
+      return null;
+    }
+
+    const month = Number(match[1]);
+    const day = Number(match[2]);
+    const year = Number(match[3]);
+    const parsed = new Date(year, month - 1, day);
+    const isValid = parsed.getFullYear() === year
+      && parsed.getMonth() === month - 1
+      && parsed.getDate() === day;
+
+    return isValid ? parsed : null;
   }
 }
 

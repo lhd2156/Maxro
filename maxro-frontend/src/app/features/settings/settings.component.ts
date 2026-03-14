@@ -520,11 +520,11 @@ export class SettingsComponent implements OnInit {
     });
 
     this.nutritionForm = this.fb.group({
-      dailyCalorieTarget: [2000],
-      dailyProteinTarget: [150],
-      dailyCarbTarget: [250],
-      dailyFatTarget: [65],
-      dailyWaterGoalOz: [64],
+      dailyCalorieTarget: [2000, [Validators.required, Validators.min(500), Validators.max(10000)]],
+      dailyProteinTarget: [150, [Validators.required, Validators.min(10), Validators.max(500)]],
+      dailyCarbTarget: [250, [Validators.required, Validators.min(10), Validators.max(1000)]],
+      dailyFatTarget: [65, [Validators.required, Validators.min(10), Validators.max(500)]],
+      dailyWaterGoalOz: [64, [Validators.required, Validators.min(8), Validators.max(300)]],
     });
 
     this.passwordForm = this.fb.group({
@@ -658,8 +658,22 @@ export class SettingsComponent implements OnInit {
   }
 
   saveNutrition(): void {
+    if (this.nutritionForm.invalid) {
+      this.nutritionForm.markAllAsTouched();
+      return;
+    }
+
+    const values = this.nutritionForm.getRawValue();
+    const nutritionPayload = {
+      dailyCalorieTarget: this.toInteger(values.dailyCalorieTarget),
+      dailyProteinTarget: this.toInteger(values.dailyProteinTarget),
+      dailyCarbTarget: this.toInteger(values.dailyCarbTarget),
+      dailyFatTarget: this.toInteger(values.dailyFatTarget),
+      dailyWaterGoalOz: this.toNumber(values.dailyWaterGoalOz),
+    };
+
     this.savingNutrition = true;
-    this.userService.updateProfile(this.nutritionForm.value)
+    this.userService.updateProfile(nutritionPayload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
@@ -667,9 +681,9 @@ export class SettingsComponent implements OnInit {
           this.nutritionForm.markAsPristine();
           this.snackBar.open('Nutrition targets updated', 'Close', { duration: 3000 });
         },
-        error: () => {
+        error: (error) => {
           this.savingNutrition = false;
-          this.snackBar.open('Failed to update targets', 'Close', { duration: 3000 });
+          this.snackBar.open(error?.message || 'Failed to update targets', 'Close', { duration: 3000 });
         },
       });
   }
@@ -707,5 +721,14 @@ export class SettingsComponent implements OnInit {
       return null;
     }
     return newPassword === confirmPassword ? null : { passwordMismatch: true };
+  }
+
+  private toInteger(value: unknown): number {
+    return Math.round(this.toNumber(value));
+  }
+
+  private toNumber(value: unknown): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 }
