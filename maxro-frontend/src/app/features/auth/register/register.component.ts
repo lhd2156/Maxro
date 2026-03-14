@@ -58,9 +58,7 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
                   <mat-label>First Name</mat-label>
                   <input matInput formControlName="firstName" autocomplete="given-name">
                 </mat-form-field>
-                @if (fieldErrorMessage('firstName')) {
-                  <div class="field-note error">{{ fieldErrorMessage('firstName') }}</div>
-                }
+                <div class="field-note error" [class.visible]="!!fieldErrorMessage('firstName')">{{ fieldErrorMessage('firstName') || ' ' }}</div>
               </div>
 
               <div class="field-stack">
@@ -68,9 +66,7 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
                   <mat-label>Last Name</mat-label>
                   <input matInput formControlName="lastName" autocomplete="family-name">
                 </mat-form-field>
-                @if (fieldErrorMessage('lastName')) {
-                  <div class="field-note error">{{ fieldErrorMessage('lastName') }}</div>
-                }
+                <div class="field-note error" [class.visible]="!!fieldErrorMessage('lastName')">{{ fieldErrorMessage('lastName') || ' ' }}</div>
               </div>
             </div>
 
@@ -79,9 +75,7 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
                 <mat-label>Email</mat-label>
                 <input matInput formControlName="email" type="text" inputmode="email" autocomplete="email">
               </mat-form-field>
-              @if (fieldErrorMessage('email')) {
-                <div class="field-note error">{{ fieldErrorMessage('email') }}</div>
-              }
+              <div class="field-note error" [class.visible]="!!fieldErrorMessage('email')">{{ fieldErrorMessage('email') || ' ' }}</div>
             </div>
 
             <div class="password-row">
@@ -94,9 +88,7 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
                       <mat-icon [svgIcon]="hidePassword ? 'mx-eye-off' : 'mx-eye'"></mat-icon>
                     </button>
                   </mat-form-field>
-                  @if (fieldErrorMessage('password')) {
-                    <div class="field-note error">{{ fieldErrorMessage('password') }}</div>
-                  }
+                  <div class="field-note error" [class.visible]="!!fieldErrorMessage('password')">{{ fieldErrorMessage('password') || ' ' }}</div>
                 </div>
 
                 <div class="field-stack">
@@ -107,9 +99,7 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
                       <mat-icon [svgIcon]="hideConfirmPassword ? 'mx-eye-off' : 'mx-eye'"></mat-icon>
                     </button>
                   </mat-form-field>
-                  @if (fieldErrorMessage('confirmPassword')) {
-                    <div class="field-note error">{{ fieldErrorMessage('confirmPassword') }}</div>
-                  }
+                  <div class="field-note error" [class.visible]="!!fieldErrorMessage('confirmPassword')">{{ fieldErrorMessage('confirmPassword') || ' ' }}</div>
                 </div>
               </div>
 
@@ -138,9 +128,7 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
                   <mat-datepicker-toggle matSuffix [for]="dobPicker"><mat-icon svgIcon="mx-calendar"></mat-icon></mat-datepicker-toggle>
                   <mat-datepicker #dobPicker startView="multi-year" [startAt]="startDate"></mat-datepicker>
                 </mat-form-field>
-                @if (fieldErrorMessage('dateOfBirth')) {
-                  <div class="field-note error">{{ fieldErrorMessage('dateOfBirth') }}</div>
-                }
+                <div class="field-note error" [class.visible]="!!fieldErrorMessage('dateOfBirth')">{{ fieldErrorMessage('dateOfBirth') || ' ' }}</div>
               </div>
 
               <div class="field-stack">
@@ -153,9 +141,7 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
                     <mat-option value="Prefer not to say">Prefer not to say</mat-option>
                   </mat-select>
                 </mat-form-field>
-                @if (fieldErrorMessage('gender')) {
-                  <div class="field-note error">{{ fieldErrorMessage('gender') }}</div>
-                }
+                <div class="field-note error" [class.visible]="!!fieldErrorMessage('gender')">{{ fieldErrorMessage('gender') || ' ' }}</div>
               </div>
             </div>
 
