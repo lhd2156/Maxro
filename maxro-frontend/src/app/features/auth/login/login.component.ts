@@ -187,10 +187,18 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
       padding-right: 4px;
     }
     :host ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+      display: none !important;
       min-height: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
-    :host ::ng-deep .mat-mdc-form-field:not(.field-error) .mat-mdc-form-field-subscript-wrapper {
-      display: none;
+    :host ::ng-deep .mat-mdc-form-field .mat-mdc-form-field-error,
+    :host ::ng-deep .mat-mdc-form-field .mat-error,
+    :host ::ng-deep .mat-mdc-form-field-error,
+    :host ::ng-deep [class*="form-field-error"] {
+      display: none !important;
     }
     :host ::ng-deep .mat-mdc-form-field.field-error .mdc-notched-outline .mdc-notched-outline__leading,
     :host ::ng-deep .mat-mdc-form-field.field-error .mdc-notched-outline .mdc-notched-outline__notch,
@@ -360,7 +368,7 @@ export class LoginComponent implements AfterViewInit {
 
   onCustomGoogleClick(): void {
     if (!this.publicConfig.googleClientId) {
-      this.snackBar.open('Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID on the backend so MAXRO can load it.', 'Close', { duration: 5000 });
+      this.snackBar.open('Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID on the backend so Maxro can load it.', 'Close', { duration: 5000 });
       return;
     }
     this.waitForGoogleAndInit();

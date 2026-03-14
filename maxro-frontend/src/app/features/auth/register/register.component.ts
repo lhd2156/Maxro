@@ -731,7 +731,7 @@ export class RegisterComponent implements AfterViewInit {
       }, 150);
       return;
     }
-    this.snackBar.open('Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID on the backend so MAXRO can load it.', 'Close', { duration: 5000 });
+    this.snackBar.open('Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID on the backend so Maxro can load it.', 'Close', { duration: 5000 });
   }
 
   private clickGoogleButton(containerId: string): boolean {

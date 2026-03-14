@@ -326,14 +326,14 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
             @if (aiMinimized) {
               <button class="ai-minimized-btn" (click)="aiMinimized = false">
                 <mat-icon svgIcon="mx-ai" class="ai-icon"></mat-icon>
-                <span>{{ aiChatOpen ? 'Ask MAXRO' : 'AI Suggestion' }}</span>
+                <span>{{ aiChatOpen ? 'Ask Maxro' : 'AI Suggestion' }}</span>
                 <mat-icon svgIcon="mx-chevron-left" class="expand-icon"></mat-icon>
               </button>
             }
             <div class="ai-toast-body" [class.hidden]="aiMinimized">
               <div class="ai-toast-header">
                 <mat-icon svgIcon="mx-ai" class="ai-icon"></mat-icon>
-                <span class="ai-title">{{ aiChatOpen ? 'Ask MAXRO' : 'AI Suggestion' }}</span>
+                <span class="ai-title">{{ aiChatOpen ? 'Ask Maxro' : 'AI Suggestion' }}</span>
                 <button class="ai-close-btn" (click)="aiMinimized = true" aria-label="Minimize" title="Minimize"><mat-icon svgIcon="mx-minus"></mat-icon></button>
                 <button class="ai-close-btn" (click)="dismissAiToast()" aria-label="Dismiss" title="Close"><mat-icon svgIcon="mx-x"></mat-icon></button>
               </div>
@@ -568,7 +568,7 @@ export class DashboardComponent implements OnInit {
   spotifyBusy = false;
   aiMinimized = false;
   aiChatOpen = false;
-  readonly aiFallbackSuggestion = 'Ask me about workouts, nutrition, PRs, recovery, or where things live in MAXRO.';
+  readonly aiFallbackSuggestion = 'Ask me about workouts, nutrition, PRs, recovery, or where things live in Maxro.';
   private aiHovered = false;
   private aiAutoTimer: any = null;
   private aiShowTimer: any = null;
