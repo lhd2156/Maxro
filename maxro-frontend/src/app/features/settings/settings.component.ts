@@ -80,10 +80,22 @@ import { UserProfile } from '../../core/models/user.model';
               <mat-form-field appearance="outline">
                 <mat-label>Weight (lbs)</mat-label>
                 <input matInput formControlName="bodyWeightLbs" type="number">
+                @if (profileForm.controls['bodyWeightLbs'].touched && profileForm.controls['bodyWeightLbs'].hasError('min')) {
+                  <mat-error>Body weight must be at least 50 lbs</mat-error>
+                }
+                @if (profileForm.controls['bodyWeightLbs'].touched && profileForm.controls['bodyWeightLbs'].hasError('max')) {
+                  <mat-error>Body weight must be at most 1000 lbs</mat-error>
+                }
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>Height (inches)</mat-label>
                 <input matInput formControlName="heightInches" type="number">
+                @if (profileForm.controls['heightInches'].touched && profileForm.controls['heightInches'].hasError('min')) {
+                  <mat-error>Height must be at least 36 inches</mat-error>
+                }
+                @if (profileForm.controls['heightInches'].touched && profileForm.controls['heightInches'].hasError('max')) {
+                  <mat-error>Height must be at most 108 inches</mat-error>
+                }
               </mat-form-field>
             </div>
             <mat-form-field appearance="outline">
@@ -115,24 +127,54 @@ import { UserProfile } from '../../core/models/user.model';
             <mat-form-field appearance="outline">
               <mat-label>Daily Calories (kcal)</mat-label>
               <input matInput formControlName="dailyCalorieTarget" type="number">
+              @if (nutritionForm.controls['dailyCalorieTarget'].touched && nutritionForm.controls['dailyCalorieTarget'].hasError('min')) {
+                <mat-error>Daily calories must be at least 1 kcal</mat-error>
+              }
+              @if (nutritionForm.controls['dailyCalorieTarget'].touched && nutritionForm.controls['dailyCalorieTarget'].hasError('max')) {
+                <mat-error>Daily calories must be at most 10000 kcal</mat-error>
+              }
             </mat-form-field>
             <div class="form-row">
               <mat-form-field appearance="outline">
                 <mat-label>Protein (g)</mat-label>
                 <input matInput formControlName="dailyProteinTarget" type="number">
+                @if (nutritionForm.controls['dailyProteinTarget'].touched && nutritionForm.controls['dailyProteinTarget'].hasError('min')) {
+                  <mat-error>Protein cannot be negative</mat-error>
+                }
+                @if (nutritionForm.controls['dailyProteinTarget'].touched && nutritionForm.controls['dailyProteinTarget'].hasError('max')) {
+                  <mat-error>Protein must be at most 500 g</mat-error>
+                }
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>Carbs (g)</mat-label>
                 <input matInput formControlName="dailyCarbTarget" type="number">
+                @if (nutritionForm.controls['dailyCarbTarget'].touched && nutritionForm.controls['dailyCarbTarget'].hasError('min')) {
+                  <mat-error>Carbs cannot be negative</mat-error>
+                }
+                @if (nutritionForm.controls['dailyCarbTarget'].touched && nutritionForm.controls['dailyCarbTarget'].hasError('max')) {
+                  <mat-error>Carbs must be at most 1000 g</mat-error>
+                }
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>Fat (g)</mat-label>
                 <input matInput formControlName="dailyFatTarget" type="number">
+                @if (nutritionForm.controls['dailyFatTarget'].touched && nutritionForm.controls['dailyFatTarget'].hasError('min')) {
+                  <mat-error>Fat cannot be negative</mat-error>
+                }
+                @if (nutritionForm.controls['dailyFatTarget'].touched && nutritionForm.controls['dailyFatTarget'].hasError('max')) {
+                  <mat-error>Fat must be at most 500 g</mat-error>
+                }
               </mat-form-field>
             </div>
             <mat-form-field appearance="outline">
               <mat-label>Daily Water Goal (oz)</mat-label>
               <input matInput formControlName="dailyWaterGoalOz" type="number">
+              @if (nutritionForm.controls['dailyWaterGoalOz'].touched && nutritionForm.controls['dailyWaterGoalOz'].hasError('min')) {
+                <mat-error>Water goal cannot be negative</mat-error>
+              }
+              @if (nutritionForm.controls['dailyWaterGoalOz'].touched && nutritionForm.controls['dailyWaterGoalOz'].hasError('max')) {
+                <mat-error>Water goal must be at most 300 oz</mat-error>
+              }
             </mat-form-field>
             <button mat-flat-button class="save-btn" type="submit" [disabled]="savingNutrition || nutritionForm.pristine">
               {{ savingNutrition ? 'Saving...' : 'Save Targets' }}
@@ -514,17 +556,17 @@ export class SettingsComponent implements OnInit {
     this.profileForm = this.fb.group({
       firstName: ['', [Validators.pattern(this.namePattern)]],
       lastName: ['', [Validators.pattern(this.namePattern)]],
-      bodyWeightLbs: [null],
-      heightInches: [null],
+      bodyWeightLbs: [null, [Validators.min(50), Validators.max(1000)]],
+      heightInches: [null, [Validators.min(36), Validators.max(108)]],
       fitnessGoal: [''],
     });
 
     this.nutritionForm = this.fb.group({
-      dailyCalorieTarget: [2000, [Validators.required, Validators.min(500), Validators.max(10000)]],
-      dailyProteinTarget: [150, [Validators.required, Validators.min(10), Validators.max(500)]],
-      dailyCarbTarget: [250, [Validators.required, Validators.min(10), Validators.max(1000)]],
-      dailyFatTarget: [65, [Validators.required, Validators.min(10), Validators.max(500)]],
-      dailyWaterGoalOz: [64, [Validators.required, Validators.min(8), Validators.max(300)]],
+      dailyCalorieTarget: [2000, [Validators.required, Validators.min(1), Validators.max(10000)]],
+      dailyProteinTarget: [150, [Validators.required, Validators.min(0), Validators.max(500)]],
+      dailyCarbTarget: [250, [Validators.required, Validators.min(0), Validators.max(1000)]],
+      dailyFatTarget: [65, [Validators.required, Validators.min(0), Validators.max(500)]],
+      dailyWaterGoalOz: [64, [Validators.required, Validators.min(0), Validators.max(300)]],
     });
 
     this.passwordForm = this.fb.group({
@@ -608,6 +650,7 @@ export class SettingsComponent implements OnInit {
   saveProfile(): void {
     if (this.profileForm.invalid) {
       this.profileForm.markAllAsTouched();
+      this.snackBar.open('Please fix the highlighted profile fields.', 'Close', { duration: 3000 });
       return;
     }
 
@@ -631,7 +674,7 @@ export class SettingsComponent implements OnInit {
         },
         error: (error) => {
           this.savingProfile = false;
-          this.snackBar.open(error?.message || 'Failed to update profile', 'Close', { duration: 3000 });
+          this.snackBar.open(this.extractFriendlyMessage(error, 'Failed to update profile'), 'Close', { duration: 3500 });
         },
       });
   }
@@ -670,6 +713,7 @@ export class SettingsComponent implements OnInit {
   saveNutrition(): void {
     if (this.nutritionForm.invalid) {
       this.nutritionForm.markAllAsTouched();
+      this.snackBar.open('Please fix the highlighted nutrition fields.', 'Close', { duration: 3000 });
       return;
     }
 
@@ -693,7 +737,7 @@ export class SettingsComponent implements OnInit {
         },
         error: (error) => {
           this.savingNutrition = false;
-          this.snackBar.open(error?.message || 'Failed to update targets', 'Close', { duration: 3000 });
+          this.snackBar.open(this.extractFriendlyMessage(error, 'Failed to update targets'), 'Close', { duration: 3500 });
         },
       });
   }
@@ -787,5 +831,26 @@ export class SettingsComponent implements OnInit {
   private toNumber(value: unknown): number {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private extractFriendlyMessage(error: any, fallback: string): string {
+    const fromGraphQl = error?.graphQLErrors?.map((e: any) => e?.message).filter(Boolean).join('; ');
+    const raw = fromGraphQl || error?.message || fallback;
+    return this.stripGraphQlFieldPrefixes(String(raw), fallback);
+  }
+
+  private stripGraphQlFieldPrefixes(message: string, fallback: string): string {
+    if (!message) {
+      return fallback;
+    }
+
+    const cleaned = message
+      .split(';')
+      .map(part => part.trim())
+      .filter(Boolean)
+      .map(part => part.replace(/^[A-Za-z0-9_.]+:\s*/, ''))
+      .join('; ');
+
+    return cleaned || fallback;
   }
 }

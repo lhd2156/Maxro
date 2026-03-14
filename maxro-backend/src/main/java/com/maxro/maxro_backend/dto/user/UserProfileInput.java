@@ -27,7 +27,7 @@ public record UserProfileInput(
 
         String fitnessGoal,
 
-        @Min(value = 500, message = "Daily calorie target must be at least 500")
+        @Min(value = 1, message = "Daily calorie target must be at least 1")
         @Max(value = 10000, message = "Daily calorie target must be at most 10000")
         Integer dailyCalorieTarget,
 
