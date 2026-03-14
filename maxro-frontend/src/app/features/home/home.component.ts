@@ -26,8 +26,7 @@ import { MatIconModule } from '@angular/material/icon';
 
       <section class="hero fade-in">
         <h1 class="hero-title">
-          Track. Lift.<br/>
-          <span class="accent">Fuel. Repeat.</span>
+          MAXRO
         </h1>
         <p class="hero-sub">
           The all-in-one fitness platform for logging workouts, crushing PRs,
@@ -51,7 +50,7 @@ import { MatIconModule } from '@angular/material/icon';
 
       <footer class="home-footer">
         <span class="footer-brand">MAXRO</span>
-        <span class="footer-copy">&copy; 2026 Maxro. Built for lifters.</span>
+        <span class="footer-copy">&copy; 2026 MAXRO. Built for lifters.</span>
       </footer>
     </div>
   `,

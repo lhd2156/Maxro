@@ -69,24 +69,13 @@ Google and Spotify client IDs are no longer compiled into the frontend bundle.
 - The frontend loads them at startup from `GET /api/public-config`
 - Spotify client secret stays backend-only as `SPOTIFY_CLIENT_SECRET`
 
-## Environment Variables
+## Configuration
 
-| Variable | Description |
-|----------|-------------|
-| `MONGODB_URI` | MongoDB connection string |
-| `JWT_SECRET` | JWT signing secret, required for backend startup |
-| `JWT_ACCESS_EXPIRATION` | Access token TTL in ms |
-| `JWT_REFRESH_EXPIRATION` | Refresh token TTL in ms |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `SPOTIFY_CLIENT_ID` | Spotify OAuth client ID |
-| `SPOTIFY_CLIENT_SECRET` | Spotify OAuth client secret |
-| `USDA_FOODDATA_API_KEY` | USDA FoodData Central key |
-| `FATSECRET_CLIENT_ID` | FatSecret client ID |
-| `FATSECRET_CLIENT_SECRET` | FatSecret client secret |
-| `GOOGLE_AI_API_KEY` | Gemini API key for in-app AI help |
-| `GOOGLE_AI_MODEL` | Gemini model override |
-| `CORS_ORIGINS` | Allowed origins for backend CORS |
-| `SERVER_PORT` | Backend server port |
+Configuration is loaded from environment variables and local `.env` files.
+
+- Use `.env.example` as the template for local development.
+- Keep secret values out of source control and CI logs.
+- For setup details, see [docs/SETUP.md](docs/SETUP.md).
 
 ## Launch Checklist
 

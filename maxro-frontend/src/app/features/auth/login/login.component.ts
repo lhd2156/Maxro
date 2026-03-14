@@ -37,7 +37,6 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
         </div>
         <a routerLink="/" class="auth-brand-block" aria-label="Go to home page">
           <span class="brand-text">MAXRO</span>
-          <span class="brand-tagline">Track. Lift. Fuel. Repeat.</span>
         </a>
         <mat-card class="auth-card slide-up">
           <div class="auth-card-header">
@@ -361,7 +360,7 @@ export class LoginComponent implements AfterViewInit {
 
   onCustomGoogleClick(): void {
     if (!this.publicConfig.googleClientId) {
-      this.snackBar.open('Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID on the backend so Maxro can load it.', 'Close', { duration: 5000 });
+      this.snackBar.open('Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID on the backend so MAXRO can load it.', 'Close', { duration: 5000 });
       return;
     }
     this.waitForGoogleAndInit();

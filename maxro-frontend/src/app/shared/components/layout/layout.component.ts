@@ -22,11 +22,11 @@ import { UserProfile } from '../../../core/models/user.model';
         <a class="brand" routerLink="/">
           @if (sidenavWidth > 120) {
             <div class="brand-full">
-              <img src="favicon.svg" alt="Maxro" class="brand-logo" />
+              <img src="favicon.svg" alt="MAXRO" class="brand-logo" />
               <span class="brand-text">MAXRO</span>
             </div>
           } @else {
-            <img src="favicon.svg" alt="Maxro" class="brand-logo-sm" />
+            <img src="favicon.svg" alt="MAXRO" class="brand-logo-sm" />
           }
         </a>
         <div class="nav-items">

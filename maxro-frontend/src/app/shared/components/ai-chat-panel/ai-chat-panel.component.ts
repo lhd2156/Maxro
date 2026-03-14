@@ -55,7 +55,7 @@ interface SpeechRecognitionWindow extends Window {
   imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule],
   template: `
     <div class="chat-shell">
-      <p class="chat-scope">Fitness, recovery, PR progress, nutrition, and Maxro help only.</p>
+      <p class="chat-scope">Fitness, recovery, PR progress, nutrition, and MAXRO help only.</p>
 
       <div class="chat-history" #scrollViewport>
         @for (message of messages; track message.id) {
@@ -64,7 +64,7 @@ interface SpeechRecognitionWindow extends Window {
               <mat-icon [svgIcon]="message.role === 'assistant' ? 'mx-ai' : 'mx-user'"></mat-icon>
             </div>
             <div class="chat-bubble" [class.user]="message.role === 'user'" [class.error]="message.error">
-              <div class="chat-meta">{{ message.role === 'assistant' ? 'Maxro AI' : 'You' }}</div>
+              <div class="chat-meta">{{ message.role === 'assistant' ? 'MAXRO AI' : 'You' }}</div>
               <p class="chat-text" [innerHTML]="formatMessageText(message.text)"></p>
               @if (message.attachments.length > 0) {
                 <div class="chat-image-grid">
@@ -115,7 +115,7 @@ interface SpeechRecognitionWindow extends Window {
               <mat-icon svgIcon="mx-ai"></mat-icon>
             </div>
             <div class="chat-bubble typing">
-              <div class="chat-meta">Maxro AI</div>
+              <div class="chat-meta">MAXRO AI</div>
               <p class="chat-text">Thinking...</p>
             </div>
           </div>
@@ -139,7 +139,7 @@ interface SpeechRecognitionWindow extends Window {
         </div>
 
         <label class="chat-input-wrap">
-          <span class="chat-input-label">Ask about workouts, PRs, food, recovery, or where things are in Maxro.</span>
+          <span class="chat-input-label">Ask about workouts, PRs, food, recovery, or where things are in MAXRO.</span>
           <textarea
             [(ngModel)]="draft"
             class="chat-input"
@@ -795,7 +795,7 @@ export class AiChatPanelComponent implements OnChanges {
     return {
       id: this.nextMessageId(),
       role: 'assistant',
-      text: this.initialPrompt?.trim() || 'Ask me about workouts, PRs, nutrition, recovery, or where something lives in Maxro.',
+      text: this.initialPrompt?.trim() || 'Ask me about workouts, PRs, nutrition, recovery, or where something lives in MAXRO.',
       attachments: [],
       seed: true,
     };

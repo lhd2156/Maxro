@@ -19,10 +19,10 @@ import { MatIconModule } from '@angular/material/icon';
         <p class="updated">Last updated: March 8, 2026</p>
 
         <h2>1. Acceptance of Terms</h2>
-        <p>By accessing or using the Maxro application ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the Service.</p>
+        <p>By accessing or using the MAXRO application ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the Service.</p>
 
         <h2>2. Description of Service</h2>
-        <p>Maxro is a fitness and nutrition tracking platform that allows users to log workouts, track personal records, monitor nutrition intake, and track water consumption. The Service is provided "as is" and "as available."</p>
+        <p>MAXRO is a fitness and nutrition tracking platform that allows users to log workouts, track personal records, monitor nutrition intake, and track water consumption. The Service is provided "as is" and "as available."</p>
 
         <h2>3. Account Registration</h2>
         <p>To use the Service, you must create an account. You agree to provide accurate, current, and complete information during registration. You are responsible for safeguarding your password and for all activities that occur under your account.</p>
@@ -38,10 +38,10 @@ import { MatIconModule } from '@angular/material/icon';
         </ul>
 
         <h2>5. Health Disclaimer</h2>
-        <p>Maxro is not a medical device and does not provide medical advice. The information provided through the Service, including AI-generated suggestions, is for informational and educational purposes only. Always consult a qualified healthcare professional before starting any exercise or nutrition program.</p>
+        <p>MAXRO is not a medical device and does not provide medical advice. The information provided through the Service, including AI-generated suggestions, is for informational and educational purposes only. Always consult a qualified healthcare professional before starting any exercise or nutrition program.</p>
 
         <h2>6. Intellectual Property</h2>
-        <p>All content, features, and functionality of the Service are owned by Maxro and are protected by copyright, trademark, and other intellectual property laws. You may not copy, modify, or distribute any part of the Service without prior written consent.</p>
+        <p>All content, features, and functionality of the Service are owned by MAXRO and are protected by copyright, trademark, and other intellectual property laws. You may not copy, modify, or distribute any part of the Service without prior written consent.</p>
 
         <h2>7. Data and Privacy</h2>
         <p>Your use of the Service is also governed by our <a routerLink="/privacy" class="link">Privacy Policy</a>. By using the Service, you consent to the collection and use of your data as described therein.</p>
@@ -50,7 +50,7 @@ import { MatIconModule } from '@angular/material/icon';
         <p>We reserve the right to suspend or terminate your account at any time for any reason, including violation of these Terms. Upon termination, your right to use the Service ceases immediately.</p>
 
         <h2>9. Limitation of Liability</h2>
-        <p>To the fullest extent permitted by law, Maxro shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service.</p>
+        <p>To the fullest extent permitted by law, MAXRO shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service.</p>
 
         <h2>10. Changes to Terms</h2>
         <p>We may modify these Terms at any time. Continued use of the Service after changes constitutes acceptance of the modified Terms.</p>
