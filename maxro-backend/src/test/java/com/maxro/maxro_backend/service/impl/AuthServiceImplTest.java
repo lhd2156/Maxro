@@ -96,7 +96,7 @@ class AuthServiceImplTest {
 
     @Test
     void register_throwsOnDuplicateEmailIgnoringCaseAndWhitespace() {
-        var input = new RegisterInput(" Taken@Example.com ", "pass", "First", "Last", null, null, true, null, null, null, null, null);
+        var input = new RegisterInput(" Taken@Example.com ", "pass", "First", "Last", "2000-01-01", "Male", true, null, null, null, null, null);
         when(userRepository.existsByEmailIgnoreCase("taken@example.com")).thenReturn(true);
 
         assertThrows(DuplicateResourceException.class, () -> authService.register(input));

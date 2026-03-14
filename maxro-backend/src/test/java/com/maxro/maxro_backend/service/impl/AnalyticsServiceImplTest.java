@@ -135,7 +135,7 @@ class AnalyticsServiceImplTest {
     void getDashboardSummary_assemblesAllDataSources() {
         LocalDate date = LocalDate.now();
         String dateStr = date.toString();
-        when(workoutRepository.findByUserIdAndDateFlexible(eq("u1"), eq(dateStr), eq(date))).thenReturn(Optional.empty());
+        when(workoutRepository.findAllByUserIdAndDateFlexible(eq("u1"), eq(dateStr), eq(date))).thenReturn(List.of());
         when(nutritionLogRepository.findByUserIdAndDateFlexible(eq("u1"), eq(dateStr), eq(date))).thenReturn(Optional.empty());
         when(waterIntakeRepository.findByUserIdAndDateFlexible(eq("u1"), eq(dateStr), eq(date))).thenReturn(Optional.empty());
         when(workoutRepository.findAllDatesByUserId("u1")).thenReturn(List.of());

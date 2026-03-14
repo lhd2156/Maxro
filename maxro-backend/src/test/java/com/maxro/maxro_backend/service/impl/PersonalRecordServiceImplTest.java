@@ -29,7 +29,7 @@ class PersonalRecordServiceImplTest {
     void checkAndUpdatePRs_createsNewPRWhenNoneExists() {
         Exercise ex = buildExercise("Bench Press", 225, 5);
         when(personalRecordRepository
-                .findTopByUserIdAndExerciseNameOrderByOneRepMaxLbsDesc("u1", "Bench Press"))
+            .findTopByUserIdAndExerciseNameIgnoreCaseOrderByOneRepMaxLbsDesc("u1", "Bench Press"))
                 .thenReturn(Optional.empty());
         when(personalRecordRepository.save(any(PersonalRecord.class)))
                 .thenAnswer(inv -> {
@@ -52,7 +52,7 @@ class PersonalRecordServiceImplTest {
         PersonalRecord existing = new PersonalRecord();
         existing.setOneRepMaxLbs(300.0);
         when(personalRecordRepository
-                .findTopByUserIdAndExerciseNameOrderByOneRepMaxLbsDesc("u1", "Squat"))
+            .findTopByUserIdAndExerciseNameIgnoreCaseOrderByOneRepMaxLbsDesc("u1", "Squat"))
                 .thenReturn(Optional.of(existing));
         when(personalRecordRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -66,7 +66,7 @@ class PersonalRecordServiceImplTest {
     void checkAndUpdatePRs_createsBodyweightPrUsingRepCount() {
         Exercise ex = buildExercise("Push Up", 0, 25);
         when(personalRecordRepository
-                .findTopByUserIdAndExerciseNameOrderByOneRepMaxLbsDesc("u1", "Push Up"))
+            .findTopByUserIdAndExerciseNameIgnoreCaseOrderByOneRepMaxLbsDesc("u1", "Push Up"))
                 .thenReturn(Optional.empty());
         when(personalRecordRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -85,7 +85,7 @@ class PersonalRecordServiceImplTest {
         PersonalRecord existing = new PersonalRecord();
         existing.setOneRepMaxLbs(20.0);
         when(personalRecordRepository
-                .findTopByUserIdAndExerciseNameOrderByOneRepMaxLbsDesc("u1", "Push Up"))
+            .findTopByUserIdAndExerciseNameIgnoreCaseOrderByOneRepMaxLbsDesc("u1", "Push Up"))
                 .thenReturn(Optional.of(existing));
         when(personalRecordRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -102,7 +102,7 @@ class PersonalRecordServiceImplTest {
         PersonalRecord existing = new PersonalRecord();
         existing.setOneRepMaxLbs(999.0);
         when(personalRecordRepository
-                .findTopByUserIdAndExerciseNameOrderByOneRepMaxLbsDesc("u1", "Curl"))
+            .findTopByUserIdAndExerciseNameIgnoreCaseOrderByOneRepMaxLbsDesc("u1", "Curl"))
                 .thenReturn(Optional.of(existing));
 
         List<PersonalRecord> newPRs = prService.checkAndUpdatePRs("u1", "wk-1", LocalDate.now(), List.of(ex));
