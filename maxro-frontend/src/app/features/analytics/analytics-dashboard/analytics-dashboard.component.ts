@@ -384,6 +384,7 @@ import { WaterTrendPoint } from '../../../core/models/water.model';
     }
     .chart-container {
       min-height: 244px;
+      overflow: hidden;
     }
     .chart-tooltip-date { display: block; font-weight: 600; margin-bottom: 2px; }
     .chart-tooltip-value { display: block; font-size: 12px; color: var(--text-muted); }
@@ -611,8 +612,8 @@ export class AnalyticsDashboardComponent implements OnInit, OnDestroy, AfterView
     const w = el.clientWidth || el.offsetWidth || 0;
     if (w > 0) {
       this.pageWidth = w;
-      this.chartWidth = Math.max(320, Math.min(w - 48, 1040));
-      this.chartHalfWidth = Math.max(260, Math.min((w - 88) / 2, 520));
+      this.chartWidth = Math.max(220, Math.min(w - 96, 1040));
+      this.chartHalfWidth = Math.max(220, Math.min((w - 144) / 2, 520));
     }
     const contentHeight = el.clientHeight || contentEl?.clientHeight || el.parentElement?.clientHeight || 0;
     if (contentHeight > 0) {

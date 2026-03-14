@@ -363,7 +363,6 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
     .date-nav button { color: var(--text-muted); }
     .date-display { color: var(--text-muted); font-size: 13px; min-width: 120px; text-align: center; }
     .calendar-btn { color: var(--text-muted); }
-    .calendar-btn:hover { color: var(--accent); }
     .date-picker-input { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
     .action-btn { background: var(--accent) !important; color: #0d0d0d !important; font-weight: 600; border-radius: 10px; padding: 0 13px; height: 32px; }
     .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
@@ -488,12 +487,12 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
     .spotify-chip-secondary { background: rgba(255,255,255,0.04); }
     @keyframes slide-in-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
     .ai-toast { position: fixed; bottom: 24px; right: 24px; width: 340px; max-width: calc(100vw - 32px); background: var(--bg-surface); border: 1px solid rgba(200,241,53,0.2); border-radius: 16px; padding: 16px; z-index: 1000; animation: slide-in-up 0.4s ease-out; box-shadow: 0 8px 32px rgba(0,0,0,0.4); transition: opacity 0.5s ease, transform 0.5s ease, width 0.2s ease, height 0.2s ease; box-sizing: border-box; overflow: hidden; }
-    .ai-toast.chat-open { width: min(460px, calc(100vw - 32px)); height: min(72vh, 680px); max-height: calc(100vh - 32px); display: flex; flex-direction: column; padding: 14px; overflow: hidden; }
+    .ai-toast.chat-open { width: min(460px, calc(100vw - 32px)); height: min(86vh, 760px); max-height: calc(100vh - 16px); display: flex; flex-direction: column; padding: 14px; overflow: auto; }
     .ai-toast.fade-out { opacity: 0; transform: translateY(16px); }
     .ai-toast-body { display: flex; flex: 1; min-width: 0; min-height: 0; flex-direction: column; overflow: hidden; }
+    .ai-toast.chat-open .ai-toast-body { overflow: auto; }
     .ai-toast-body.hidden { display: none; }
     .ai-toast-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .ai-toast.chat-open .ai-toast-header { margin-bottom: 10px; }
     .ai-icon { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; }
     .ai-title { font-size: 13px; font-weight: 700; color: var(--accent); flex: 1; }
     .ai-close-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; color: var(--text-muted); border-radius: 50%; padding: 0; flex-shrink: 0; transition: background 0.15s, color 0.15s; }
@@ -507,7 +506,7 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
     .ai-minimized-btn { display: flex; align-items: center; gap: 6px; background: none; border: none; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; padding: 10px 14px; white-space: nowrap; }
     .ai-minimized-btn .expand-icon { width: 14px; height: 14px; transform: rotate(180deg); }
     .ai-minimized-btn:hover { background: rgba(200,241,53,0.04); border-radius: 24px; }
-    app-ai-chat-panel { flex: 1; min-width: 0; min-height: 0; width: 100%; display: flex; overflow: hidden; }
+    app-ai-chat-panel { flex: 1; min-width: 0; min-height: 0; width: 100%; display: flex; overflow: auto; }
     .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 24px; }
     .modal-panel.workout-modal { background: var(--bg-surface); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 24px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; }
     .error-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; text-align: center; padding: 48px 24px; }
@@ -520,9 +519,8 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
       .pie-legend { align-items: flex-start; }
     }
     @media (max-width: 1180px) {
-      :host { overflow-y: auto; }
+      :host { overflow: visible; height: auto; }
       .dashboard { padding-bottom: 12px; }
-      .page-header { align-items: stretch; }
       .quick-actions { width: 100%; display: flex; justify-content: flex-start; }
       .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .content-grid,
@@ -535,6 +533,7 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
       .quick-actions,
       .action-btn { width: 100%; }
       .date-display { min-width: 0; }
+      .modal-panel.workout-modal { padding: 14px; }
       .stats-grid { grid-template-columns: 1fr; }
       .spotify-status-btn { width: 100%; max-width: 220px; }
       .spotify-progress-row { grid-template-columns: auto minmax(0, 1fr); }

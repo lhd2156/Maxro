@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -18,7 +20,7 @@ import { UserProfile } from '../../../core/models/user.model';
   selector: 'app-water-tracker',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, MatCardModule, MatButtonModule, MatIconModule, MatSnackBarModule,
+    CommonModule, FormsModule, MatCardModule, MatButtonModule, MatNativeDateModule, MatDatepickerModule, MatIconModule, MatSnackBarModule,
     StatCardComponent, LoadingSpinnerComponent,
   ],
   template: `
@@ -29,6 +31,9 @@ import { UserProfile } from '../../../core/models/user.model';
           <button mat-icon-button (click)="prevDay()"><mat-icon svgIcon="mx-chevron-left"></mat-icon></button>
           <span class="current-date">{{ currentDate | date:'EEE, MMM d' }}</span>
           <button mat-icon-button (click)="nextDay()"><mat-icon svgIcon="mx-chevron-right"></mat-icon></button>
+          <button mat-icon-button class="calendar-btn" (click)="waterDatePicker.open()" aria-label="Pick date"><mat-icon svgIcon="mx-calendar"></mat-icon></button>
+          <input [matDatepicker]="waterDatePicker" [ngModel]="currentDate" (ngModelChange)="onDateChange($event)" class="date-picker-input" readonly>
+          <mat-datepicker #waterDatePicker></mat-datepicker>
         </div>
       </div>
 
@@ -61,6 +66,14 @@ import { UserProfile } from '../../../core/models/user.model';
           <h3>Quick Add</h3>
           <div class="quick-add-body">
             <div class="quick-controls-grid">
+              <button
+                type="button"
+                class="quick-mode-btn quick-mode-minus"
+                [class.active]="quickAdjustMode === 'remove'"
+                (click)="setQuickAdjustMode('remove')"
+                aria-label="Switch to remove mode">
+                <mat-icon svgIcon="mx-minus"></mat-icon>
+              </button>
               @for (amount of quickAmounts; track amount) {
                 <button
                   mat-stroked-button
@@ -70,14 +83,6 @@ import { UserProfile } from '../../../core/models/user.model';
                   {{ amount }} oz
                 </button>
               }
-              <button
-                type="button"
-                class="quick-mode-btn quick-mode-minus"
-                [class.active]="quickAdjustMode === 'remove'"
-                (click)="setQuickAdjustMode('remove')"
-                aria-label="Switch to remove mode">
-                <mat-icon svgIcon="mx-minus"></mat-icon>
-              </button>
               <button
                 type="button"
                 class="quick-mode-btn quick-mode-plus"
@@ -169,6 +174,15 @@ import { UserProfile } from '../../../core/models/user.model';
     h1 { color: var(--text-primary); font-size: 24px; font-weight: 700; margin: 0; }
     .date-nav { display: flex; align-items: center; gap: 8px; }
     .date-nav button { color: var(--text-muted); }
+    .calendar-btn { color: var(--text-muted) !important; }
+    .calendar-btn:hover { color: var(--accent) !important; }
+    .date-picker-input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
     .current-date { font-size: 14px; font-weight: 600; color: var(--text-primary); min-width: 108px; text-align: center; }
     .water-main {
       display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
@@ -217,11 +231,11 @@ import { UserProfile } from '../../../core/models/user.model';
     }
     .quick-controls-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(70px, auto));
+      grid-template-columns: auto repeat(4, minmax(70px, auto)) auto;
       justify-content: center;
       align-items: center;
       column-gap: 10px;
-      row-gap: 12px;
+      row-gap: 10px;
     }
     .quick-btn {
       display: inline-flex;
@@ -255,11 +269,11 @@ import { UserProfile } from '../../../core/models/user.model';
       cursor: pointer;
     }
     .quick-mode-minus {
-      grid-column: 2;
+      grid-column: 1;
       justify-self: center;
     }
     .quick-mode-plus {
-      grid-column: 3;
+      grid-column: 6;
       justify-self: center;
     }
     .quick-mode-btn:hover:not(.active) {
@@ -403,9 +417,21 @@ import { UserProfile } from '../../../core/models/user.model';
       .stats-row { grid-template-columns: 1fr; }
     }
     @media (max-width: 520px) {
-      .quick-controls-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
-      .quick-mode-minus { grid-column: 1; justify-self: end; }
-      .quick-mode-plus { grid-column: 2; justify-self: start; }
+      .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .date-nav {
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .quick-controls-grid {
+        grid-template-columns: auto repeat(2, minmax(0, 1fr)) auto;
+        width: 100%;
+      }
+      .quick-mode-minus { grid-column: 1; justify-self: center; }
+      .quick-mode-plus { grid-column: 4; justify-self: center; }
       .quick-custom-entry { flex-direction: column; max-width: 100%; }
       .quick-custom-apply { width: 100%; }
     }
@@ -465,6 +491,12 @@ export class WaterTrackerComponent implements OnInit {
 
   nextDay(): void {
     this.currentDate = new Date(this.currentDate.getTime() + 86400000);
+    this.loadWater();
+  }
+
+  onDateChange(date: Date | null): void {
+    if (!date) return;
+    this.currentDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     this.loadWater();
   }
 

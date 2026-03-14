@@ -18,7 +18,7 @@ import { AuthService } from '../../core/services/auth.service';
       </div>
       <div class="legal-content">
         <h1>Terms of Service</h1>
-        <p class="updated">Last updated: March 8, 2026</p>
+        <p class="updated">Last updated: March 14, 2026</p>
 
         <h2>1. Acceptance of Terms</h2>
         <p>By accessing or using the MAXRO application ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the Service.</p>
@@ -58,7 +58,7 @@ import { AuthService } from '../../core/services/auth.service';
         <p>We may modify these Terms at any time. Continued use of the Service after changes constitutes acceptance of the modified Terms.</p>
 
         <h2>11. Contact</h2>
-        <p>If you have any questions about these Terms, contact us at <strong>support&#64;maxro.app</strong>.</p>
+        <p>If you have any questions about these Terms, contact us at <strong>louisdo.work&#64;gmail.com</strong>.</p>
       </div>
     </div>
   `,

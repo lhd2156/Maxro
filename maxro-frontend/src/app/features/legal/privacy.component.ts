@@ -18,7 +18,7 @@ import { AuthService } from '../../core/services/auth.service';
       </div>
       <div class="legal-content">
         <h1>Privacy Policy</h1>
-        <p class="updated">Last updated: March 8, 2026</p>
+        <p class="updated">Last updated: March 14, 2026</p>
 
         <h2>1. Information We Collect</h2>
         <p>We collect information you provide directly when creating an account and using the Service, including:</p>
@@ -67,7 +67,7 @@ import { AuthService } from '../../core/services/auth.service';
         <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the updated policy on this page with a revised date.</p>
 
         <h2>10. Contact</h2>
-        <p>If you have any questions about this Privacy Policy, contact us at <strong>privacy&#64;maxro.app</strong>.</p>
+        <p>If you have any questions about this Privacy Policy, contact us at <strong>louisdo.work&#64;gmail.com</strong>.</p>
       </div>
     </div>
   `,
