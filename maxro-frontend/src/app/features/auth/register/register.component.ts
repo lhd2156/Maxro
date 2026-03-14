@@ -32,18 +32,17 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
           <div class="grid-dot" [style.animation-delay]="i * 0.15 + 's'"></div>
         }
       </div>
-      <div class="auth-container fade-in">
-        <div class="auth-topbar">
-          <a routerLink="/" class="corner-logo" aria-label="Go to home page">
-            <img src="favicon.svg" alt="" class="corner-logo-img">
-
-          </a>
-          <a routerLink="/login" class="top-action">Sign in</a>
-        </div>
-        <a routerLink="/" class="auth-brand-block" aria-label="Go to home page">
-          <span class="brand-text">MAXRO</span>
+      <div class="auth-topbar fade-in">
+        <a routerLink="/" class="corner-logo" aria-label="Go to home page">
+          <img src="favicon.svg" alt="" class="corner-logo-img">
         </a>
-        <mat-card class="auth-card slide-up">
+        <a routerLink="/login" class="top-action">Sign in</a>
+      </div>
+      <a routerLink="/" class="auth-brand-block fade-in" aria-label="Go to home page">
+        <span class="brand-text">MAXRO</span>
+      </a>
+      <div class="auth-container slide-up">
+        <mat-card class="auth-card">
           <div class="auth-card-header">
             <h2>Create Account</h2>
             <p class="auth-subtitle">Sign up to start tracking your fitness</p>
@@ -239,7 +238,7 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
       height: 100dvh;
       background: var(--bg-primary);
       display: flex; align-items: center; justify-content: center;
-      padding: 72px 18px 28px; position: relative; overflow: hidden;
+      padding: 152px 18px 28px; position: relative; overflow-y: auto; overflow-x: hidden;
       box-sizing: border-box;
     }
     .bg-grid {
@@ -264,12 +263,12 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
       display: flex;
       flex-direction: column;
       align-items: center;
-      max-height: 100%;
+      max-height: none;
       padding-top: 0;
       padding-bottom: 8px;
     }
     .auth-topbar {
-      position: fixed;
+      position: absolute;
       top: 0;
       left: 0;
       right: 0;
@@ -288,7 +287,12 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
       flex-direction: column;
       align-items: center;
       gap: 6px;
-      margin-bottom: 12px;
+      position: absolute;
+      top: 88px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      margin-bottom: 0;
       text-decoration: none;
       text-align: center;
     }
@@ -553,7 +557,7 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
     .auth-switch a:hover { text-decoration: underline; }
     @media (max-width: 900px) {
       .auth-page {
-        height: auto;
+        height: 100dvh;
         align-items: flex-start;
         justify-content: center;
         overflow-y: auto;
@@ -573,16 +577,20 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
     }
     @media (max-width: 700px) {
       .auth-page {
-        padding: 84px 12px 12px;
-        overflow: auto;
+        padding: 126px 12px 12px;
+        overflow-y: auto;
+        overflow-x: hidden;
         align-items: flex-start;
-        height: auto;
+        height: 100dvh;
       }
       .auth-topbar { padding: 18px 16px; }
-      .auth-brand-block { margin-bottom: 16px; }
+      .auth-brand-block {
+        top: 82px;
+        margin-bottom: 0;
+      }
       .brand-text { font-size: 18px; letter-spacing: 4px; }
       .brand-tagline { font-size: 11px; }
-    .corner-logo-img { width: 30px; height: 30px; border-radius: 6px; flex-shrink: 0; }
+      .corner-logo-img { width: 30px; height: 30px; border-radius: 6px; flex-shrink: 0; }
       .top-action {
         min-height: 40px;
         padding: 0 16px;
@@ -601,7 +609,7 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
 
     @media (max-height: 700px) {
       .auth-page {
-        height: auto;
+        height: 100dvh;
         align-items: flex-start;
         justify-content: center;
         overflow-y: auto;
