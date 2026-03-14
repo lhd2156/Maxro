@@ -60,6 +60,38 @@ class UserServiceImplTest {
     }
 
     @Test
+    void updateProfile_normalizesNameCaseFromSettingsPayload() {
+        User user = buildUser("u1");
+        when(userRepository.findById("u1")).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var input = new UserProfileInput(" ge ", " dO ", null, null, null, null,
+                null, null, null, null, null, null, null, null);
+
+        UserProfileResponse result = userService.updateProfile("u1", input);
+
+        assertEquals("Ge", result.firstName());
+        assertEquals("Do", result.lastName());
+        assertEquals("Ge Do", result.displayName());
+    }
+
+    @Test
+    void updateProfile_prefersNameDerivedDisplayNameWhenNamesProvided() {
+        User user = buildUser("u1");
+        when(userRepository.findById("u1")).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var input = new UserProfileInput("beN", "dO", "raw display", null, null, null,
+                null, null, null, null, null, null, null, null);
+
+        UserProfileResponse result = userService.updateProfile("u1", input);
+
+        assertEquals("Ben", result.firstName());
+        assertEquals("Do", result.lastName());
+        assertEquals("Ben Do", result.displayName());
+    }
+
+    @Test
     void updateDailyWaterGoal_updatesAndSaves() {
         User user = buildUser("u1");
         when(userRepository.findById("u1")).thenReturn(Optional.of(user));

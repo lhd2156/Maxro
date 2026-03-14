@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -50,8 +51,8 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthPayload register(RegisterInput input) {
         String normalizedEmail = normalizeEmail(input.email());
-        String firstName = input.firstName().trim();
-        String lastName = input.lastName().trim();
+        String firstName = normalizePersonalName(input.firstName());
+        String lastName = normalizePersonalName(input.lastName());
         String dateOfBirth = validateAndNormalizeDateOfBirth(input.dateOfBirth());
 
         log.info("Registering new user with email: {}", normalizedEmail);
@@ -147,6 +148,36 @@ public class AuthServiceImpl implements AuthService {
 
     private String normalizeEmail(String email) {
         return email == null ? "" : email.trim().toLowerCase();
+    }
+
+    private String normalizePersonalName(String raw) {
+        if (raw == null) {
+            return "";
+        }
+
+        String compact = raw.trim().replaceAll("\\s+", " ");
+        if (compact.isEmpty()) {
+            return compact;
+        }
+
+        String lower = compact.toLowerCase(Locale.ROOT);
+        StringBuilder result = new StringBuilder(lower.length());
+        boolean uppercaseNextLetter = true;
+
+        for (int i = 0; i < lower.length(); i++) {
+            char ch = lower.charAt(i);
+            if (Character.isLetter(ch)) {
+                result.append(uppercaseNextLetter ? Character.toUpperCase(ch) : ch);
+                uppercaseNextLetter = false;
+            } else {
+                result.append(ch);
+                if (ch == ' ' || ch == '-' || ch == '\'') {
+                    uppercaseNextLetter = true;
+                }
+            }
+        }
+
+        return result.toString();
     }
 
     private String validateAndNormalizeDateOfBirth(String dobRaw) {

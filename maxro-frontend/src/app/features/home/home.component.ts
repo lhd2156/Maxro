@@ -26,7 +26,7 @@ import { UserProfile } from '../../core/models/user.model';
         </a>
         @if (isLoggedIn) {
           <div class="header-nav">
-            <button mat-icon-button [matMenuTriggerFor]="profileMenu" class="profile-trigger">
+            <button type="button" [matMenuTriggerFor]="profileMenu" class="profile-trigger">
               @if (avatarUrl) {
                 <img [src]="avatarUrl" alt="Profile" class="avatar-circle-img" />
               } @else {
@@ -139,7 +139,7 @@ import { UserProfile } from '../../core/models/user.model';
 
     .home-header {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 20px 40px;
+      padding: 20px calc(44px - (100vw - 100%)) 20px 40px;
       position: relative; z-index: 1;
     }
     .logo-wrap {
@@ -166,6 +166,24 @@ import { UserProfile } from '../../core/models/user.model';
       width: 38px;
       height: 38px;
       padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .profile-trigger:hover {
+      background: rgba(255,255,255,0.07);
+    }
+    .profile-trigger:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(200,241,53,0.42);
     }
     .avatar-circle {
       width: 34px;

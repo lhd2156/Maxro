@@ -64,13 +64,21 @@ public class NutritionServiceImpl implements NutritionService {
     @Override
     public NutritionLog getNutritionLog(String userId, LocalDate date) {
         log.debug("Fetching nutrition log for user: {} on date: {}", userId, date);
-        return nutritionLogRepository.findByUserIdAndDate(userId, date).orElse(null);
+        NutritionLog nutritionLog = nutritionLogRepository.findByUserIdAndDate(userId, date).orElse(null);
+        if (nutritionLog == null) {
+            return null;
+        }
+        return normalizePersistedElectrolytes(nutritionLog);
     }
 
     @Override
     public List<NutritionLog> getNutritionLogs(String userId, LocalDate startDate, LocalDate endDate) {
         log.debug("Fetching nutrition logs for user: {} from {} to {}", userId, startDate, endDate);
-        return nutritionLogRepository.findByUserIdAndDateBetweenFlexible(userId, startDate.toString(), endDate.toString(), startDate, endDate);
+        List<NutritionLog> logs = nutritionLogRepository.findByUserIdAndDateBetweenFlexible(userId, startDate.toString(), endDate.toString(), startDate, endDate);
+        for (int i = 0; i < logs.size(); i++) {
+            logs.set(i, normalizePersistedElectrolytes(logs.get(i)));
+        }
+        return logs;
     }
 
     private NutritionLog appendEntries(String userId, LocalDate date, List<FoodEntry> entries) {
@@ -78,6 +86,7 @@ public class NutritionServiceImpl implements NutritionService {
             return ensureLogExists(userId, date);
         }
 
+        entries.forEach(this::normalizeEntryElectrolytes);
         Object[] entryDocuments = entries.toArray();
         Query query = userDateQuery(userId, date);
         Update update = new Update()
@@ -109,5 +118,39 @@ public class NutritionServiceImpl implements NutritionService {
 
     private Query userDateQuery(String userId, LocalDate date) {
         return Query.query(Criteria.where("userId").is(userId).and("date").is(date));
+    }
+
+    private NutritionLog normalizePersistedElectrolytes(NutritionLog nutritionLog) {
+        if (nutritionLog.getEntries() == null || nutritionLog.getEntries().isEmpty()) {
+            return nutritionLog;
+        }
+
+        boolean changed = false;
+        for (FoodEntry entry : nutritionLog.getEntries()) {
+            if (entry == null) {
+                continue;
+            }
+            double previous = entry.getElectrolytesMg();
+            normalizeEntryElectrolytes(entry);
+            if (Double.compare(previous, entry.getElectrolytesMg()) != 0) {
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            return nutritionLogRepository.save(nutritionLog);
+        }
+
+        return nutritionLog;
+    }
+
+    private void normalizeEntryElectrolytes(FoodEntry entry) {
+        double sodiumMg = Math.max(0d, entry.getSodiumMg());
+        double potassiumMg = Math.max(0d, entry.getPotassiumMg());
+        double magnesiumMg = Math.max(0d, entry.getMagnesiumMg());
+
+        // Universal app rule: estimate electrolytes from available electrolyte minerals.
+        double estimatedElectrolytesMg = sodiumMg + potassiumMg + magnesiumMg;
+        entry.setElectrolytesMg(Math.round(estimatedElectrolytesMg * 100.0d) / 100.0d);
     }
 }

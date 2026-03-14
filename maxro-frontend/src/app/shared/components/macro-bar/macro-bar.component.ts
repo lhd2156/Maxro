@@ -94,7 +94,6 @@ export class MacroBarComponent {
   }
 
   get barColor(): string {
-    if (this.percentage >= 100) return 'var(--accent)';
     switch (this.label) {
       case 'Calories': return '#9C27B0';
       case 'Protein': return '#4fc3f7';

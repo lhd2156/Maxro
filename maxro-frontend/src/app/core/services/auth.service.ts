@@ -151,6 +151,32 @@ export class AuthService {
   }
 
   private normalizeUser(user: UserProfile): UserProfile {
-    return { ...user, hasPassword: user.hasPassword ?? true };
+    const firstName = this.normalizeOptionalName(user.firstName);
+    const lastName = this.normalizeOptionalName(user.lastName);
+    const normalizedDisplayName = this.normalizeOptionalName(user.displayName);
+    const displayName = [firstName, lastName].filter(Boolean).join(' ') || normalizedDisplayName || user.displayName || '';
+
+    return {
+      ...user,
+      firstName: firstName ?? null,
+      lastName: lastName ?? null,
+      displayName,
+      hasPassword: user.hasPassword ?? true,
+    };
+  }
+
+  private normalizeOptionalName(value: unknown): string | undefined {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const compact = value.trim().replace(/\s+/g, ' ');
+    if (!compact) {
+      return undefined;
+    }
+
+    return compact
+      .toLowerCase()
+      .replace(/(^|[\s'-])([a-z])/g, (_match, prefix: string, letter: string) => `${prefix}${letter.toUpperCase()}`);
   }
 }

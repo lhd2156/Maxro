@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Apollo, gql } from 'apollo-angular';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, catchError, map, of, switchMap } from 'rxjs';
+import { Observable, catchError, map, of } from 'rxjs';
 import { FoodEntryInput, FoodSearchPage, NutritionLog } from '../models/nutrition.model';
 import { environment } from '../../../environments/environment';
 
@@ -71,21 +71,7 @@ export class NutritionService {
   constructor(private readonly apollo: Apollo, private readonly http: HttpClient) {}
 
   searchFood(query: string, page = 1, size = 5): Observable<FoodSearchPage> {
-    return this.searchFoodWithFallback(query, page, size).pipe(
-      switchMap(initialResult => {
-        if (initialResult.foods.length > 0) {
-          return of(initialResult);
-        }
-        const aliasQuery = this.getAliasRetryQuery(query);
-        if (!aliasQuery) {
-          return of(initialResult);
-        }
-        return this.searchFoodWithFallback(aliasQuery, page, size).pipe(
-          map(aliasResult => aliasResult.foods.length > 0 ? aliasResult : initialResult),
-          catchError(() => of(initialResult)),
-        );
-      }),
-    );
+    return this.searchFoodWithFallback(query, page, size);
   }
 
   private searchFoodWithFallback(query: string, page: number, size: number): Observable<FoodSearchPage> {
@@ -97,19 +83,6 @@ export class NutritionService {
       map(r => r.data.searchFood),
       catchError(() => this.searchFoodDirectFallback(query, page, size)),
     );
-  }
-
-  private getAliasRetryQuery(query: string): string | null {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) {
-      return null;
-    }
-
-    if (normalized === 'canes' || normalized === 'raising canes' || normalized.includes('canes')) {
-      return 'raising canes chicken fingers';
-    }
-
-    return null;
   }
 
   private searchFoodDirectFallback(query: string, page: number, size: number): Observable<FoodSearchPage> {
@@ -143,6 +116,7 @@ export class NutritionService {
     return this.apollo.query<{ getNutritionLog: NutritionLog | null }>({
       query: GET_NUTRITION_LOG,
       variables: { date },
+      fetchPolicy: 'network-only',
     }).pipe(map(r => r.data.getNutritionLog));
   }
 

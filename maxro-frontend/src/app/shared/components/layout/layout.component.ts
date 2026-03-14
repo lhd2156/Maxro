@@ -62,7 +62,7 @@ import { UserProfile } from '../../../core/models/user.model';
         <header class="topbar">
           <div class="topbar-spacer"></div>
           <div class="topbar-actions">
-            <button mat-icon-button [matMenuTriggerFor]="profileMenu" class="profile-trigger">
+            <button type="button" [matMenuTriggerFor]="profileMenu" class="profile-trigger">
               @if (avatarUrl) {
                 <img [src]="avatarUrl" alt="Profile" class="avatar-circle-img" />
               } @else {
@@ -271,11 +271,11 @@ import { UserProfile } from '../../../core/models/user.model';
     }
 
     .topbar {
-      min-height: 52px;
-      height: calc(52px + env(safe-area-inset-top));
+      min-height: auto;
+      height: auto;
       display: flex;
       align-items: center;
-      padding: env(safe-area-inset-top) calc(24px + env(safe-area-inset-right)) 0 calc(24px + env(safe-area-inset-left));
+      padding: calc(20px + env(safe-area-inset-top)) calc(44px + env(safe-area-inset-right)) 0 calc(40px + env(safe-area-inset-left));
       flex-shrink: 0;
       box-sizing: border-box;
     }
@@ -283,9 +283,27 @@ import { UserProfile } from '../../../core/models/user.model';
     .topbar-actions { display: flex; align-items: center; }
 
     .profile-trigger {
-      width: 36px;
-      height: 36px;
+      width: 38px;
+      height: 38px;
       padding: 0;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .profile-trigger:hover {
+      background: rgba(255,255,255,0.07);
+    }
+    .profile-trigger:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(200,241,53,0.42);
     }
     .avatar-circle {
       width: 34px;
@@ -323,11 +341,11 @@ import { UserProfile } from '../../../core/models/user.model';
 
     @media (max-width: 1200px) {
       .topbar {
-      min-height: 52px;
-      height: calc(52px + env(safe-area-inset-top));
+      min-height: auto;
+      height: auto;
       display: flex;
       align-items: center;
-      padding: env(safe-area-inset-top) calc(24px + env(safe-area-inset-right)) 0 calc(24px + env(safe-area-inset-left));
+      padding: calc(20px + env(safe-area-inset-top)) calc(44px + env(safe-area-inset-right)) 0 calc(40px + env(safe-area-inset-left));
       flex-shrink: 0;
       box-sizing: border-box;
     }

@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
+
 @Service
 public class UserServiceImpl implements UserService {
 
@@ -55,14 +57,15 @@ public class UserServiceImpl implements UserService {
         log.info("Updating profile for user: {}", userId);
         User user = findUserById(userId);
 
-        if (input.firstName() != null) user.setFirstName(input.firstName().trim());
-        if (input.lastName() != null) user.setLastName(input.lastName().trim());
-        if (input.firstName() != null || input.lastName() != null) {
+        boolean hasNameUpdates = input.firstName() != null || input.lastName() != null;
+        if (input.firstName() != null) user.setFirstName(normalizePersonalName(input.firstName()));
+        if (input.lastName() != null) user.setLastName(normalizePersonalName(input.lastName()));
+        if (hasNameUpdates) {
             String first = user.getFirstName() != null ? user.getFirstName() : "";
             String last = user.getLastName() != null ? user.getLastName() : "";
             user.setDisplayName((first + " " + last).trim());
         }
-        if (input.displayName() != null) user.setDisplayName(input.displayName());
+        if (input.displayName() != null && !hasNameUpdates) user.setDisplayName(input.displayName());
         if (input.bodyWeightLbs() != null) user.setBodyWeightLbs(input.bodyWeightLbs());
         if (input.heightInches() != null) user.setHeightInches(input.heightInches());
         if (input.fitnessGoal() != null) user.setFitnessGoal(input.fitnessGoal());
@@ -131,5 +134,35 @@ public class UserServiceImpl implements UserService {
     private User findUserById(String userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+    }
+
+    private String normalizePersonalName(String raw) {
+        if (raw == null) {
+            return "";
+        }
+
+        String compact = raw.trim().replaceAll("\\s+", " ");
+        if (compact.isEmpty()) {
+            return compact;
+        }
+
+        String lower = compact.toLowerCase(Locale.ROOT);
+        StringBuilder result = new StringBuilder(lower.length());
+        boolean uppercaseNextLetter = true;
+
+        for (int i = 0; i < lower.length(); i++) {
+            char ch = lower.charAt(i);
+            if (Character.isLetter(ch)) {
+                result.append(uppercaseNextLetter ? Character.toUpperCase(ch) : ch);
+                uppercaseNextLetter = false;
+            } else {
+                result.append(ch);
+                if (ch == ' ' || ch == '-' || ch == '\'') {
+                    uppercaseNextLetter = true;
+                }
+            }
+        }
+
+        return result.toString();
     }
 }

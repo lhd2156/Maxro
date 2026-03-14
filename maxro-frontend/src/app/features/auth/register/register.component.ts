@@ -899,8 +899,8 @@ export class RegisterComponent implements AfterViewInit {
     this.authService.register({
       email: v.email,
       password: v.password,
-      firstName: (v.firstName || '').trim(),
-      lastName: (v.lastName || '').trim(),
+      firstName: this.normalizeName(v.firstName),
+      lastName: this.normalizeName(v.lastName),
       dateOfBirth: dob,
       gender: v.gender,
       dailyCalorieTarget: this.toOptionalInteger(v.dailyCalorieTarget),
@@ -925,6 +925,17 @@ export class RegisterComponent implements AfterViewInit {
   private toOptionalInteger(value: unknown): number | undefined {
     const parsed = this.toOptionalNumber(value);
     return parsed === undefined ? undefined : Math.round(parsed);
+  }
+
+  private normalizeName(value: unknown): string {
+    const text = typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : '';
+    if (!text) {
+      return '';
+    }
+
+    return text
+      .toLowerCase()
+      .replace(/(^|[\s'-])([a-z])/g, (_match, prefix: string, letter: string) => `${prefix}${letter.toUpperCase()}`);
   }
 
   private toOptionalNumber(value: unknown): number | undefined {

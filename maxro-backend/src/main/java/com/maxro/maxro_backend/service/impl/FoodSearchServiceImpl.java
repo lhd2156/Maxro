@@ -57,6 +57,20 @@ public class FoodSearchServiceImpl implements FoodSearchService {
             "nugget", "nuggets", "pizza", "platter", "quesadilla", "salad", "sandwich", "strip", "strips",
             "sub", "taco", "toast", "wrap"
     );
+        private static final Set<String> RECIPE_LIKE_TERMS = Set.of(
+            "dressing", "dip", "mix", "sauce", "with", "flavor", "flavoured", "sweetened", "prepared", "recipe"
+        );
+                private static final Set<String> SIMPLE_PREPARATION_TERMS = Set.of(
+                "raw", "fresh", "plain", "dry", "cooked", "boiled", "baked", "steamed", "roasted"
+            );
+                private static final Set<String> NATURAL_FORM_TERMS = Set.of(
+                    "raw", "fresh", "plain", "whole", "uncooked"
+                );
+                private static final Set<String> PROCESSED_FORM_TERMS = Set.of(
+                    "candied", "patty", "patties", "tots", "nugget", "nuggets", "pudding", "split", "juice",
+                        "nectar", "breaded", "frozen", "flavored", "flavoured", "sweetened", "canned", "packed",
+                        "salad", "noodles", "milk", "powder", "stuffing", "sweet", "dessert", "fried", "dough"
+                );
     private static final Set<String> RESTAURANT_HINTS = Set.of(
             "arbys", "burger", "cafe", "canes", "cfa", "chick", "chickfila", "chipotle", "dunkin", "five", "guys", "kfc", "mcdonalds",
             "panera", "papa", "popeyes", "raising", "shake", "sonic", "starbucks", "subway", "taco", "wendys"
@@ -345,7 +359,7 @@ public class FoodSearchServiceImpl implements FoodSearchService {
 
         Map<String, Object> servingNode = selectBestFatSecretServing(foodNode);
         ServingInfo servingInfo = extractFatSecretServingInfo(servingNode, fallback);
-        return new FoodSearchResultDto(
+        return normalizeFoodSearchResult(new FoodSearchResultDto(
                 firstNonBlank(getStringValue(foodNode, "food_name"), fallback.foodName()),
                 firstNonBlank(getStringValue(foodNode, "brand_name"), item.brandName(), fallback.brandName()),
                 servingInfo.quantity(),
@@ -362,7 +376,7 @@ public class FoodSearchServiceImpl implements FoodSearchService {
                 getDoubleValue(servingNode, "saturated_fat"),
                 getDoubleValue(servingNode, "potassium"),
                 getDoubleValue(servingNode, "caffeine"),
-                sumElectrolytesMg(getDoubleValue(servingNode, "sodium"), getDoubleValue(servingNode, "potassium"), 0d),
+                0d,
                 percentToAmount(getDoubleValue(servingNode, "vitamin_a"), DAILY_VALUE_VITAMIN_A_MCG),
                 percentToAmount(getDoubleValue(servingNode, "vitamin_c"), DAILY_VALUE_VITAMIN_C_MG),
                 0d,
@@ -379,14 +393,14 @@ public class FoodSearchServiceImpl implements FoodSearchService {
                 percentToAmount(getDoubleValue(servingNode, "iron"), DAILY_VALUE_IRON_MG),
                 0d,
                 fallback.thumbnailUrl()
-        );
+            ));
     }
 
     private FoodSearchResultDto mapFatSecretSummaryFallback(FatSecretFoodSearchItem item) {
         String description = firstNonBlank(item.foodDescription(), "");
         String servingLabel = extractFatSecretSummaryServing(description);
         ServingInfo servingInfo = parseServingLabel(servingLabel);
-        return new FoodSearchResultDto(
+        return normalizeFoodSearchResult(new FoodSearchResultDto(
                 item.foodName(),
                 item.brandName(),
                 servingInfo.quantity(),
@@ -420,7 +434,7 @@ public class FoodSearchServiceImpl implements FoodSearchService {
                 0d,
                 0d,
                 null
-        );
+            ));
     }
 
     private Map<String, Object> selectBestFatSecretServing(Map<String, Object> foodNode) {
@@ -793,10 +807,6 @@ public class FoodSearchServiceImpl implements FoodSearchService {
 
     private List<FoodSearchResultDto> curatedFoodsForQuery(String query) {
         Set<String> words = toWordSet(query);
-        if (words.contains("canes") || containsAllTerms(query, "raising", "canes")) {
-            return curatedRaisingCanesFoods();
-        }
-
         if (words.contains("cfa") || words.contains("chickfila") || containsAllTerms(query, "chick", "fil")) {
             return curatedChickFilAFoods();
         }
@@ -806,16 +816,6 @@ public class FoodSearchServiceImpl implements FoodSearchService {
         }
 
         return Collections.emptyList();
-    }
-
-    private List<FoodSearchResultDto> curatedRaisingCanesFoods() {
-        return List.of(
-                fallbackFood("Chicken Fingers (3 pcs)", "Raising Cane's", 1d, "order", 390d, 27d, 22d, 20d, 0d, 0d, 0d, 820d, 110d, 3.5d, 360d),
-                fallbackFood("Cane's Sauce", "Raising Cane's", 1d, "serving", 190d, 0d, 5d, 20d, 0d, 4d, 4d, 360d, 10d, 3d, 40d),
-                fallbackFood("Crinkle-Cut Fries", "Raising Cane's", 1d, "serving", 400d, 5d, 54d, 18d, 5d, 0d, 0d, 620d, 0d, 2.5d, 620d),
-                fallbackFood("Texas Toast", "Raising Cane's", 1d, "slice", 140d, 4d, 20d, 5d, 1d, 2d, 2d, 260d, 0d, 1d, 40d),
-                fallbackFood("Coleslaw", "Raising Cane's", 1d, "serving", 100d, 1d, 9d, 6d, 1d, 7d, 5d, 140d, 5d, 1d, 120d)
-        );
     }
 
     private List<FoodSearchResultDto> curatedChickFilAFoods() {
@@ -849,7 +849,7 @@ public class FoodSearchServiceImpl implements FoodSearchService {
                                              double cholesterolMg,
                                              double saturatedFatG,
                                              double potassiumMg) {
-        return new FoodSearchResultDto(
+        return normalizeFoodSearchResult(new FoodSearchResultDto(
                 foodName,
                 brandName,
                 servingQty,
@@ -866,7 +866,7 @@ public class FoodSearchServiceImpl implements FoodSearchService {
                 saturatedFatG,
                 potassiumMg,
                 0d,
-                sumElectrolytesMg(sodiumMg, potassiumMg, 0d),
+                0d,
                 0d,
                 0d,
                 0d,
@@ -883,7 +883,7 @@ public class FoodSearchServiceImpl implements FoodSearchService {
                 0d,
                 0d,
                 null
-        );
+            ));
     }
 
     private double scoreFood(Map<String, Object> food, String query) {
@@ -895,6 +895,8 @@ public class FoodSearchServiceImpl implements FoodSearchService {
         Set<String> descriptionWords = toWordSet(description);
         Set<String> brandWords = toWordSet(brand);
         boolean preparedFoodSearch = isPreparedFoodSearch(query);
+        boolean simpleWholeFoodQuery = isSimpleWholeFoodQuery(queryTokens, query);
+        boolean zeroSugarIntent = hasZeroSugarIntent(queryTokens, query);
         boolean preparedFoodResult = isPreparedFoodResult(description, brand, dataType);
         double score = Math.min(getDoubleValue(food, "score"), 500d) / 10d;
 
@@ -999,6 +1001,42 @@ public class FoodSearchServiceImpl implements FoodSearchService {
         if (exactMatches == 0 && queryTokens.size() > 1) score -= preparedFoodSearch ? 45 : 20;
         if (exactMatches == 1 && queryTokens.size() > 2) score -= preparedFoodSearch ? 18 : 8;
 
+        if (simpleWholeFoodQuery) {
+            double sodiumMg = findNutrientAmount(food, "MG", "1093", "307", "Sodium, Na");
+            if (queryTokens.size() == 1) {
+                String token = queryTokens.get(0);
+                if (isPrimaryFoodTokenMatch(description, token)) {
+                    score += 88;
+                } else if (descriptionWords.contains(token)) {
+                    score -= 34;
+                }
+                if (containsAny(description, PREPARED_FOOD_TERMS.toArray(new String[0]))) {
+                    score -= 68;
+                }
+            }
+            if (queryTokens.stream().allMatch(descriptionWords::contains)) score += 56;
+            if (!brand.isBlank()) score -= 180;
+            if (dataType.contains("branded")) score -= 120;
+            if (dataType.contains("foundation")) score += 62;
+            if (dataType.contains("sr legacy")) score += 34;
+            if (dataType.contains("survey")) score += 18;
+            if (containsAny(description, NATURAL_FORM_TERMS.toArray(new String[0]))) score += 26;
+            if (containsAny(description, PROCESSED_FORM_TERMS.toArray(new String[0]))) score -= 130;
+            if (containsAny(description, RECIPE_LIKE_TERMS.toArray(new String[0]))) score -= 135;
+            if (sodiumMg > 250d) score -= 80;
+            if (!brand.isBlank() && sodiumMg > 180d && isTinyServingSize(food)) score -= 220;
+            if (findNutrientAmount(food, "G", "1235", "539", "Sugars, added") > 1d) score -= 80;
+            if (findNutrientAmount(food, "KCAL", "1008", "208", "Energy") > 220d) score -= 95;
+        }
+
+        if (zeroSugarIntent) {
+            if (!containsAny(text, "zero", "0 sugar", "zero sugar", "sugar free", "sugar-free")) {
+                score -= 110;
+            }
+            if (findNutrientAmount(food, "G", "1235", "539", "Sugars, added") > 0.5d) score -= 95;
+            if (findNutrientAmount(food, "G", "1005", "205", "Carbohydrate") > 8d) score -= 55;
+        }
+
         return score;
     }
 
@@ -1015,6 +1053,8 @@ public class FoodSearchServiceImpl implements FoodSearchService {
         List<String> queryTokens = tokenize(query);
         Set<String> foodWords = toWordSet(normalizedFoodName);
         Set<String> brandWords = toWordSet(normalizedBrand);
+        boolean simpleWholeFoodQuery = isSimpleWholeFoodQuery(queryTokens, query);
+        boolean zeroSugarIntent = hasZeroSugarIntent(queryTokens, query);
         boolean restaurantLikeQuery = containsRestaurantHint(query);
         boolean preparedFoodSearch = isPreparedFoodSearch(query);
         double score = Math.max(0d, 42d - (position * 2.5d));
@@ -1076,6 +1116,35 @@ public class FoodSearchServiceImpl implements FoodSearchService {
             score -= 48d;
         }
 
+        if (simpleWholeFoodQuery) {
+            if (queryTokens.size() == 1) {
+                String token = queryTokens.get(0);
+                if (isPrimaryFoodTokenMatch(normalizedFoodName, token)) {
+                    score += 74d;
+                } else if (foodWords.contains(token)) {
+                    score -= 28d;
+                }
+                if (containsAny(normalizedFoodName + " " + normalizedContext, PREPARED_FOOD_TERMS.toArray(new String[0]))) {
+                    score -= 56d;
+                }
+            }
+            if (queryTokens.stream().allMatch(foodWords::contains)) score += 56d;
+            if (!normalizedBrand.isBlank()) score -= 140d;
+            if (containsAny(normalizedContext, "branded")) score -= 42d;
+            if (containsAny(normalizedFoodName + " " + normalizedContext, NATURAL_FORM_TERMS.toArray(new String[0]))) score += 20d;
+            if (containsAny(normalizedFoodName + " " + normalizedContext, PROCESSED_FORM_TERMS.toArray(new String[0]))) score -= 110d;
+            if (containsAny(combined, RECIPE_LIKE_TERMS.toArray(new String[0]))) score -= 120d;
+        }
+
+        if (zeroSugarIntent) {
+            if (!containsAny(combined, "zero", "0 sugar", "zero sugar", "sugar free", "sugar-free")) {
+                score -= 130d;
+            }
+            if (containsAny(combined, "sweetened", "syrup", "nectar", "juice", "regular")) {
+                score -= 75d;
+            }
+        }
+
         return score;
     }
 
@@ -1087,6 +1156,48 @@ public class FoodSearchServiceImpl implements FoodSearchService {
             }
         }
         return false;
+    }
+
+    private boolean isSimpleWholeFoodQuery(List<String> queryTokens, String query) {
+        if (queryTokens.isEmpty() || queryTokens.size() > 2) {
+            return false;
+        }
+        if (queryTokens.stream().anyMatch(RESTAURANT_HINTS::contains)) {
+            return false;
+        }
+        if (queryTokens.stream().anyMatch(BRANDED_FOOD_HINTS::contains)) {
+            return false;
+        }
+        if (queryTokens.stream().anyMatch(PREPARED_FOOD_TERMS::contains)) {
+            return false;
+        }
+        if (queryTokens.stream().anyMatch(token -> token.length() <= 1)) {
+            return false;
+        }
+        return !containsAny(normalize(query), RECIPE_LIKE_TERMS.toArray(new String[0]));
+    }
+
+    private boolean hasZeroSugarIntent(List<String> queryTokens, String query) {
+        String normalized = normalize(query);
+        return queryTokens.contains("zero")
+                || queryTokens.contains("sugarfree")
+                || normalized.contains("sugar free")
+                || normalized.contains("sugar-free")
+                || normalized.contains("0 sugar");
+    }
+
+    private boolean isPrimaryFoodTokenMatch(String normalizedText, String token) {
+        if (normalizedText == null || normalizedText.isBlank() || token == null || token.isBlank()) {
+            return false;
+        }
+        List<String> tokens = tokenize(normalizedText);
+        if (tokens.isEmpty()) {
+            return false;
+        }
+        String head = tokens.get(0);
+        return head.equals(token)
+                || head.equals(token + "s")
+                || head.equals(token + "es");
     }
 
     private boolean isPreparedFoodResult(String description, String brand, String dataType) {
@@ -1124,7 +1235,7 @@ public class FoodSearchServiceImpl implements FoodSearchService {
         }
 
         if (words.contains("canes") || containsAllTerms(query, "raising", "canes")) {
-            addFallbackTokens(fallbackTokens, "chicken", "fingers", "tenders", "combo", "fries", "toast", "coleslaw");
+            addFallbackTokens(fallbackTokens, "chicken", "fingers", "tenders", "fries", "toast", "combo");
         } else if (words.contains("cfa") || words.contains("chickfila") || containsAllTerms(query, "chick", "fil")) {
             addFallbackTokens(fallbackTokens, "chicken", "sandwich", "nuggets", "tenders", "wrap", "salad", "fries", "breakfast");
         } else if (query.contains("mcdonald")) {
@@ -1186,7 +1297,7 @@ public class FoodSearchServiceImpl implements FoodSearchService {
     private List<String> preferredRestaurantCategories(String query) {
         Set<String> words = toWordSet(query);
         if (words.contains("canes") || containsAllTerms(query, "raising", "canes")) {
-            return List.of("tenders", "combo", "fries", "toast", "coleslaw", "sandwich");
+            return List.of("tenders", "fries", "toast", "combo", "sandwich");
         }
         if (words.contains("cfa") || words.contains("chickfila") || containsAllTerms(query, "chick", "fil")) {
             return List.of("sandwich", "nuggets", "tenders", "wrap", "salad", "fries", "breakfast");
@@ -1448,7 +1559,7 @@ public class FoodSearchServiceImpl implements FoodSearchService {
 
     private FoodSearchResultDto mapToFoodSearchResult(Map<String, Object> food) {
         ServingInfo servingInfo = extractServingInfo(food);
-        return new FoodSearchResultDto(
+        return normalizeFoodSearchResult(new FoodSearchResultDto(
                 firstNonBlank(getStringValue(food, "description"), "Unknown food"),
                 firstNonBlank(getStringValue(food, "brandName"), getStringValue(food, "brandOwner")),
                 servingInfo.quantity(),
@@ -1465,11 +1576,7 @@ public class FoodSearchServiceImpl implements FoodSearchService {
                 findNutrientAmount(food, "G", "1258", "606", "Fatty acids, total saturated"),
                 findNutrientAmount(food, "MG", "1092", "306", "Potassium, K"),
                 findNutrientAmount(food, "MG", "1057", "262", "Caffeine"),
-                sumElectrolytesMg(
-                    findNutrientAmount(food, "MG", "1093", "307", "Sodium, Na"),
-                    findNutrientAmount(food, "MG", "1092", "306", "Potassium, K"),
-                    findNutrientAmount(food, "MG", "1090", "304", "Magnesium, Mg")
-                ),
+                0d,
                 findNutrientAmount(food, "MCG", "1106", "320", "Vitamin A, RAE"),
                 findNutrientAmount(food, "MG", "1162", "401", "Vitamin C, total ascorbic acid"),
                 findNutrientAmount(food, "MCG", "1114", "328", "Vitamin D (D2 + D3)"),
@@ -1486,7 +1593,102 @@ public class FoodSearchServiceImpl implements FoodSearchService {
                 findNutrientAmount(food, "MG", "1089", "303", "Iron, Fe"),
                 findNutrientAmount(food, "MG", "1090", "304", "Magnesium, Mg"),
                 null
+        ));
+    }
+
+    private FoodSearchResultDto normalizeFoodSearchResult(FoodSearchResultDto result) {
+        if (result == null) {
+            return null;
+        }
+
+        double servingQty = result.servingQty();
+        String servingUnit = normalize(result.servingUnit());
+
+        if (servingQty <= 0d || !isGramLikeUnit(servingUnit)) {
+            return result;
+        }
+
+        double macroMassG = Math.max(0d, result.proteinG())
+                + Math.max(0d, result.carbsG())
+                + Math.max(0d, result.fatG())
+                + Math.max(0d, result.fiberG());
+
+        double adjustedServingQty = servingQty;
+        if (macroMassG > servingQty * 1.15d) {
+            adjustedServingQty = round(macroMassG);
+        }
+
+        double calorieDensity = adjustedServingQty > 0d ? result.calories() / adjustedServingQty : 0d;
+        if (calorieDensity > 9.2d) {
+            adjustedServingQty = round(result.calories() / 9.2d);
+        }
+
+        if (Math.abs(adjustedServingQty - servingQty) < 0.01d) {
+            return result;
+        }
+
+        return new FoodSearchResultDto(
+                result.foodName(),
+                result.brandName(),
+                adjustedServingQty,
+                result.servingUnit(),
+                result.calories(),
+                result.proteinG(),
+                result.carbsG(),
+                result.fatG(),
+                result.fiberG(),
+                result.sugarG(),
+                result.addedSugarG(),
+                result.sodiumMg(),
+                result.cholesterolMg(),
+                result.saturatedFatG(),
+                result.potassiumMg(),
+                result.caffeineMg(),
+                result.electrolytesMg(),
+                result.vitaminAMcg(),
+                result.vitaminCMg(),
+                result.vitaminDMcg(),
+                result.vitaminEMg(),
+                result.vitaminKMcg(),
+                result.thiaminMg(),
+                result.riboflavinMg(),
+                result.niacinMg(),
+                result.vitaminB6Mg(),
+                result.vitaminB12Mcg(),
+                result.folateMcg(),
+                result.zincMg(),
+                result.calciumMg(),
+                result.ironMg(),
+                result.magnesiumMg(),
+                result.thumbnailUrl()
         );
+    }
+
+    private boolean isGramLikeUnit(String normalizedServingUnit) {
+        return "g".equals(normalizedServingUnit)
+                || "gram".equals(normalizedServingUnit)
+                || "grams".equals(normalizedServingUnit)
+                || "gm".equals(normalizedServingUnit);
+    }
+
+    private boolean isTinyServingSize(Map<String, Object> food) {
+        double servingSize = getDoubleValue(food, "servingSize");
+        if (servingSize <= 0d) {
+            return false;
+        }
+
+        String unit = normalize(getStringValue(food, "servingSizeUnit"));
+        if (isGramLikeUnit(unit)) {
+            return servingSize <= 45d;
+        }
+        if ("ml".equals(unit) || "milliliter".equals(unit) || "milliliters".equals(unit)) {
+            return servingSize <= 60d;
+        }
+        if ("oz".equals(unit) || "ounce".equals(unit) || "ounces".equals(unit)) {
+            return servingSize <= 1.5d;
+        }
+
+        return false;
     }
 
     private ServingInfo extractServingInfo(Map<String, Object> food) {

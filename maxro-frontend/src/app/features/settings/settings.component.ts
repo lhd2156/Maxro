@@ -805,7 +805,13 @@ export class SettingsComponent implements OnInit {
 
   private normalizeOptionalName(value: unknown): string | undefined {
     const normalized = this.normalizeOptionalText(value);
-    return normalized ? normalized : undefined;
+    if (!normalized) {
+      return undefined;
+    }
+
+    return normalized
+      .toLowerCase()
+      .replace(/(^|[\s'-])([a-z])/g, (_match, prefix: string, letter: string) => `${prefix}${letter.toUpperCase()}`);
   }
 
   private normalizeOptionalText(value: unknown): string | undefined {

@@ -73,6 +73,28 @@ class AuthServiceImplTest {
     }
 
     @Test
+    void register_normalizesPersonalNameCasing() {
+        var input = new RegisterInput(" mixed@example.com ", "password123", " beN ", " dO ", "2000-01-01", "Male", true, null, null, null, null, null);
+        when(userRepository.existsByEmailIgnoreCase("mixed@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("password123")).thenReturn("hashed");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            u.setId("mixed-id");
+            return u;
+        });
+        when(jwtTokenProvider.generateAccessToken(anyString(), anyString())).thenReturn("access-jwt");
+        when(refreshTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        authService.register(input);
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertEquals("Ben", userCaptor.getValue().getFirstName());
+        assertEquals("Do", userCaptor.getValue().getLastName());
+        assertEquals("Ben Do", userCaptor.getValue().getDisplayName());
+    }
+
+    @Test
     void register_throwsOnDuplicateEmailIgnoringCaseAndWhitespace() {
         var input = new RegisterInput(" Taken@Example.com ", "pass", "First", "Last", null, null, true, null, null, null, null, null);
         when(userRepository.existsByEmailIgnoreCase("taken@example.com")).thenReturn(true);
