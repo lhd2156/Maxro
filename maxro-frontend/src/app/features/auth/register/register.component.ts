@@ -238,7 +238,7 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
       height: 100dvh;
       background: var(--bg-primary);
       display: flex; align-items: center; justify-content: center;
-      padding: 152px 18px 28px; position: relative; overflow-y: auto; overflow-x: hidden;
+      padding: 152px 18px 28px; position: relative; overflow: hidden;
       box-sizing: border-box;
     }
     .bg-grid {
