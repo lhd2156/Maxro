@@ -58,6 +58,10 @@ public class NutritionLog {
         return entries.stream().mapToDouble(FoodEntry::getSugarG).sum();
     }
 
+    public double getTotalAddedSugarG() {
+        return entries.stream().mapToDouble(FoodEntry::getAddedSugarG).sum();
+    }
+
     public double getTotalSodiumMg() {
         return entries.stream().mapToDouble(FoodEntry::getSodiumMg).sum();
     }
@@ -74,6 +78,14 @@ public class NutritionLog {
         return entries.stream().mapToDouble(FoodEntry::getPotassiumMg).sum();
     }
 
+    public double getTotalCaffeineMg() {
+        return entries.stream().mapToDouble(FoodEntry::getCaffeineMg).sum();
+    }
+
+    public double getTotalElectrolytesMg() {
+        return entries.stream().mapToDouble(FoodEntry::getElectrolytesMg).sum();
+    }
+
     public double getTotalVitaminAMcg() {
         return entries.stream().mapToDouble(FoodEntry::getVitaminAMcg).sum();
     }
@@ -84,6 +96,42 @@ public class NutritionLog {
 
     public double getTotalVitaminDMcg() {
         return entries.stream().mapToDouble(FoodEntry::getVitaminDMcg).sum();
+    }
+
+    public double getTotalVitaminEMg() {
+        return entries.stream().mapToDouble(FoodEntry::getVitaminEMg).sum();
+    }
+
+    public double getTotalVitaminKMcg() {
+        return entries.stream().mapToDouble(FoodEntry::getVitaminKMcg).sum();
+    }
+
+    public double getTotalThiaminMg() {
+        return entries.stream().mapToDouble(FoodEntry::getThiaminMg).sum();
+    }
+
+    public double getTotalRiboflavinMg() {
+        return entries.stream().mapToDouble(FoodEntry::getRiboflavinMg).sum();
+    }
+
+    public double getTotalNiacinMg() {
+        return entries.stream().mapToDouble(FoodEntry::getNiacinMg).sum();
+    }
+
+    public double getTotalVitaminB6Mg() {
+        return entries.stream().mapToDouble(FoodEntry::getVitaminB6Mg).sum();
+    }
+
+    public double getTotalVitaminB12Mcg() {
+        return entries.stream().mapToDouble(FoodEntry::getVitaminB12Mcg).sum();
+    }
+
+    public double getTotalFolateMcg() {
+        return entries.stream().mapToDouble(FoodEntry::getFolateMcg).sum();
+    }
+
+    public double getTotalZincMg() {
+        return entries.stream().mapToDouble(FoodEntry::getZincMg).sum();
     }
 
     public double getTotalCalciumMg() {

@@ -334,6 +334,13 @@ export class WorkoutLogComponent {
     const n = parseInt(String(val).replace(/[^0-9]/g, '') || '0', 10);
     return isNaN(n) ? 0 : n;
   }
+
+  private toLocalDateString(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
   removeExercise(i: number): void { this.exercisesArray.removeAt(i); }
   addSet(i: number): void { this.getSetsArray(i).push(this.createSet()); }
   removeSet(i: number, j: number): void { this.getSetsArray(i).removeAt(j); }
@@ -346,7 +353,7 @@ export class WorkoutLogComponent {
     const raw = this.form.value;
     const dateVal: Date = raw.date;
     const input = {
-      date: dateVal.toISOString().split('T')[0],
+      date: this.toLocalDateString(dateVal),
       notes: raw.notes || undefined,
       exercises: raw.exercises,
     };

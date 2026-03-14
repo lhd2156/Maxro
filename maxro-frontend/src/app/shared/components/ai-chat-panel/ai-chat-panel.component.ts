@@ -172,9 +172,14 @@ interface SpeechRecognitionWindow extends Window {
               <span class="attachment-count">{{ pendingAttachments.length }} image{{ pendingAttachments.length === 1 ? '' : 's' }}</span>
             }
           </div>
-          <button type="button" class="chat-btn chat-btn-primary" (click)="sendMessage()" [disabled]="sending || !canSend">
-            {{ sending ? 'Sending...' : 'Send' }}
-          </button>
+          <div class="chat-actions-right">
+            <button type="button" class="chat-btn chat-btn-clear" (click)="clearChat()" [disabled]="sending || (messages.length <= 1 && !draft.trim() && pendingAttachments.length === 0)">
+              Clear Chat
+            </button>
+            <button type="button" class="chat-btn chat-btn-primary" (click)="sendMessage()" [disabled]="sending || !canSend">
+              {{ sending ? 'Sending...' : 'Send' }}
+            </button>
+          </div>
         </div>
 
         <input #fileInput type="file" accept="image/*" multiple hidden (change)="onFilesSelected($event)" />
@@ -331,11 +336,14 @@ interface SpeechRecognitionWindow extends Window {
     .chat-input::placeholder { color: rgba(255,255,255,0.38); }
     .chat-actions { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
     .chat-actions-left { display: flex; min-width: 0; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .chat-actions-right { display: flex; align-items: center; gap: 8px; }
     .chat-btn { min-height: 34px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease; }
     .chat-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .chat-btn mat-icon { width: 14px; height: 14px; font-size: 14px; }
     .chat-btn-secondary { background: rgba(255,255,255,0.04); color: var(--text-primary); }
     .chat-btn-secondary:hover:not(:disabled) { border-color: rgba(200,241,53,0.28); color: var(--accent); }
+    .chat-btn-clear { background: rgba(255,255,255,0.04); color: #fff; border-color: rgba(255,255,255,0.18); }
+    .chat-btn-clear:hover:not(:disabled) { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.28); }
     .chat-btn-active { background: rgba(200,241,53,0.12); border-color: rgba(200,241,53,0.34); color: var(--accent); }
     .chat-btn-primary { background: var(--accent); color: #0d0d0d; border-color: transparent; }
     .chat-btn-primary:hover:not(:disabled) { filter: brightness(1.04); }
@@ -570,6 +578,25 @@ export class AiChatPanelComponent implements OnChanges {
     }
 
     this.performSendMessage(trimmedMessage, outgoingAttachments);
+  }
+
+  clearChat(): void {
+    if (this.sending) {
+      return;
+    }
+
+    if (this.listening) {
+      this.stopVoiceInput();
+    }
+
+    this.messages = [this.buildSeedMessage()];
+    this.pendingAttachments = [];
+    this.draft = '';
+    this.composerError = '';
+    this.selectedQuickCategory = '';
+    this.quickPromptClosing = false;
+    this.clearQuickPromptCloseTimer();
+    this.scrollToBottom();
   }
 
   private performSendMessage(trimmedMessage: string, outgoingAttachments: PendingImage[]): void {

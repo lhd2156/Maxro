@@ -30,7 +30,7 @@ import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 @Service
 public class AiChatServiceImpl implements AiChatService {
 
-    private static final int MAX_HISTORY_MESSAGES = 12;
+    private static final int MAX_HISTORY_MESSAGES = 8;
     private static final int MAX_ATTACHMENTS = 3;
     private static final int MAX_ATTACHMENT_BASE64_LENGTH = 7_000_000;
     private static final String DEFAULT_IMAGE_PROMPT = "Help with this image in a fitness or Maxro app-support context.";
@@ -89,11 +89,12 @@ public class AiChatServiceImpl implements AiChatService {
         }
 
         String message = extractResponseText(response);
-        if (message == null || message.isBlank()) {
-            throw new ResponseStatusException(BAD_GATEWAY, "Google AI did not return a message");
+        String finalizedMessage = finalizeResponse(user, request, message);
+        if (finalizedMessage == null || finalizedMessage.isBlank()) {
+            throw new ResponseStatusException(BAD_GATEWAY, "Google AI did not return a usable message");
         }
 
-        return new AiChatResponse(message.trim());
+        return new AiChatResponse(finalizedMessage.trim());
     }
 
     private void validateConfiguration() {
@@ -169,6 +170,12 @@ public class AiChatServiceImpl implements AiChatService {
                 - remember the conversation history and refer back to it when helpful
                 - if the user shares an image, use it only for fitness, nutrition, recovery, or Maxro support help
                 - do not identify people or make medical judgments from images
+                - when app data is present, use all relevant lines from the app snapshot (not only a single latest item)
+                - if the user asks for workout, nutrition, fat loss, muscle gain, meal planning, hydration, recovery, or habit coaching advice, provide practical coach-style guidance even without live app data
+                - when the user asks for a workout or a split, always provide a complete recommendation (specific exercises, sets, reps, and rest), not just an intro line
+                - if asked about cut/bulk/lean goals, include a split recommendation and progression guidance
+                - if the user changes topics, switch immediately and answer the new question directly
+                - do not repeat previous plans unless the user asks to continue or compare them
                 - use plain text and avoid raw markdown markers like **bold** in your replies
                 """);
 
@@ -249,6 +256,10 @@ public class AiChatServiceImpl implements AiChatService {
             }
         }
 
+        prompt.append("Conversation handling rules:\n");
+        prompt.append("- Treat the latest user message as highest priority.\n");
+        prompt.append("- If topic changed, answer only the new topic and avoid repeating old content unless requested.\n\n");
+
         prompt.append("User message:\n");
         prompt.append(message != null ? message : DEFAULT_IMAGE_PROMPT);
         return prompt.toString().trim();
@@ -283,6 +294,101 @@ public class AiChatServiceImpl implements AiChatService {
         }
 
         return builder.toString();
+    }
+
+    private String finalizeResponse(User user, AiChatRequest request, String modelMessage) {
+        String cleaned = trimToNull(modelMessage);
+        if (!isWorkoutPlanningRequest(request)) {
+            return cleaned;
+        }
+
+        if (cleaned == null || isLikelyIncompleteWorkoutReply(cleaned)) {
+            return buildWorkoutFallbackReply(user, request);
+        }
+
+        return cleaned;
+    }
+
+    private boolean isWorkoutPlanningRequest(AiChatRequest request) {
+        String message = request != null ? trimToNull(request.message()) : null;
+        if (message == null) {
+            return false;
+        }
+
+        String lower = message.toLowerCase(Locale.ROOT);
+        return lower.contains("recommend")
+                || lower.contains("workout")
+                || lower.contains("program")
+                || lower.contains("routine")
+                || lower.contains("split")
+                || lower.contains("bulk")
+                || lower.contains("cut")
+                || lower.contains("lean")
+                || lower.contains("gain muscle")
+                || lower.contains("lose fat")
+                || lower.contains("weight loss");
+    }
+
+    private boolean isLikelyIncompleteWorkoutReply(String text) {
+        String normalized = text.trim();
+        if (normalized.length() < 120) {
+            return true;
+        }
+        if (normalized.endsWith(":")) {
+            return true;
+        }
+
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        boolean hasStructure = lower.contains("set") || lower.contains("rep") || lower.contains("day") || lower.contains("rest");
+        return !hasStructure;
+    }
+
+    private String buildWorkoutFallbackReply(User user, AiChatRequest request) {
+        String message = request != null ? trimToNull(request.message()) : null;
+        String lower = message == null ? "" : message.toLowerCase(Locale.ROOT);
+        String goal = trimToNull(user != null ? user.getFitnessGoal() : null);
+        String goalLower = goal == null ? "" : goal.toLowerCase(Locale.ROOT);
+
+        boolean wantsCut = lower.contains("cut") || lower.contains("lose fat") || lower.contains("weight loss") || goalLower.contains("cut") || goalLower.contains("lose fat");
+        boolean wantsBulk = lower.contains("bulk") || lower.contains("gain") || lower.contains("build muscle") || goalLower.contains("bulk") || goalLower.contains("gain");
+        boolean asksSplit = lower.contains("split");
+
+        if (asksSplit || wantsCut || wantsBulk) {
+            if (wantsCut) {
+                return "Absolutely. For a cut, run this 4-day split with daily steps and short cardio:\n"
+                        + "Day 1 Upper: Bench Press 4x6-8, Barbell Row 4x8-10, Incline DB Press 3x8-10, Lat Pulldown 3x10-12, Lateral Raise 3x12-15, Tricep Pushdown 2x12-15\n"
+                        + "Day 2 Lower: Back Squat 4x6-8, Romanian Deadlift 4x8-10, Leg Press 3x10-12, Hamstring Curl 3x12-15, Calf Raise 4x12-15, Plank 3x45-60s\n"
+                        + "Day 3 Upper: Overhead Press 4x6-8, Pull-ups or Assisted Pull-ups 4x6-10, DB Row 3x8-12, Chest Fly 3x12-15, Bicep Curl 3x10-12, Face Pull 3x12-15\n"
+                        + "Day 4 Lower: Deadlift 3x3-5, Bulgarian Split Squat 3x8-10 each leg, Leg Extension 3x12-15, Hip Thrust 3x8-12, Calf Raise 3x12-15, Hanging Leg Raise 3x10-15\n"
+                        + "Rest: 2-3 min on compounds, 60-90 sec on accessories. Add 10-20 min incline walk after lifts and target 8k-12k steps/day.";
+            }
+
+            if (wantsBulk) {
+                return "Great call. For a lean bulk, use this 5-day split:\n"
+                        + "Day 1 Push: Bench Press 4x5-8, Incline DB Press 3x8-10, Overhead Press 3x6-8, Lateral Raise 3x12-15, Tricep Extension 3x10-12\n"
+                        + "Day 2 Pull: Deadlift 3x3-5, Barbell Row 4x6-10, Lat Pulldown 3x8-12, Seated Cable Row 3x10-12, Bicep Curl 3x10-12\n"
+                        + "Day 3 Legs: Back Squat 4x5-8, Romanian Deadlift 3x8-10, Leg Press 3x10-12, Hamstring Curl 3x12-15, Calf Raise 4x12-15\n"
+                        + "Day 4 Upper Hypertrophy: Incline Press 3x8-12, Chest Fly 3x12-15, Pull-ups 3xAMRAP, DB Row 3x10-12, Lateral Raise 3x12-15, Arms 2-3 sets each\n"
+                        + "Day 5 Lower Hypertrophy: Front Squat 3x6-10, Hip Thrust 3x8-12, Split Squat 3x8-12 each leg, Leg Extension 3x12-15, Ham Curl 3x12-15, Core 3 sets\n"
+                        + "Progression: when you hit the top rep range on all sets, increase load next week by 2.5-5 lbs.";
+            }
+
+            return "If you want a split, start with this balanced 4-day Upper/Lower:\n"
+                    + "Upper A: Bench Press 4x6-8, Row 4x8-10, Overhead Press 3x6-8, Lat Pulldown 3x10-12, Arms 2-3 sets each\n"
+                    + "Lower A: Squat 4x6-8, Romanian Deadlift 4x8-10, Leg Press 3x10-12, Calves 3x12-15, Core 3 sets\n"
+                    + "Upper B: Incline Press 4x8-10, Pull-ups 4x6-10, DB Shoulder Press 3x8-10, Chest Fly 3x12-15, Face Pull 3x12-15\n"
+                    + "Lower B: Deadlift 3x3-5, Split Squat 3x8-10 each leg, Ham Curl 3x12-15, Leg Extension 3x12-15, Calves 3x12-15\n"
+                    + "Rest 1-2 days between lower sessions if needed.";
+        }
+
+        return "Absolutely. Here is a simple full-body workout you can run 3 days per week:\n"
+                + "1) Back Squat: 3 sets x 5-8 reps\n"
+                + "2) Bench Press: 3 sets x 6-10 reps\n"
+                + "3) Barbell Row: 3 sets x 8-12 reps\n"
+                + "4) Romanian Deadlift: 3 sets x 8-10 reps\n"
+                + "5) Overhead Press: 2 sets x 8-10 reps\n"
+                + "6) Plank: 3 sets x 45-60 sec\n"
+                + "Rest 2-3 min on big lifts and 60-90 sec on accessories. Add 2.5-5 lbs once you hit the top of the rep range with good form.";
     }
 
     private String normalizeRole(String role) {

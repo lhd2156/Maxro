@@ -111,7 +111,13 @@ public class WorkoutServiceImpl implements WorkoutService {
             case "chest" -> List.of("Bench Press", "Incline Dumbbell Press", "Chest Fly", "Push-ups", "Cable Crossover");
             case "back" -> List.of("Pull-ups", "Lat Pulldown", "Barbell Row", "Deadlift", "Seated Cable Row");
             case "legs" -> List.of("Squat", "Leg Press", "Leg Extension", "Romanian Deadlift", "Calf Raise", "Hamstring Curl");
-            case "shoulders" -> List.of("Overhead Press", "Lateral Raise", "Front Raise", "Face Pull");
+            case "shoulders" -> List.of("Overhead Press", "Lateral Raise", "Front Raise", "Face Pull", "Upright Row");
+            case "biceps" -> List.of("Barbell Curl", "Dumbbell Curl", "Hammer Curl", "Preacher Curl", "Cable Curl");
+            case "triceps" -> List.of("Tricep Pushdown", "Skull Crusher", "Overhead Tricep Extension", "Close-Grip Bench Press", "Dips");
+            case "glutes" -> List.of("Hip Thrust", "Glute Bridge", "Bulgarian Split Squat", "Cable Kickback", "Sumo Deadlift");
+            case "forearms" -> List.of("Wrist Curl", "Reverse Wrist Curl", "Farmer's Carry", "Plate Pinch Hold", "Behind-the-Back Wrist Curl");
+            case "calves" -> List.of("Standing Calf Raise", "Seated Calf Raise", "Donkey Calf Raise", "Single-Leg Calf Raise", "Calf Press on Leg Press");
+            case "full body", "full-body", "fullbody" -> List.of("Burpee", "Thruster", "Kettlebell Swing", "Man Maker", "Clean and Press");
             case "arms" -> List.of("Bicep Curl", "Tricep Extension", "Hammer Curl", "Tricep Pushdown", "Skull Crusher");
             case "core" -> List.of("Crunches", "Plank", "Leg Raises", "Ab Wheel", "Russian Twist");
             default -> List.of();

@@ -16,13 +16,25 @@ public class FoodEntry {
     private double fatG;
     private double fiberG;
     private double sugarG;
+    private double addedSugarG;
     private double sodiumMg;
     private double cholesterolMg;
     private double saturatedFatG;
     private double potassiumMg;
+    private double caffeineMg;
+    private double electrolytesMg;
     private double vitaminAMcg;
     private double vitaminCMg;
     private double vitaminDMcg;
+    private double vitaminEMg;
+    private double vitaminKMcg;
+    private double thiaminMg;
+    private double riboflavinMg;
+    private double niacinMg;
+    private double vitaminB6Mg;
+    private double vitaminB12Mcg;
+    private double folateMcg;
+    private double zincMg;
     private double calciumMg;
     private double ironMg;
     private double magnesiumMg;
@@ -68,6 +80,9 @@ public class FoodEntry {
     public double getSugarG() { return sugarG; }
     public void setSugarG(double sugarG) { this.sugarG = sugarG; }
 
+    public double getAddedSugarG() { return addedSugarG; }
+    public void setAddedSugarG(double addedSugarG) { this.addedSugarG = addedSugarG; }
+
     public double getSodiumMg() { return sodiumMg; }
     public void setSodiumMg(double sodiumMg) { this.sodiumMg = sodiumMg; }
 
@@ -80,6 +95,12 @@ public class FoodEntry {
     public double getPotassiumMg() { return potassiumMg; }
     public void setPotassiumMg(double potassiumMg) { this.potassiumMg = potassiumMg; }
 
+    public double getCaffeineMg() { return caffeineMg; }
+    public void setCaffeineMg(double caffeineMg) { this.caffeineMg = caffeineMg; }
+
+    public double getElectrolytesMg() { return electrolytesMg; }
+    public void setElectrolytesMg(double electrolytesMg) { this.electrolytesMg = electrolytesMg; }
+
     public double getVitaminAMcg() { return vitaminAMcg; }
     public void setVitaminAMcg(double vitaminAMcg) { this.vitaminAMcg = vitaminAMcg; }
 
@@ -88,6 +109,33 @@ public class FoodEntry {
 
     public double getVitaminDMcg() { return vitaminDMcg; }
     public void setVitaminDMcg(double vitaminDMcg) { this.vitaminDMcg = vitaminDMcg; }
+
+    public double getVitaminEMg() { return vitaminEMg; }
+    public void setVitaminEMg(double vitaminEMg) { this.vitaminEMg = vitaminEMg; }
+
+    public double getVitaminKMcg() { return vitaminKMcg; }
+    public void setVitaminKMcg(double vitaminKMcg) { this.vitaminKMcg = vitaminKMcg; }
+
+    public double getThiaminMg() { return thiaminMg; }
+    public void setThiaminMg(double thiaminMg) { this.thiaminMg = thiaminMg; }
+
+    public double getRiboflavinMg() { return riboflavinMg; }
+    public void setRiboflavinMg(double riboflavinMg) { this.riboflavinMg = riboflavinMg; }
+
+    public double getNiacinMg() { return niacinMg; }
+    public void setNiacinMg(double niacinMg) { this.niacinMg = niacinMg; }
+
+    public double getVitaminB6Mg() { return vitaminB6Mg; }
+    public void setVitaminB6Mg(double vitaminB6Mg) { this.vitaminB6Mg = vitaminB6Mg; }
+
+    public double getVitaminB12Mcg() { return vitaminB12Mcg; }
+    public void setVitaminB12Mcg(double vitaminB12Mcg) { this.vitaminB12Mcg = vitaminB12Mcg; }
+
+    public double getFolateMcg() { return folateMcg; }
+    public void setFolateMcg(double folateMcg) { this.folateMcg = folateMcg; }
+
+    public double getZincMg() { return zincMg; }
+    public void setZincMg(double zincMg) { this.zincMg = zincMg; }
 
     public double getCalciumMg() { return calciumMg; }
     public void setCalciumMg(double calciumMg) { this.calciumMg = calciumMg; }

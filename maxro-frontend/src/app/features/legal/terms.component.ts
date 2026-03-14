@@ -1,17 +1,19 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { Location } from '@angular/common';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-terms',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule],
   template: `
     <div class="legal-page">
       <div class="legal-header">
-        <a routerLink="/" class="back-link"><mat-icon svgIcon="mx-chevron-left"></mat-icon> Back</a>
+        <button type="button" class="back-link" (click)="goBack()"><mat-icon svgIcon="mx-chevron-left"></mat-icon> Back</button>
         <span class="brand-text">MAXRO</span>
       </div>
       <div class="legal-content">
@@ -72,6 +74,12 @@ import { MatIconModule } from '@angular/material/icon';
     .back-link {
       display: flex; align-items: center; gap: 4px;
       color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 500;
+      background: transparent;
+      border: none;
+      padding: 0;
+      margin: 0;
+      font: inherit;
+      cursor: pointer;
     }
     .back-link:hover { color: var(--accent); }
     .brand-text { font-size: 18px; font-weight: 800; letter-spacing: 4px; color: var(--accent); }
@@ -85,4 +93,17 @@ import { MatIconModule } from '@angular/material/icon';
     .link:hover { text-decoration: underline; }
   `],
 })
-export class TermsComponent {}
+export class TermsComponent {
+  private readonly router = inject(Router);
+  private readonly location = inject(Location);
+  private readonly authService = inject(AuthService);
+
+  goBack(): void {
+    if (window.history.length > 1) {
+      this.location.back();
+      return;
+    }
+
+    void this.router.navigate([this.authService.isLoggedIn() ? '/dashboard' : '/']);
+  }
+}

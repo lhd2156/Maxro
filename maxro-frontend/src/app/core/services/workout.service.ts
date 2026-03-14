@@ -15,7 +15,7 @@ const LOG_WORKOUT = gql`
   mutation LogWorkout($input: WorkoutInput!) {
     logWorkout(input: $input) {
       workout { ${WORKOUT_FIELDS} }
-      newPersonalRecords { id exerciseName weightLbs reps oneRepMaxLbs achievedAt }
+      newPersonalRecords { id exerciseName weightLbs reps oneRepMaxLbs achievedAt workoutDate }
     }
   }
 `;
@@ -43,7 +43,7 @@ const DELETE_WORKOUT = gql`
 
 const GET_PERSONAL_RECORDS = gql`
   query GetPersonalRecords {
-    getPersonalRecords { id exerciseName weightLbs reps oneRepMaxLbs achievedAt }
+    getPersonalRecords { id exerciseName weightLbs reps oneRepMaxLbs achievedAt workoutDate }
   }
 `;
 
@@ -62,6 +62,22 @@ const GET_POPULAR_EXERCISES = gql`
     getPopularExercises(muscleGroup: $muscleGroup)
   }
 `;
+
+const POPULAR_EXERCISE_FALLBACKS: Record<string, string[]> = {
+  chest: ['Bench Press', 'Incline Dumbbell Press', 'Chest Fly', 'Push-ups', 'Cable Crossover'],
+  back: ['Pull-ups', 'Lat Pulldown', 'Barbell Row', 'Deadlift', 'Seated Cable Row'],
+  shoulders: ['Overhead Press', 'Lateral Raise', 'Front Raise', 'Face Pull', 'Upright Row'],
+  biceps: ['Barbell Curl', 'Dumbbell Curl', 'Hammer Curl', 'Preacher Curl', 'Cable Curl'],
+  triceps: ['Tricep Pushdown', 'Skull Crusher', 'Overhead Tricep Extension', 'Close-Grip Bench Press', 'Dips'],
+  legs: ['Squat', 'Leg Press', 'Leg Extension', 'Romanian Deadlift', 'Hamstring Curl'],
+  glutes: ['Hip Thrust', 'Glute Bridge', 'Bulgarian Split Squat', 'Cable Kickback', 'Sumo Deadlift'],
+  core: ['Crunches', 'Plank', 'Leg Raises', 'Ab Wheel', 'Russian Twist'],
+  forearms: ['Wrist Curl', 'Reverse Wrist Curl', "Farmer's Carry", 'Plate Pinch Hold', 'Behind-the-Back Wrist Curl'],
+  calves: ['Standing Calf Raise', 'Seated Calf Raise', 'Donkey Calf Raise', 'Single-Leg Calf Raise', 'Calf Press on Leg Press'],
+  'full body': ['Burpee', 'Thruster', 'Kettlebell Swing', 'Man Maker', 'Clean and Press'],
+  'full-body': ['Burpee', 'Thruster', 'Kettlebell Swing', 'Man Maker', 'Clean and Press'],
+  fullbody: ['Burpee', 'Thruster', 'Kettlebell Swing', 'Man Maker', 'Clean and Press'],
+};
 
 @Injectable({ providedIn: 'root' })
 export class WorkoutService {
@@ -158,6 +174,17 @@ export class WorkoutService {
     return this.apollo.query<{ getPopularExercises: string[] }>({
       query: GET_POPULAR_EXERCISES,
       variables: { muscleGroup: muscleGroup ?? null },
-    }).pipe(map(r => r.data.getPopularExercises));
+      fetchPolicy: 'network-only',
+    }).pipe(
+      map(r => {
+        const serverResults = r.data.getPopularExercises ?? [];
+        if (serverResults.length > 0) {
+          return serverResults;
+        }
+
+        const key = (muscleGroup || '').trim().toLowerCase();
+        return POPULAR_EXERCISE_FALLBACKS[key] ?? [];
+      }),
+    );
   }
 }

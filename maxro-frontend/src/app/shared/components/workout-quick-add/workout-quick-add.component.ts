@@ -12,7 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NumericInputDirective } from '../../directives/numeric-input.directive';
 import { WorkoutService } from '../../../core/services/workout.service';
 import { ConfettiService } from '../../../core/services/confetti.service';
-import { MUSCLE_GROUPS } from '../../../core/models/workout.model';
+import { MUSCLE_GROUPS, WorkoutResult } from '../../../core/models/workout.model';
 
 @Component({
   selector: 'app-workout-quick-add',
@@ -38,7 +38,7 @@ import { MUSCLE_GROUPS } from '../../../core/models/workout.model';
     </div>
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
       <div class="form-row">
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="date-field">
           <mat-label>Date</mat-label>
           <input matInput [matDatepicker]="picker" formControlName="date">
           <mat-datepicker-toggle matSuffix [for]="picker"><mat-icon svgIcon="mx-calendar"></mat-icon></mat-datepicker-toggle>
@@ -104,7 +104,8 @@ import { MUSCLE_GROUPS } from '../../../core/models/workout.model';
     .quick-add-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
     .quick-add-header h2 { margin: 0; font-size: 18px; font-weight: 700; color: var(--text-primary); }
     .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
-    .form-row mat-form-field { flex: 1; }
+    .form-row mat-form-field { flex: 1; min-width: 170px; }
+    .date-field { flex: 0 0 190px !important; max-width: 190px; }
     .notes-field { flex: 2 !important; }
     .exercise-block {
       background: rgba(255,255,255,0.02); border-radius: 8px;
@@ -142,7 +143,7 @@ export class WorkoutQuickAddComponent implements OnInit {
   /** When provided (e.g. from dashboard), use this date instead of today for the workout. */
   @Input() initialDate?: Date;
 
-  @Output() saved = new EventEmitter<void>();
+  @Output() saved = new EventEmitter<WorkoutResult>();
   @Output() cancelled = new EventEmitter<void>();
 
   form: FormGroup;
@@ -247,6 +248,13 @@ export class WorkoutQuickAddComponent implements OnInit {
     return isNaN(n) ? 0 : n;
   }
 
+  private toLocalDateString(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
   onSubmit(): void {
     if (this.form.invalid) return;
     this.sanitizeNumericFormValues();
@@ -255,7 +263,7 @@ export class WorkoutQuickAddComponent implements OnInit {
     const raw = this.form.value;
     const dateVal: Date = raw.date;
     const input = {
-      date: dateVal.toISOString().split('T')[0],
+      date: this.toLocalDateString(dateVal),
       notes: raw.notes || undefined,
       exercises: raw.exercises,
     };
@@ -268,7 +276,7 @@ export class WorkoutQuickAddComponent implements OnInit {
           if (result.newPersonalRecords.length > 0) {
             this.confettiService.burst();
           }
-          this.saved.emit();
+          this.saved.emit(result);
         },
         error: () => {
           this.loading = false;

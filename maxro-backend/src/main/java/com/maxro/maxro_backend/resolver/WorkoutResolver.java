@@ -15,8 +15,10 @@ import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 public class WorkoutResolver {
@@ -85,7 +87,11 @@ public class WorkoutResolver {
         workout.setExercises(exercises);
 
         Workout savedWorkout = workoutService.logWorkout(userId, workout);
-        List<PersonalRecord> newPRs = personalRecordService.checkAndUpdatePRs(userId, savedWorkout.getId(), savedWorkout.getExercises());
+        List<PersonalRecord> newPRs = personalRecordService.checkAndUpdatePRs(
+            userId,
+            savedWorkout.getId(),
+            savedWorkout.getDate(),
+            savedWorkout.getExercises());
 
         return new WorkoutResultDto(savedWorkout, newPRs);
     }
@@ -98,7 +104,7 @@ public class WorkoutResolver {
 
     private Exercise toExercise(Map<String, Object> exerciseInput) {
         Exercise exercise = new Exercise();
-        exercise.setName((String) exerciseInput.get("name"));
+        exercise.setName(normalizeExerciseName((String) exerciseInput.get("name")));
         exercise.setMuscleGroup((String) exerciseInput.get("muscleGroup"));
 
         List<ExerciseSet> sets = asObjectMapList(exerciseInput.get("sets")).stream()
@@ -113,6 +119,19 @@ public class WorkoutResolver {
         set.setReps((Integer) setInput.get("reps"));
         set.setWeightLbs(((Number) setInput.get("weightLbs")).doubleValue());
         return set;
+    }
+
+    private String normalizeExerciseName(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String cleaned = raw.trim().replaceAll("\\s+", " ");
+        if (cleaned.isEmpty()) {
+            return "";
+        }
+        return Arrays.stream(cleaned.toLowerCase().split(" "))
+                .map(token -> token.isEmpty() ? token : Character.toUpperCase(token.charAt(0)) + token.substring(1))
+                .collect(Collectors.joining(" "));
     }
 
     @SuppressWarnings("unchecked")

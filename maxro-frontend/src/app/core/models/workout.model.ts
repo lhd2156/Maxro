@@ -56,6 +56,7 @@ export interface PersonalRecord {
   reps: number;
   oneRepMaxLbs: number;
   achievedAt: string;
+  workoutDate?: string | null;
 }
 
 export interface StreakInfo {

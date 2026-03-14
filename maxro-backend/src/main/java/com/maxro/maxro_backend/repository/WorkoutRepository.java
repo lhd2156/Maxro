@@ -27,6 +27,9 @@ public interface WorkoutRepository extends MongoRepository<Workout, String> {
     @Query("{ 'userId' : ?0, $or : [ { 'date' : ?1 }, { 'date' : ?2 } ] }")
     Optional<Workout> findByUserIdAndDateFlexible(String userId, String dateStr, LocalDate date);
 
+        @Query("{ 'userId' : ?0, $or : [ { 'date' : ?1 }, { 'date' : ?2 } ] }")
+        List<Workout> findAllByUserIdAndDateFlexible(String userId, String dateStr, LocalDate date);
+
     List<Workout> findByUserIdOrderByDateAsc(String userId);
 
     @Query("{ 'userId' : ?0, $or : [ " +

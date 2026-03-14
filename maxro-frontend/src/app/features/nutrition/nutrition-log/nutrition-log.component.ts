@@ -12,7 +12,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, map, of, retry, Subject, switchMap } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfettiService } from '../../../core/services/confetti.service';
 import { FoodEntryInput, FoodSearchPage, FoodSearchResult, MEAL_TYPES, NutritionLog } from '../../../core/models/nutrition.model';
@@ -57,25 +57,45 @@ import { NumericInputDirective } from '../../../shared/directives/numeric-input.
             <app-macro-bar label="Carbs" [current]="log?.totalCarbsG || 0" [goal]="user?.dailyCarbTarget || 250" />
             <app-macro-bar label="Fat" [current]="log?.totalFatG || 0" [goal]="user?.dailyFatTarget || 65" />
           </div>
+          <div class="nutrition-pie-wrap"
+            [style.--p-pct]="nutritionProteinPct + '%'"
+            [style.--c-pct]="nutritionCarbsPct + '%'"
+            [style.--f-pct]="nutritionFatPct + '%'">
+            <div class="nutrition-pie-wrapper">
+              <div class="nutrition-pie-donut"></div>
+              <div class="nutrition-pie-hole">
+                <span class="nutrition-pie-cal">{{ formatCalories(log?.totalCalories) }}</span>
+                <span class="nutrition-pie-unit">cal</span>
+              </div>
+            </div>
+          </div>
         </mat-card>
 
         <mat-card class="card">
           <div class="micro-grid">
             <div class="micro-pill"><span>Fiber</span><strong>{{ formatAmount(log?.totalFiberG, 'g', 1) }}</strong></div>
             <div class="micro-pill"><span>Sugar</span><strong>{{ formatAmount(log?.totalSugarG, 'g', 1) }}</strong></div>
+            <div class="micro-pill"><span>Added Sugar</span><strong>{{ formatAmount(log?.totalAddedSugarG, 'g', 1) }}</strong></div>
             <div class="micro-pill"><span>Sat. Fat</span><strong>{{ formatAmount(log?.totalSaturatedFatG, 'g', 1) }}</strong></div>
             <div class="micro-pill"><span>Sodium</span><strong>{{ formatAmount(log?.totalSodiumMg, 'mg') }}</strong></div>
             <div class="micro-pill"><span>Cholesterol</span><strong>{{ formatAmount(log?.totalCholesterolMg, 'mg') }}</strong></div>
             <div class="micro-pill"><span>Potassium</span><strong>{{ formatAmount(log?.totalPotassiumMg, 'mg') }}</strong></div>
+            <div class="micro-pill"><span>Caffeine</span><strong>{{ formatAmount(log?.totalCaffeineMg, 'mg') }}</strong></div>
+            <div class="micro-pill"><span>Electrolytes</span><strong>{{ formatAmount(log?.totalElectrolytesMg, 'mg') }}</strong></div>
           </div>
-          <p class="micro-label">Vitamins &amp; micronutrients</p>
+          <p class="micro-label">All tracked vitamins</p>
           <div class="micro-grid vitamins">
             <div class="micro-pill"><span>Vitamin A</span><strong>{{ formatAmount(log?.totalVitaminAMcg, 'mcg') }}</strong></div>
             <div class="micro-pill"><span>Vitamin C</span><strong>{{ formatAmount(log?.totalVitaminCMg, 'mg') }}</strong></div>
             <div class="micro-pill"><span>Vitamin D</span><strong>{{ formatAmount(log?.totalVitaminDMcg, 'mcg') }}</strong></div>
-            <div class="micro-pill"><span>Calcium</span><strong>{{ formatAmount(log?.totalCalciumMg, 'mg') }}</strong></div>
-            <div class="micro-pill"><span>Iron</span><strong>{{ formatAmount(log?.totalIronMg, 'mg', 1) }}</strong></div>
-            <div class="micro-pill"><span>Magnesium</span><strong>{{ formatAmount(log?.totalMagnesiumMg, 'mg') }}</strong></div>
+            <div class="micro-pill"><span>Vitamin E</span><strong>{{ formatAmount(log?.totalVitaminEMg, 'mg', 1) }}</strong></div>
+            <div class="micro-pill"><span>Vitamin K</span><strong>{{ formatAmount(log?.totalVitaminKMcg, 'mcg') }}</strong></div>
+            <div class="micro-pill"><span>Vitamin B6</span><strong>{{ formatAmount(log?.totalVitaminB6Mg, 'mg', 1) }}</strong></div>
+            <div class="micro-pill"><span>Vitamin B12</span><strong>{{ formatAmount(log?.totalVitaminB12Mcg, 'mcg', 1) }}</strong></div>
+            <div class="micro-pill"><span>Vitamin B1</span><strong>{{ formatAmount(log?.totalThiaminMg, 'mg', 2) }}</strong></div>
+            <div class="micro-pill"><span>Vitamin B2</span><strong>{{ formatAmount(log?.totalRiboflavinMg, 'mg', 2) }}</strong></div>
+            <div class="micro-pill"><span>Vitamin B3</span><strong>{{ formatAmount(log?.totalNiacinMg, 'mg', 2) }}</strong></div>
+            <div class="micro-pill"><span>Vitamin B9</span><strong>{{ formatAmount(log?.totalFolateMcg, 'mcg') }}</strong></div>
           </div>
         </mat-card>
       </div>
@@ -96,9 +116,20 @@ import { NumericInputDirective } from '../../../shared/directives/numeric-input.
                     <span class="carbs">{{ entry.carbsG | number:'1.0-0' }}C</span>
                     <span class="fat">{{ entry.fatG | number:'1.0-0' }}F</span>
                   </div>
-                  <span class="entry-cal">{{ entry.calories | number:'1.0-0' }} cal</span>
+                  <span class="entry-cal">{{ formatCalories(entry.calories) }} cal</span>
+                  <button mat-stroked-button type="button" class="serving-edit-btn" (click)="openServingEditor(entry)">Servings</button>
                   <button mat-icon-button class="remove-btn" (click)="removeEntry(entry.id)" aria-label="Remove entry"><span class="remove-btn-glyph" aria-hidden="true">&times;</span></button>
                 </div>
+                @if (editingEntryId === entry.id) {
+                  <div class="entry-serving-editor">
+                    <mat-form-field appearance="outline" class="serving-editor-field">
+                      <mat-label>Serving Qty</mat-label>
+                      <input matInput appNumericInput="decimal" [(ngModel)]="editingServingQty" [ngModelOptions]="{ standalone: true }">
+                    </mat-form-field>
+                    <button mat-flat-button type="button" class="serving-save-btn" (click)="saveServingEditor(entry)">Save</button>
+                    <button mat-stroked-button type="button" class="serving-cancel-btn" (click)="cancelServingEditor()">Cancel</button>
+                  </div>
+                }
               }
             } @else {
               <div class="meal-empty">
@@ -116,7 +147,7 @@ import { NumericInputDirective } from '../../../shared/directives/numeric-input.
         <div class="modal-panel" [class.closing]="addFoodClosing" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h2>Add Food</h2>
-            <button mat-icon-button class="modal-close" (click)="closeAddFood()"><mat-icon svgIcon="mx-x"></mat-icon></button>
+            <button type="button" class="modal-close" aria-label="Close add food" (click)="closeAddFood()"><mat-icon svgIcon="mx-x"></mat-icon></button>
           </div>
           <div class="modal-tabs">
             <button type="button" class="tab-btn" [class.active]="activeTab === 'search'" (click)="activeTab = 'search'">Search</button>
@@ -132,27 +163,31 @@ import { NumericInputDirective } from '../../../shared/directives/numeric-input.
               </div>
             </div>
 
+            <div class="modal-content-pane">
             @if (activeTab === 'search') {
               <div class="search-shell">
                 <div class="search-field-modal">
                   <label class="search-field-label" for="foodSearchInput">Search food (e.g. "chicken breast")</label>
                   <div class="search-input-wrap">
-                    <input id="foodSearchInput" class="search-input" [value]="searchQuery" (input)="onSearchInput($event)" autocomplete="off" placeholder="Start typing a food or chain item">
-                    <mat-icon svgIcon="mx-search" class="search-input-icon"></mat-icon>
+                    <input id="foodSearchInput" class="search-input" [value]="searchQuery" (input)="onSearchInput($event)" (keydown.enter)="onSearchEnter($event)" autocomplete="off" placeholder="Start typing a food or chain item">
+                    <button type="button" class="search-icon-btn" (click)="triggerSearchNow()" aria-label="Search food"><mat-icon svgIcon="mx-search" class="search-input-icon"></mat-icon></button>
                   </div>
                 </div>
 
                 @if (searchLoading) {
                   <div class="state-box"><app-loading-spinner /></div>
                 } @else if (searchError) {
-                  <div class="state-box"><p>{{ searchError }}</p></div>
+                  <div class="state-box state-box-error">
+                    <p>{{ searchError }}</p>
+                    <button mat-stroked-button type="button" class="state-retry-btn" (click)="retryFoodSearch()">Retry Search</button>
+                  </div>
                 } @else if (searchQuery.trim().length < 2) {
                   <div class="state-box"><p>Type at least 2 characters and we'll show the 5 best matches.</p></div>
                 } @else if (searchResults.length > 0) {
-                  <div class="results">
+                  <div class="results" [class.no-scroll]="expandedIdx === null">
                     @for (food of searchResults; track food.foodName + '-' + (food.brandName || 'unbranded'); let idx = $index) {
                       <div class="result" [class.expanded]="expandedIdx === idx">
-                        <div class="result-main" (click)="toggleExpand(idx)">
+                        <div class="result-main" (click)="selectFoodCard(food, idx)">
                           <div class="result-badge">{{ resultMonogram(food) }}</div>
                           <div class="result-copy">
                             <span class="result-name">{{ displayFoodName(food) }}</span>
@@ -161,28 +196,36 @@ import { NumericInputDirective } from '../../../shared/directives/numeric-input.
                             }
                             <span class="result-meta">{{ formatServing(food.servingQty, food.servingUnit) }}</span>
                           </div>
-                          <span class="cal-badge">{{ food.calories | number:'1.0-0' }} cal</span>
+                          <span class="cal-badge">{{ formatCalories(food.calories) }} cal</span>
                           <button mat-flat-button class="add-btn" (click)="addFood(food); $event.stopPropagation()">Add</button>
                         </div>
                         @if (expandedIdx === idx) {
-                          <div class="result-detail">
-                            <div class="result-detail-scroll">
+                          <div class="result-detail-inline">
+                            <div class="result-detail-inline-scroll">
                               <div class="detail-grid">
-                              <div><span>Protein</span><strong>{{ formatAmount(food.proteinG, 'g', 1) }}</strong></div>
-                              <div><span>Carbs</span><strong>{{ formatAmount(food.carbsG, 'g', 1) }}</strong></div>
-                              <div><span>Fat</span><strong>{{ formatAmount(food.fatG, 'g', 1) }}</strong></div>
-                              <div><span>Fiber</span><strong>{{ formatAmount(food.fiberG, 'g', 1) }}</strong></div>
-                              <div><span>Sugar</span><strong>{{ formatAmount(food.sugarG, 'g', 1) }}</strong></div>
-                              <div><span>Sat. Fat</span><strong>{{ formatAmount(food.saturatedFatG, 'g', 1) }}</strong></div>
-                              <div><span>Sodium</span><strong>{{ formatAmount(food.sodiumMg, 'mg') }}</strong></div>
-                              <div><span>Cholesterol</span><strong>{{ formatAmount(food.cholesterolMg, 'mg') }}</strong></div>
-                              <div><span>Potassium</span><strong>{{ formatAmount(food.potassiumMg, 'mg') }}</strong></div>
-                              <div><span>Vitamin A</span><strong>{{ formatAmount(food.vitaminAMcg, 'mcg') }}</strong></div>
-                              <div><span>Vitamin C</span><strong>{{ formatAmount(food.vitaminCMg, 'mg') }}</strong></div>
-                              <div><span>Vitamin D</span><strong>{{ formatAmount(food.vitaminDMcg, 'mcg') }}</strong></div>
-                              <div><span>Calcium</span><strong>{{ formatAmount(food.calciumMg, 'mg') }}</strong></div>
-                              <div><span>Iron</span><strong>{{ formatAmount(food.ironMg, 'mg', 1) }}</strong></div>
-                              <div><span>Magnesium</span><strong>{{ formatAmount(food.magnesiumMg, 'mg') }}</strong></div>
+                                <div><span>Protein</span><strong>{{ formatAmount(food.proteinG, 'g', 1) }}</strong></div>
+                                <div><span>Carbs</span><strong>{{ formatAmount(food.carbsG, 'g', 1) }}</strong></div>
+                                <div><span>Fat</span><strong>{{ formatAmount(food.fatG, 'g', 1) }}</strong></div>
+                                <div><span>Fiber</span><strong>{{ formatAmount(food.fiberG, 'g', 1) }}</strong></div>
+                                <div><span>Sugar</span><strong>{{ formatAmount(food.sugarG, 'g', 1) }}</strong></div>
+                                <div><span>Added Sugar</span><strong>{{ formatAmount(food.addedSugarG, 'g', 1) }}</strong></div>
+                                <div><span>Sat. Fat</span><strong>{{ formatAmount(food.saturatedFatG, 'g', 1) }}</strong></div>
+                                <div><span>Sodium</span><strong>{{ formatAmount(food.sodiumMg, 'mg') }}</strong></div>
+                                <div><span>Cholesterol</span><strong>{{ formatAmount(food.cholesterolMg, 'mg') }}</strong></div>
+                                <div><span>Potassium</span><strong>{{ formatAmount(food.potassiumMg, 'mg') }}</strong></div>
+                                <div><span>Caffeine</span><strong>{{ formatAmount(food.caffeineMg, 'mg') }}</strong></div>
+                                <div><span>Electrolytes</span><strong>{{ formatAmount(food.electrolytesMg, 'mg') }}</strong></div>
+                                <div><span>Vitamin A</span><strong>{{ formatAmount(food.vitaminAMcg, 'mcg') }}</strong></div>
+                                <div><span>Vitamin C</span><strong>{{ formatAmount(food.vitaminCMg, 'mg') }}</strong></div>
+                                <div><span>Vitamin D</span><strong>{{ formatAmount(food.vitaminDMcg, 'mcg') }}</strong></div>
+                                <div><span>Vitamin E</span><strong>{{ formatAmount(food.vitaminEMg, 'mg', 1) }}</strong></div>
+                                <div><span>Vitamin K</span><strong>{{ formatAmount(food.vitaminKMcg, 'mcg') }}</strong></div>
+                                <div><span>Vitamin B6</span><strong>{{ formatAmount(food.vitaminB6Mg, 'mg', 2) }}</strong></div>
+                                <div><span>Vitamin B12</span><strong>{{ formatAmount(food.vitaminB12Mcg, 'mcg', 1) }}</strong></div>
+                                <div><span>Vitamin B1</span><strong>{{ formatAmount(food.thiaminMg, 'mg', 2) }}</strong></div>
+                                <div><span>Vitamin B2</span><strong>{{ formatAmount(food.riboflavinMg, 'mg', 2) }}</strong></div>
+                                <div><span>Vitamin B3</span><strong>{{ formatAmount(food.niacinMg, 'mg', 2) }}</strong></div>
+                                <div><span>Vitamin B9</span><strong>{{ formatAmount(food.folateMcg, 'mcg') }}</strong></div>
                               </div>
                             </div>
                           </div>
@@ -224,6 +267,7 @@ import { NumericInputDirective } from '../../../shared/directives/numeric-input.
                     </div>
                   </div>
                 }
+
               </div>
             } @else {
               <form [formGroup]="customForm" (ngSubmit)="addCustomFood()" class="custom-form" [class.allow-scroll]="advancedOptionsOpen">
@@ -246,28 +290,37 @@ import { NumericInputDirective } from '../../../shared/directives/numeric-input.
                   <div class="advanced-grid">
                     <mat-form-field appearance="outline"><mat-label>Fiber (g)</mat-label><input matInput formControlName="fiberG" appNumericInput="decimal"></mat-form-field>
                     <mat-form-field appearance="outline"><mat-label>Sugar (g)</mat-label><input matInput formControlName="sugarG" appNumericInput="decimal"></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>Added Sugar (g)</mat-label><input matInput formControlName="addedSugarG" appNumericInput="decimal"></mat-form-field>
                     <mat-form-field appearance="outline"><mat-label>Sat. Fat (g)</mat-label><input matInput formControlName="saturatedFatG" appNumericInput="decimal"></mat-form-field>
                     <mat-form-field appearance="outline"><mat-label>Sodium (mg)</mat-label><input matInput formControlName="sodiumMg" appNumericInput="decimal"></mat-form-field>
                     <mat-form-field appearance="outline"><mat-label>Cholesterol (mg)</mat-label><input matInput formControlName="cholesterolMg" appNumericInput="decimal"></mat-form-field>
                     <mat-form-field appearance="outline"><mat-label>Potassium (mg)</mat-label><input matInput formControlName="potassiumMg" appNumericInput="decimal"></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>Caffeine (mg)</mat-label><input matInput formControlName="caffeineMg" appNumericInput="decimal"></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>Electrolytes (mg)</mat-label><input matInput formControlName="electrolytesMg" appNumericInput="decimal"></mat-form-field>
                     <mat-form-field appearance="outline"><mat-label>Vitamin A (mcg)</mat-label><input matInput formControlName="vitaminAMcg" appNumericInput="decimal"></mat-form-field>
                     <mat-form-field appearance="outline"><mat-label>Vitamin C (mg)</mat-label><input matInput formControlName="vitaminCMg" appNumericInput="decimal"></mat-form-field>
                     <mat-form-field appearance="outline"><mat-label>Vitamin D (mcg)</mat-label><input matInput formControlName="vitaminDMcg" appNumericInput="decimal"></mat-form-field>
-                    <mat-form-field appearance="outline"><mat-label>Calcium (mg)</mat-label><input matInput formControlName="calciumMg" appNumericInput="decimal"></mat-form-field>
-                    <mat-form-field appearance="outline"><mat-label>Iron (mg)</mat-label><input matInput formControlName="ironMg" appNumericInput="decimal"></mat-form-field>
-                    <mat-form-field appearance="outline"><mat-label>Magnesium (mg)</mat-label><input matInput formControlName="magnesiumMg" appNumericInput="decimal"></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>Vitamin E (mg)</mat-label><input matInput formControlName="vitaminEMg" appNumericInput="decimal"></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>Vitamin K (mcg)</mat-label><input matInput formControlName="vitaminKMcg" appNumericInput="decimal"></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>Vitamin B6 (mg)</mat-label><input matInput formControlName="vitaminB6Mg" appNumericInput="decimal"></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>Vitamin B12 (mcg)</mat-label><input matInput formControlName="vitaminB12Mcg" appNumericInput="decimal"></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>Thiamin (mg)</mat-label><input matInput formControlName="thiaminMg" appNumericInput="decimal"></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>Riboflavin (mg)</mat-label><input matInput formControlName="riboflavinMg" appNumericInput="decimal"></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>Niacin (mg)</mat-label><input matInput formControlName="niacinMg" appNumericInput="decimal"></mat-form-field>
+                    <mat-form-field appearance="outline"><mat-label>Folate (mcg)</mat-label><input matInput formControlName="folateMcg" appNumericInput="decimal"></mat-form-field>
                   </div>
                 }
                 <button mat-flat-button class="submit-custom" type="submit" [disabled]="customForm.invalid">Add Custom Food</button>
               </form>
             }
+            </div>
           </div>
         </div>
       </div>
     }
   `,
   styles: [`
-    :host{display:block;height:100%;min-height:0;overflow:hidden}.page{max-width:860px;height:100%;min-height:0;margin:0 auto;display:flex;flex-direction:column;gap:12px;overflow:hidden}.page-header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-shrink:0}.header-right,.date-nav{display:flex;align-items:center;gap:8px}.current-date{min-width:108px;text-align:center;font-size:14px;font-weight:600}.date-picker-input{position:absolute;width:0;height:0;opacity:0}.add-food-trigger{height:40px;padding:0 16px;border-radius:10px;background:var(--accent)!important;color:#0d0d0d!important;font-weight:700;gap:6px}.top-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex-shrink:0}.card{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01)),var(--bg-surface);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px}.macro-bars{display:flex;flex-direction:column;gap:10px}.micro-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.micro-pill{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.03);font-size:12px}.micro-pill span{color:var(--text-muted)}.micro-label{margin:14px 0 8px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}.entries-card{margin-bottom:0;padding:14px;flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column}.meal-group+.meal-group{margin-top:12px}.meal-label{display:block;margin-bottom:8px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}.entry-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.03)}.entry-row+.entry-row{margin-top:6px}.entry-info{flex:1;display:flex;flex-direction:column;min-width:0}.entry-name{font-size:13px;font-weight:600;word-break:break-word}.entry-serving,.meal-empty span{font-size:11px;color:var(--text-muted)}.entry-macros{display:flex;gap:8px;font-size:11px;font-weight:700}.entry-macros .protein{color:#4fc3f7}.entry-macros .carbs{color:#c8f135}.entry-macros .fat{color:#ff7043}.entry-cal{font-size:13px;font-weight:700;white-space:nowrap}.remove-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:var(--text-primary)}.remove-btn-glyph{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;font-size:22px;line-height:1;font-weight:400;transform:translateY(-1px)}.remove-btn:hover{border-color:rgba(255,255,255,.24);background:rgba(255,255,255,.08)}.meal-empty{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border-radius:10px;background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.08)}.meal-add-btn{height:30px;padding:0 14px;border-radius:999px;font-size:12px;font-weight:700}.modal-backdrop{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.76);backdrop-filter:blur(6px)}.modal-panel{width:100%;max-width:620px;max-height:min(90vh,820px);overflow:hidden;display:flex;flex-direction:column;border-radius:20px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(20,20,20,.98),rgba(14,14,14,.98));box-shadow:0 30px 70px rgba(0,0,0,.45)}.modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 22px 0}.modal-close{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border-radius:999px;background:rgba(255,255,255,.05);color:var(--text-primary)}.modal-close mat-icon{width:18px;height:18px;font-size:18px;margin:0}.modal-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px 22px 0}.tab-btn{height:40px;border:0;border-radius:10px;background:transparent;color:var(--text-muted);font-size:13px;font-weight:700}.tab-btn.active{background:rgba(200,241,53,.12);color:var(--accent)}.modal-body{padding:10px 22px 16px;display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}.custom-form mat-form-field{width:100%}.search-field-modal{display:flex;flex-direction:column;gap:8px;margin-bottom:2px}.search-field-label{display:block;padding:0 4px;font-size:12px;font-weight:700;color:rgba(200,241,53,.92);line-height:1.2}.search-input-wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-height:68px;padding:0 18px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.02);transition:border-color .15s ease,box-shadow .15s ease}.search-input-wrap:focus-within{border-color:rgba(200,241,53,.58);box-shadow:0 0 0 1px rgba(200,241,53,.16)}.search-input{width:100%;border:0;outline:0;background:transparent;color:var(--text-primary);font:inherit;font-size:18px;font-weight:600;padding:0}.search-input::placeholder{color:rgba(255,255,255,.34)}.search-input-icon{width:30px;height:30px;font-size:30px;color:rgba(255,255,255,.92);flex-shrink:0}.meal-picker{margin-bottom:8px}.meal-picker-label{display:block;margin-bottom:8px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted)}.meal-chip-row{display:flex;flex-wrap:wrap;gap:8px}.meal-chip{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;transition:border-color .15s ease,background .15s ease,color .15s ease}.meal-chip:hover{border-color:rgba(200,241,53,.28);color:var(--text-primary)}.meal-chip.active{border-color:rgba(200,241,53,.4);background:rgba(200,241,53,.14);color:var(--accent);box-shadow:inset 0 0 0 1px rgba(200,241,53,.08)}.search-shell{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;max-height:none;overflow:hidden}.results{display:flex;flex-direction:column;gap:6px;flex:1;min-height:0;overflow:hidden;padding-right:2px}.state-box{flex:1;min-height:190px;border-radius:14px;border:1px dashed rgba(255,255,255,.08);background:rgba(255,255,255,.02);display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--text-muted)}.result{border-radius:14px;border:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.02);overflow:hidden}.result.expanded{border-color:rgba(200,241,53,.18)}.result-main{display:grid;grid-template-columns:42px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:8px 12px;cursor:pointer}.result-badge{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(200,241,53,.18),rgba(200,241,53,.05));color:var(--accent);font-size:13px;font-weight:800;letter-spacing:.08em}.result-copy{display:flex;flex-direction:column;min-width:0}.result-name{font-size:13.5px;font-weight:700;line-height:1.28;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.result-helper{font-size:10.5px;color:var(--accent)}.result-meta{font-size:10.5px;color:var(--text-muted)}.cal-badge{display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:0 8px;border-radius:999px;background:rgba(200,241,53,.1);color:var(--accent);font-size:11px;font-weight:800;white-space:nowrap}.add-btn,.submit-custom{border-radius:10px;background:var(--accent)!important;color:#0d0d0d!important;font-weight:800}.add-btn{min-width:58px;height:32px}.result-detail{padding:0 12px 12px}.result-detail-scroll{max-height:132px;overflow:auto;padding-right:4px}.detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.detail-grid div{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.03);font-size:11px}.detail-grid span{color:var(--text-muted)}.search-pagination{position:sticky;bottom:0;z-index:2;margin-top:4px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0 0;background:linear-gradient(180deg,rgba(14,14,14,0),rgba(14,14,14,0.94) 24%,rgba(14,14,14,0.98) 100%)}.pagination-summary{font-size:12px;color:var(--text-muted)}.pagination-controls{display:inline-flex;align-items:center;gap:10px;position:relative}.pager{width:38px;height:38px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.03);color:var(--text-primary);font-size:18px;font-weight:700}.pager:disabled{opacity:.35}.page-picker-wrap{position:relative}.page-pill{min-width:116px;text-align:center;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.04);font-size:12px;font-weight:700}.page-pill-btn{border:0;color:var(--text-primary);cursor:pointer}.page-pill-btn:hover,.page-pill-btn.open{background:rgba(200,241,53,.1);color:var(--accent)}.page-picker-panel{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);width:min(260px,calc(100vw - 72px));padding:14px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(20,20,20,.98),rgba(14,14,14,.98));box-shadow:0 20px 50px rgba(0,0,0,.38);display:flex;flex-direction:column;gap:12px}.page-picker-header{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;font-weight:700;color:var(--text-primary)}.page-picker-close{width:28px;height:28px;border:0;border-radius:999px;background:rgba(255,255,255,.05);color:var(--text-primary);font-size:18px;cursor:pointer}.page-picker-range{font-size:11px;color:var(--text-muted)}.page-picker-quick-list{display:flex;flex-wrap:wrap;gap:8px}.page-picker-option{min-width:42px;height:34px;padding:0 10px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.03);color:var(--text-primary);font-size:12px;font-weight:700;cursor:pointer}.page-picker-option.active,.page-picker-option:hover{border-color:rgba(200,241,53,.3);background:rgba(200,241,53,.12);color:var(--accent)}.page-picker-input-row{display:flex;align-items:center;gap:8px}.page-picker-input{flex:1;min-width:0;height:40px;padding:0 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:var(--text-primary);font-size:14px}.page-picker-go{height:40px;padding:0 14px;border:0;border-radius:12px;background:var(--accent);color:#0d0d0d;font-size:12px;font-weight:800;cursor:pointer}.custom-form{display:flex;flex-direction:column;gap:8px;min-height:0;overflow:hidden}.custom-form.allow-scroll{overflow:auto;padding-right:4px}.custom-row,.advanced-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.advanced-toggle{width:100%;display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03);color:var(--text-primary)}.advanced-toggle .open{transform:rotate(180deg)}.advanced-grid{margin-top:6px}.submit-custom{height:44px;margin-top:4px}@media(max-width:920px){.top-row{grid-template-columns:1fr}.result-main{grid-template-columns:46px minmax(0,1fr)}.cal-badge,.add-btn{grid-column:2;justify-self:start}.result-main .add-btn{margin-left:auto}}@media(max-width:760px){.page-header{flex-direction:column;align-items:flex-start}.header-right,.micro-grid,.custom-row,.advanced-grid,.detail-grid{width:100%;grid-template-columns:1fr}.search-pagination{flex-direction:column;align-items:stretch}.pagination-controls{justify-content:center}}@media(max-width:560px){.modal-backdrop{padding:12px}.modal-header,.modal-tabs,.modal-body{padding-left:16px;padding-right:16px}.entry-row,.meal-empty{flex-wrap:wrap}.meal-chip-row{width:100%}.meal-chip{flex:1 1 calc(50% - 8px);justify-content:center}.add-food-trigger{width:100%;justify-content:center}}
+    :host{display:block;height:100%;min-height:0;overflow-y:auto;overflow-x:hidden}.page{max-width:860px;height:auto;min-height:100%;margin:0 auto;display:flex;flex-direction:column;gap:12px;overflow:visible;padding-bottom:12px}.page-header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-shrink:0}.header-right,.date-nav{display:flex;align-items:center;gap:8px}.current-date{min-width:108px;text-align:center;font-size:14px;font-weight:600}.date-picker-input{position:absolute;width:0;height:0;opacity:0}.add-food-trigger{height:40px;padding:0 16px;border-radius:10px;background:var(--accent)!important;color:#0d0d0d!important;font-weight:700;gap:6px}.top-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex-shrink:0}.card{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01)),var(--bg-surface);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:16px}.macro-bars{display:flex;flex-direction:column;gap:10px}.nutrition-pie-wrap{margin-top:14px;display:flex;align-items:center;justify-content:center;padding:8px 0 0;min-height:220px}.nutrition-pie-wrapper{position:relative;width:min(260px,72%);max-width:260px;min-width:180px;aspect-ratio:1 / 1;flex-shrink:0}.nutrition-pie-donut{width:100%;height:100%;border-radius:50%;background:conic-gradient(from 0deg,#4fc3f7 0% var(--p-pct,0%),#c8f135 var(--p-pct,0%) var(--c-pct,0%),#ff7043 var(--c-pct,0%) var(--f-pct,100%),rgba(255,255,255,.12) var(--f-pct,100%) 100%)}.nutrition-pie-hole{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:58%;height:58%;border-radius:50%;background:var(--bg-surface);display:flex;flex-direction:column;align-items:center;justify-content:center}.nutrition-pie-cal{font-size:clamp(24px,5.4vw,44px);font-weight:800;line-height:1;letter-spacing:-.02em;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;color:#9C27B0}.nutrition-pie-unit{font-size:clamp(11px,1.2vw,14px);color:var(--text-muted);line-height:1;margin-top:2px}.micro-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.micro-pill{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.03);font-size:12px;min-height:40px;min-width:0}.micro-pill span{color:var(--text-muted);min-width:0}.micro-pill strong{white-space:nowrap;text-align:right;line-height:1.15;font-size:11px;min-width:0}.micro-label{margin:14px 0 8px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}.vitamins{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}.vitamins .micro-pill{min-height:52px;align-items:flex-start;flex-direction:column;gap:4px}.vitamins .micro-pill span{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25;font-size:11px}.vitamins .micro-pill strong{white-space:normal;line-height:1.2;overflow-wrap:anywhere}.entries-card{margin-bottom:0;padding:14px;flex:0 0 auto;min-height:0;overflow:visible;display:flex;flex-direction:column}.meal-group+.meal-group{margin-top:12px}.meal-label{display:block;margin-bottom:8px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}.entry-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.03)}.entry-row+.entry-row{margin-top:6px}.entry-info{flex:1;display:flex;flex-direction:column;min-width:0}.entry-name{font-size:13px;font-weight:600;word-break:break-word}.entry-serving,.meal-empty span{font-size:11px;color:var(--text-muted)}.entry-macros{display:flex;gap:8px;font-size:11px;font-weight:700}.entry-macros .protein{color:#4fc3f7}.entry-macros .carbs{color:#c8f135}.entry-macros .fat{color:#ff7043}.entry-cal{font-size:13px;font-weight:700;white-space:nowrap}.serving-edit-btn{height:30px;padding:0 12px;border-radius:999px;font-size:11px;font-weight:700}.entry-serving-editor{display:flex;align-items:center;gap:8px;margin-top:6px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06)}.serving-editor-field{width:120px}.serving-save-btn{height:34px;padding:0 14px;border-radius:10px;background:var(--accent)!important;color:#0d0d0d!important;font-weight:800}.serving-cancel-btn{height:34px;padding:0 14px;border-radius:10px}.remove-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:var(--text-primary)}.remove-btn-glyph{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;font-size:22px;line-height:1;font-weight:400;transform:translateY(-1px)}.remove-btn:hover{border-color:rgba(255,255,255,.24);background:rgba(255,255,255,.08)}.meal-empty{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border-radius:10px;background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.08)}.meal-add-btn{height:30px;padding:0 14px;border-radius:999px;font-size:12px;font-weight:700}.modal-backdrop{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.76);backdrop-filter:blur(6px)}.modal-panel{width:100%;max-width:620px;height:min(92vh,860px);max-height:min(92vh,860px);overflow:hidden;display:flex;flex-direction:column;border-radius:20px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(20,20,20,.98),rgba(14,14,14,.98));box-shadow:0 30px 70px rgba(0,0,0,.45)}.modal-header{position:relative;display:flex;align-items:center;justify-content:space-between;padding:18px 22px 6px}.modal-header h2{margin:0;padding-right:48px}.modal-close{position:absolute;top:10px;right:12px;display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:999px;background:rgba(255,255,255,.05);color:var(--text-primary);line-height:1}.modal-close mat-icon{display:block;width:18px;height:18px;font-size:18px;line-height:18px;margin:0}.modal-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px 22px 0}.tab-btn{height:40px;border:0;border-radius:10px;background:transparent;color:var(--text-muted);font-size:13px;font-weight:700;transition:background .15s ease,color .15s ease}.tab-btn:hover{background:rgba(255,255,255,.03);color:var(--text-primary)}.tab-btn.active{background:rgba(200,241,53,.12);color:var(--accent)}.modal-body{padding:10px 22px 16px;display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}.modal-content-pane{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}.custom-form mat-form-field{width:100%}.search-field-modal{display:flex;flex-direction:column;gap:8px;margin-bottom:2px}.search-field-label{display:block;padding:0 4px;font-size:12px;font-weight:700;color:rgba(200,241,53,.92);line-height:1.2}.search-input-wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-height:68px;padding:0 18px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.02);transition:border-color .15s ease,box-shadow .15s ease}.search-input-wrap:focus-within{border-color:rgba(200,241,53,.58);box-shadow:0 0 0 1px rgba(200,241,53,.16)}.search-input{width:100%;border:0;outline:0;background:transparent;color:var(--text-primary);font:inherit;font-size:18px;font-weight:600;padding:0}.search-input::placeholder{color:rgba(255,255,255,.34)}.search-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:0;border-radius:999px;background:rgba(255,255,255,.03);cursor:pointer}.search-input-icon{width:30px;height:30px;font-size:30px;color:rgba(255,255,255,.92);flex-shrink:0}.meal-picker{margin-bottom:8px;min-height:82px;display:flex;flex-direction:column;justify-content:flex-start}.meal-picker-label{display:block;margin-bottom:8px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted)}.meal-chip-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.meal-chip{width:100%;min-height:36px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;justify-content:center;transition:border-color .15s ease,background .15s ease,color .15s ease}.meal-chip:hover{border-color:rgba(200,241,53,.28);color:var(--text-primary)}.meal-chip.active{border-color:rgba(200,241,53,.4);background:rgba(200,241,53,.14);color:var(--accent);box-shadow:inset 0 0 0 1px rgba(200,241,53,.08)}.search-shell{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;max-height:none;overflow:hidden}.search-selected-card{border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);padding:10px;flex-shrink:0}.search-selected-scroll{max-height:230px;overflow:auto;padding-right:4px}.results{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow:auto;padding-right:4px}.results.no-scroll{overflow:hidden}.state-box{flex:1;min-height:190px;border-radius:14px;border:1px dashed rgba(255,255,255,.08);background:rgba(255,255,255,.02);display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--text-muted)}.state-box-error{flex-direction:column;gap:10px}.state-retry-btn{border-radius:10px}.result{position:relative;border-radius:14px;border:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.02);overflow:visible}.result.expanded{z-index:7;border-color:rgba(200,241,53,.35);box-shadow:inset 0 0 0 1px rgba(200,241,53,.12)}.result-main{display:grid;grid-template-columns:44px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:9px 12px;cursor:pointer;min-height:62px}.result-badge{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(200,241,53,.18),rgba(200,241,53,.05));color:var(--accent);font-size:16px;font-weight:800;letter-spacing:.06em}.result-copy{display:flex;flex-direction:column;min-width:0}.result-name{font-size:14px;font-weight:700;line-height:1.24;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.result-helper{font-size:10.5px;color:var(--accent)}.result-meta{font-size:11px;color:var(--text-muted)}.cal-badge{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:0 9px;border-radius:999px;background:rgba(200,241,53,.1);color:var(--accent);font-size:11px;font-weight:800;white-space:nowrap}.add-btn,.submit-custom{border-radius:10px;background:var(--accent)!important;color:#0d0d0d!important;font-weight:800}.add-btn{min-width:60px;height:34px;font-size:13px}.result-detail-inline{position:static;margin-top:8px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(20,20,20,.98),rgba(14,14,14,.98));box-shadow:0 14px 28px rgba(0,0,0,.35);padding:10px;z-index:9}.result-detail-inline-scroll{max-height:230px;overflow:auto;padding-right:4px}.detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.detail-grid div{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.03);font-size:11px}.detail-grid span{color:var(--text-muted)}.search-pagination{position:sticky;bottom:0;z-index:24;margin-top:4px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0 0;background:linear-gradient(180deg,rgba(14,14,14,0),rgba(14,14,14,0.94) 24%,rgba(14,14,14,0.98) 100%)}.pagination-summary{font-size:12px;color:var(--text-muted)}.pagination-controls{display:inline-flex;align-items:center;gap:10px;position:relative}.pager{width:38px;height:38px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.03);color:var(--text-primary);font-size:18px;font-weight:700}.pager:disabled{opacity:.35}.page-picker-wrap{position:relative;z-index:25}.page-pill{min-width:116px;text-align:center;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.04);font-size:12px;font-weight:700}.page-pill-btn{border:0;color:var(--text-primary);cursor:pointer}.page-pill-btn:hover,.page-pill-btn.open{background:rgba(200,241,53,.1);color:var(--accent)}.page-picker-panel{position:absolute;right:0;left:auto;bottom:calc(100% + 10px);transform:none;z-index:30;width:min(260px,calc(100vw - 88px));padding:14px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(20,20,20,.98),rgba(14,14,14,.98));box-shadow:0 20px 50px rgba(0,0,0,.38);display:flex;flex-direction:column;gap:12px}.page-picker-header{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;font-weight:700;color:var(--text-primary)}.page-picker-close{width:28px;height:28px;border:0;border-radius:999px;background:rgba(255,255,255,.05);color:var(--text-primary);font-size:18px;cursor:pointer}.page-picker-range{font-size:11px;color:var(--text-muted)}.page-picker-quick-list{display:flex;flex-wrap:wrap;gap:8px}.page-picker-option{min-width:42px;height:34px;padding:0 10px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(255,255,255,.03);color:var(--text-primary);font-size:12px;font-weight:700;cursor:pointer}.page-picker-option.active,.page-picker-option:hover{border-color:rgba(200,241,53,.3);background:rgba(200,241,53,.12);color:var(--accent)}.page-picker-input-row{display:flex;align-items:center;gap:8px}.page-picker-input{flex:1;min-width:0;height:40px;padding:0 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:var(--text-primary);font-size:14px}.page-picker-go{height:40px;padding:0 14px;border:0;border-radius:12px;background:var(--accent);color:#0d0d0d;font-size:12px;font-weight:800;cursor:pointer}.custom-form{display:flex;flex-direction:column;gap:8px;min-height:0;overflow:hidden}.custom-form.allow-scroll{overflow:auto;padding-right:4px}.custom-row,.advanced-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.advanced-toggle{width:100%;display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.03);color:var(--text-primary)}.advanced-toggle .open{transform:rotate(180deg)}.advanced-grid{margin-top:6px}.submit-custom{height:44px;margin-top:4px}@media(max-width:920px){.top-row{grid-template-columns:1fr}.result-main{grid-template-columns:46px minmax(0,1fr)}.cal-badge,.add-btn{grid-column:2;justify-self:start}.result-main .add-btn{margin-left:auto}.detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.vitamins{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}}@media(max-width:760px){.page-header{flex-direction:column;align-items:flex-start}.header-right,.micro-grid,.custom-row,.advanced-grid,.detail-grid{width:100%;grid-template-columns:1fr}.vitamins{grid-template-columns:repeat(2,minmax(0,1fr))}.search-pagination{flex-direction:column;align-items:stretch}.pagination-controls{justify-content:center}.page-picker-panel{left:50%;right:auto;transform:translateX(-50%);width:min(260px,calc(100vw - 72px))}}@media(max-width:560px){.modal-backdrop{padding:12px}.modal-header,.modal-tabs,.modal-body{padding-left:16px;padding-right:16px}.entry-row,.meal-empty{flex-wrap:wrap}.meal-chip-row{width:100%;grid-template-columns:repeat(2,minmax(0,1fr))}.meal-chip{justify-content:center}.add-food-trigger{width:100%;justify-content:center}.entry-serving-editor{flex-wrap:wrap}.serving-editor-field{width:100%}.result-detail-inline{position:static;margin-top:8px}}
   `],
 })
 export class NutritionLogComponent implements OnInit {
@@ -289,10 +342,13 @@ export class NutritionLogComponent implements OnInit {
   searchError = '';
   searchPage: FoodSearchPage | null = null;
   searchResults: FoodSearchResult[] = [];
+  selectedFood: FoodSearchResult | null = null;
   expandedIdx: number | null = null;
   readonly searchPageSize = 5;
   pagePickerOpen = false;
   searchPageDraft = 1;
+  editingEntryId: string | null = null;
+  editingServingQty = '';
   customForm: FormGroup;
 
   constructor(
@@ -305,8 +361,8 @@ export class NutritionLogComponent implements OnInit {
     this.customForm = this.fb.group({
       foodName: ['', Validators.required], servingQty: [1, [Validators.required, Validators.min(0.1)]], servingUnit: ['serving', Validators.required],
       calories: [0, [Validators.required, Validators.min(0)]], proteinG: [0, [Validators.required, Validators.min(0)]], carbsG: [0, [Validators.required, Validators.min(0)]], fatG: [0, [Validators.required, Validators.min(0)]],
-      fiberG: [0], sugarG: [0], saturatedFatG: [0], sodiumMg: [0], cholesterolMg: [0], potassiumMg: [0],
-      vitaminAMcg: [0], vitaminCMg: [0], vitaminDMcg: [0], calciumMg: [0], ironMg: [0], magnesiumMg: [0],
+      fiberG: [0], sugarG: [0], addedSugarG: [0], saturatedFatG: [0], sodiumMg: [0], cholesterolMg: [0], potassiumMg: [0], caffeineMg: [0], electrolytesMg: [0],
+      vitaminAMcg: [0], vitaminCMg: [0], vitaminDMcg: [0], vitaminEMg: [0], vitaminKMcg: [0], thiaminMg: [0], riboflavinMg: [0], niacinMg: [0], vitaminB6Mg: [0], vitaminB12Mcg: [0], folateMcg: [0],
     });
   }
 
@@ -368,6 +424,20 @@ export class NutritionLogComponent implements OnInit {
     this.searchSubject.next(query.trim());
   }
 
+  onSearchEnter(event: Event): void {
+    event.preventDefault();
+    this.triggerSearchNow();
+  }
+
+  triggerSearchNow(): void {
+    const query = this.searchQuery.trim();
+    if (query.length < 2) {
+      this.clearSearchState();
+      return;
+    }
+    this.performFoodSearch(query, 1);
+  }
+
   goToSearchPage(page: number): void {
     if (!this.searchPage || page < 1 || page > this.searchPage.totalPages || this.searchLoading) return;
     this.pagePickerOpen = false;
@@ -395,7 +465,96 @@ export class NutritionLogComponent implements OnInit {
     this.goToSearchPage(page);
   }
 
-  toggleExpand(idx: number): void { this.expandedIdx = this.expandedIdx === idx ? null : idx; }
+  selectFoodCard(food: FoodSearchResult, idx: number): void {
+    if (this.expandedIdx === idx) {
+      this.selectedFood = null;
+      this.expandedIdx = null;
+      return;
+    }
+    this.selectedFood = food;
+    this.expandedIdx = idx;
+  }
+
+  openServingEditor(entry: { id: string; servingQty: number }): void {
+    this.editingEntryId = entry.id;
+    this.editingServingQty = String(entry.servingQty || 1);
+  }
+  cancelServingEditor(): void {
+    this.editingEntryId = null;
+    this.editingServingQty = '';
+  }
+  saveServingEditor(entry: { id: string; servingQty: number; servingUnit: string; foodName: string; brandName: string | null; mealType: string; calories: number; proteinG: number; carbsG: number; fatG: number; fiberG: number; sugarG: number; addedSugarG: number; sodiumMg: number; cholesterolMg: number; saturatedFatG: number; potassiumMg: number; caffeineMg: number; electrolytesMg: number; vitaminAMcg: number; vitaminCMg: number; vitaminDMcg: number; vitaminEMg: number; vitaminKMcg: number; thiaminMg: number; riboflavinMg: number; niacinMg: number; vitaminB6Mg: number; vitaminB12Mcg: number; folateMcg: number; zincMg: number; calciumMg: number; ironMg: number; magnesiumMg: number; thumbnailUrl: string | null }): void {
+    const newServingQty = this.normalizeNum(this.editingServingQty);
+    const currentServingQty = Number(entry.servingQty || 0);
+    if (!newServingQty || newServingQty <= 0) {
+      this.snackBar.open('Serving quantity must be greater than 0.', 'Close', { duration: 2500 });
+      return;
+    }
+    if (!currentServingQty || currentServingQty <= 0) {
+      this.snackBar.open('Current serving quantity is invalid.', 'Close', { duration: 2500 });
+      return;
+    }
+    const scale = newServingQty / currentServingQty;
+    const updatedInput: FoodEntryInput = {
+      foodName: entry.foodName,
+      brandName: entry.brandName || undefined,
+      mealType: entry.mealType,
+      servingQty: newServingQty,
+      servingUnit: entry.servingUnit,
+      calories: this.round2(entry.calories * scale),
+      proteinG: this.round2(entry.proteinG * scale),
+      carbsG: this.round2(entry.carbsG * scale),
+      fatG: this.round2(entry.fatG * scale),
+      fiberG: this.round2(entry.fiberG * scale),
+      sugarG: this.round2(entry.sugarG * scale),
+      addedSugarG: this.round2(entry.addedSugarG * scale),
+      sodiumMg: this.round2(entry.sodiumMg * scale),
+      cholesterolMg: this.round2(entry.cholesterolMg * scale),
+      saturatedFatG: this.round2(entry.saturatedFatG * scale),
+      potassiumMg: this.round2(entry.potassiumMg * scale),
+      caffeineMg: this.round2(entry.caffeineMg * scale),
+      electrolytesMg: this.round2(entry.electrolytesMg * scale),
+      vitaminAMcg: this.round2(entry.vitaminAMcg * scale),
+      vitaminCMg: this.round2(entry.vitaminCMg * scale),
+      vitaminDMcg: this.round2(entry.vitaminDMcg * scale),
+      vitaminEMg: this.round2(entry.vitaminEMg * scale),
+      vitaminKMcg: this.round2(entry.vitaminKMcg * scale),
+      thiaminMg: this.round2(entry.thiaminMg * scale),
+      riboflavinMg: this.round2(entry.riboflavinMg * scale),
+      niacinMg: this.round2(entry.niacinMg * scale),
+      vitaminB6Mg: this.round2(entry.vitaminB6Mg * scale),
+      vitaminB12Mcg: this.round2(entry.vitaminB12Mcg * scale),
+      folateMcg: this.round2(entry.folateMcg * scale),
+      zincMg: this.round2(entry.zincMg * scale),
+      calciumMg: this.round2(entry.calciumMg * scale),
+      ironMg: this.round2(entry.ironMg * scale),
+      magnesiumMg: this.round2(entry.magnesiumMg * scale),
+      thumbnailUrl: entry.thumbnailUrl || undefined,
+    };
+
+    this.nutritionService.addFoodEntry(this.dateStr, updatedInput).pipe(
+      switchMap(() => this.nutritionService.removeFoodEntry(this.dateStr, entry.id).pipe(
+        map(log => ({ log, removeFailed: false })),
+        catchError(() => this.nutritionService.getNutritionLog(this.dateStr).pipe(map(log => ({ log, removeFailed: true }))))
+      )),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: result => {
+        this.log = result.log;
+        this.cancelServingEditor();
+        this.snackBar.open(result.removeFailed ? 'Serving updated, but previous entry could not be removed. Remove it manually.' : 'Serving updated.', 'Close', { duration: 3200 });
+      },
+      error: () => this.snackBar.open('Failed to update serving.', 'Close', { duration: 3000 }),
+    });
+  }
+  retryFoodSearch(): void {
+    const query = this.searchQuery.trim();
+    if (query.length < 2) {
+      return;
+    }
+    const page = this.searchPage?.currentPage || 1;
+    this.performFoodSearch(query, page);
+  }
 
   addFood(food: FoodSearchResult): void {
     const displayName = this.displayFoodName(food);
@@ -403,8 +562,8 @@ export class NutritionLogComponent implements OnInit {
     const input: FoodEntryInput = {
       foodName: displayName, brandName: displayBrand || undefined, mealType: this.selectedMealType,
       servingQty: food.servingQty, servingUnit: food.servingUnit, calories: food.calories, proteinG: food.proteinG, carbsG: food.carbsG, fatG: food.fatG,
-      fiberG: food.fiberG, sugarG: food.sugarG, sodiumMg: food.sodiumMg, cholesterolMg: food.cholesterolMg, saturatedFatG: food.saturatedFatG, potassiumMg: food.potassiumMg,
-      vitaminAMcg: food.vitaminAMcg, vitaminCMg: food.vitaminCMg, vitaminDMcg: food.vitaminDMcg, calciumMg: food.calciumMg, ironMg: food.ironMg, magnesiumMg: food.magnesiumMg,
+      fiberG: food.fiberG, sugarG: food.sugarG, addedSugarG: food.addedSugarG, sodiumMg: food.sodiumMg, cholesterolMg: food.cholesterolMg, saturatedFatG: food.saturatedFatG, potassiumMg: food.potassiumMg, caffeineMg: food.caffeineMg, electrolytesMg: food.electrolytesMg,
+      vitaminAMcg: food.vitaminAMcg, vitaminCMg: food.vitaminCMg, vitaminDMcg: food.vitaminDMcg, vitaminEMg: food.vitaminEMg, vitaminKMcg: food.vitaminKMcg, thiaminMg: food.thiaminMg, riboflavinMg: food.riboflavinMg, niacinMg: food.niacinMg, vitaminB6Mg: food.vitaminB6Mg, vitaminB12Mcg: food.vitaminB12Mcg, folateMcg: food.folateMcg, zincMg: food.zincMg, calciumMg: food.calciumMg, ironMg: food.ironMg, magnesiumMg: food.magnesiumMg,
       thumbnailUrl: food.thumbnailUrl || undefined,
     };
     this.nutritionService.addFoodEntry(this.dateStr, input).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -425,9 +584,9 @@ export class NutritionLogComponent implements OnInit {
     const v = this.customForm.getRawValue();
     const input: FoodEntryInput = {
       foodName: v.foodName, mealType: this.selectedMealType, servingQty: v.servingQty, servingUnit: v.servingUnit, calories: v.calories,
-      proteinG: v.proteinG, carbsG: v.carbsG, fatG: v.fatG, fiberG: v.fiberG, sugarG: v.sugarG, saturatedFatG: v.saturatedFatG,
-      sodiumMg: v.sodiumMg, cholesterolMg: v.cholesterolMg, potassiumMg: v.potassiumMg, vitaminAMcg: v.vitaminAMcg, vitaminCMg: v.vitaminCMg,
-      vitaminDMcg: v.vitaminDMcg, calciumMg: v.calciumMg, ironMg: v.ironMg, magnesiumMg: v.magnesiumMg,
+      proteinG: v.proteinG, carbsG: v.carbsG, fatG: v.fatG, fiberG: v.fiberG, sugarG: v.sugarG, addedSugarG: v.addedSugarG, saturatedFatG: v.saturatedFatG,
+      sodiumMg: v.sodiumMg, cholesterolMg: v.cholesterolMg, potassiumMg: v.potassiumMg, caffeineMg: v.caffeineMg, electrolytesMg: v.electrolytesMg, vitaminAMcg: v.vitaminAMcg, vitaminCMg: v.vitaminCMg,
+      vitaminDMcg: v.vitaminDMcg, vitaminEMg: v.vitaminEMg, vitaminKMcg: v.vitaminKMcg, thiaminMg: v.thiaminMg, riboflavinMg: v.riboflavinMg, niacinMg: v.niacinMg, vitaminB6Mg: v.vitaminB6Mg, vitaminB12Mcg: v.vitaminB12Mcg, folateMcg: v.folateMcg,
     };
     this.nutritionService.addFoodEntry(this.dateStr, input).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: log => { this.log = log; this.resetCustomForm(); this.closeAddFood(); this.snackBar.open(`${v.foodName} added`, 'Close', { duration: 2200 }); },
@@ -443,6 +602,7 @@ export class NutritionLogComponent implements OnInit {
   }
 
   getEntriesByMeal(mealType: string) { return this.log?.entries.filter(entry => entry.mealType === mealType) || []; }
+  formatCalories(value: number | null | undefined): string { return String(Math.round(Number(value || 0))); }
   formatAmount(value: number | null | undefined, unit: string, digits = 0): string { return `${new Intl.NumberFormat(undefined, { minimumFractionDigits: 0, maximumFractionDigits: digits }).format(Number(value || 0))}${unit}`; }
   formatServing(quantity: number | null | undefined, unit: string | null | undefined): string {
     const amount = Number(quantity || 0);
@@ -454,6 +614,33 @@ export class NutritionLogComponent implements OnInit {
     const pages = [1, this.searchPage.currentPage - 2, this.searchPage.currentPage - 1, this.searchPage.currentPage, this.searchPage.currentPage + 1, this.searchPage.currentPage + 2, this.searchPage.totalPages]
       .filter(page => page >= 1 && page <= this.searchPage!.totalPages);
     return Array.from(new Set(pages)).sort((left, right) => left - right);
+  }
+
+  get nutritionProteinPct(): number {
+    const protein = this.log?.totalProteinG || 0;
+    const carbs = this.log?.totalCarbsG || 0;
+    const fat = this.log?.totalFatG || 0;
+    const total = protein + carbs + fat;
+    if (total <= 0) return 0;
+    return (protein / total) * 100;
+  }
+
+  get nutritionCarbsPct(): number {
+    const protein = this.log?.totalProteinG || 0;
+    const carbs = this.log?.totalCarbsG || 0;
+    const fat = this.log?.totalFatG || 0;
+    const total = protein + carbs + fat;
+    if (total <= 0) return this.nutritionProteinPct;
+    return this.nutritionProteinPct + ((carbs / total) * 100);
+  }
+
+  get nutritionFatPct(): number {
+    const protein = this.log?.totalProteinG || 0;
+    const carbs = this.log?.totalCarbsG || 0;
+    const fat = this.log?.totalFatG || 0;
+    const total = protein + carbs + fat;
+    if (total <= 0) return this.nutritionCarbsPct;
+    return this.nutritionCarbsPct + ((fat / total) * 100);
   }
 
   get searchBrandAlias(): string | null {
@@ -490,11 +677,14 @@ export class NutritionLogComponent implements OnInit {
     this.searchLoading = true;
     this.searchError = '';
     this.expandedIdx = null;
-    this.nutritionService.searchFood(normalized, page, this.searchPageSize).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.selectedFood = null;
+    this.nutritionService.searchFood(normalized, page, this.searchPageSize).pipe(retry({ count: 1, delay: 250 }), takeUntilDestroyed(this.destroyRef)).subscribe({
       next: result => {
         if (requestId !== this.searchRequestId) return;
         this.searchPage = result;
         this.searchResults = result.foods;
+        this.selectedFood = null;
+        this.expandedIdx = null;
         this.searchLoading = false;
         this.pagePickerOpen = false;
         this.searchPageDraft = result.currentPage;
@@ -511,8 +701,8 @@ export class NutritionLogComponent implements OnInit {
     });
   }
 
-  private clearSearchState(): void { this.searchRequestId += 1; this.searchLoading = false; this.searchError = ''; this.searchPage = null; this.searchResults = []; this.expandedIdx = null; this.pagePickerOpen = false; this.searchPageDraft = 1; }
-  private resetCustomForm(): void { this.customForm.reset({ foodName: '', servingQty: 1, servingUnit: 'serving', calories: 0, proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0, sugarG: 0, saturatedFatG: 0, sodiumMg: 0, cholesterolMg: 0, potassiumMg: 0, vitaminAMcg: 0, vitaminCMg: 0, vitaminDMcg: 0, calciumMg: 0, ironMg: 0, magnesiumMg: 0 }); }
+  private clearSearchState(): void { this.searchRequestId += 1; this.searchLoading = false; this.searchError = ''; this.searchPage = null; this.searchResults = []; this.selectedFood = null; this.expandedIdx = null; this.pagePickerOpen = false; this.searchPageDraft = 1; }
+  private resetCustomForm(): void { this.customForm.reset({ foodName: '', servingQty: 1, servingUnit: 'serving', calories: 0, proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0, sugarG: 0, addedSugarG: 0, saturatedFatG: 0, sodiumMg: 0, cholesterolMg: 0, potassiumMg: 0, caffeineMg: 0, electrolytesMg: 0, vitaminAMcg: 0, vitaminCMg: 0, vitaminDMcg: 0, vitaminEMg: 0, vitaminKMcg: 0, thiaminMg: 0, riboflavinMg: 0, niacinMg: 0, vitaminB6Mg: 0, vitaminB12Mcg: 0, folateMcg: 0 }); }
   private entryBrandName(food: FoodSearchResult): string | null {
     const brand = food.brandName?.trim();
     if (!brand || this.isGenericRestaurantResult(brand)) {
@@ -589,14 +779,21 @@ export class NutritionLogComponent implements OnInit {
       .map(part => part.length <= 2 ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
       .join(' ');
   }
-  private sanitizeCustomFormNumericValues(): void { ['servingQty','calories','proteinG','carbsG','fatG','fiberG','sugarG','saturatedFatG','sodiumMg','cholesterolMg','potassiumMg','vitaminAMcg','vitaminCMg','vitaminDMcg','calciumMg','ironMg','magnesiumMg'].forEach(field => { const control = this.customForm.get(field); if (control) control.setValue(this.normalizeNum(control.value)); }); }
+  private sanitizeCustomFormNumericValues(): void { ['servingQty','calories','proteinG','carbsG','fatG','fiberG','sugarG','addedSugarG','saturatedFatG','sodiumMg','cholesterolMg','potassiumMg','caffeineMg','electrolytesMg','vitaminAMcg','vitaminCMg','vitaminDMcg','vitaminEMg','vitaminKMcg','thiaminMg','riboflavinMg','niacinMg','vitaminB6Mg','vitaminB12Mcg','folateMcg'].forEach(field => { const control = this.customForm.get(field); if (control) control.setValue(this.normalizeNum(control.value)); }); }
   private normalizeNum(value: unknown): number { const raw = String(value ?? '').replace(/[^0-9.]/g, ''); return raw ? (Number.parseFloat(raw) || 0) : 0; }
+  private round2(value: number): number { return Math.round((value || 0) * 100) / 100; }
   private loadLog(): void { this.nutritionService.getNutritionLog(this.dateStr).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(log => this.log = log); }
 }
 
 function emptyFoodSearchPage(page: number): FoodSearchPage {
   return { currentPage: Math.max(page, 1), totalPages: 1, totalHits: 0, foods: [] };
 }
+
+
+
+
+
+
 
 
 

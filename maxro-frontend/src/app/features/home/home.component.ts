@@ -1,13 +1,17 @@
-import { Component } from '@angular/core';
+import { Component, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
+import { AuthService } from '../../core/services/auth.service';
+import { UserProfile } from '../../core/models/user.model';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatButtonModule, MatIconModule],
+  imports: [CommonModule, RouterLink, MatButtonModule, MatIconModule, MatMenuModule],
   template: `
     <div class="home">
       <div class="bg-grid">
@@ -17,24 +21,66 @@ import { MatIconModule } from '@angular/material/icon';
       </div>
 
       <header class="home-header">
-        <span class="logo">MAXRO</span>
-        <nav class="header-nav">
-          <a routerLink="/login" class="nav-link">Sign In</a>
-          <a routerLink="/register" mat-flat-button class="cta-sm">Get Started</a>
-        </nav>
+        <a [routerLink]="brandRoute" class="logo-wrap">
+          <span class="logo">MAXRO</span>
+        </a>
+        @if (isLoggedIn) {
+          <div class="header-nav">
+            <button mat-icon-button [matMenuTriggerFor]="profileMenu" class="profile-trigger">
+              @if (avatarUrl) {
+                <img [src]="avatarUrl" alt="Profile" class="avatar-circle-img" />
+              } @else {
+                <div class="avatar-circle">{{ userInitial }}</div>
+              }
+            </button>
+            <mat-menu #profileMenu="matMenu" class="profile-dropdown">
+              <div class="menu-header">
+                @if (avatarUrl) {
+                  <img [src]="avatarUrl" alt="Profile" class="menu-avatar-img" />
+                } @else {
+                  <div class="menu-avatar">{{ userInitial }}</div>
+                }
+                <div class="menu-user-info">
+                  <span class="menu-name">{{ userName }}</span>
+                  <span class="menu-email">{{ userEmail }}</span>
+                </div>
+              </div>
+              <div class="menu-divider"></div>
+              <button mat-menu-item routerLink="/dashboard">
+                <mat-icon svgIcon="mx-grid"></mat-icon>
+                <span>Dashboard</span>
+              </button>
+              <button mat-menu-item routerLink="/settings">
+                <mat-icon svgIcon="mx-settings"></mat-icon>
+                <span>Settings</span>
+              </button>
+              <div class="menu-divider"></div>
+              <button mat-menu-item (click)="logout()" class="logout-item">
+                <mat-icon svgIcon="mx-sign-out"></mat-icon>
+                <span>Sign Out</span>
+              </button>
+            </mat-menu>
+          </div>
+        } @else {
+          <nav class="header-nav">
+            <a routerLink="/login" class="nav-link">Sign In</a>
+            <a routerLink="/register" mat-flat-button class="cta-sm">Get Started</a>
+          </nav>
+        }
       </header>
 
       <section class="hero fade-in">
         <h1 class="hero-title">
-          MAXRO
+          Track. Lift.<br/>
+          <span class="accent">Fuel. Repeat.</span>
         </h1>
         <p class="hero-sub">
           The all-in-one fitness platform for logging workouts, crushing PRs,
           tracking macros, and staying hydrated. Built for athletes who mean business.
         </p>
         <div class="hero-actions">
-          <a routerLink="/register" mat-flat-button class="hero-cta">Start Free</a>
-          <a routerLink="/login" mat-stroked-button class="hero-secondary">Sign In</a>
+          <a [routerLink]="startRoute" mat-flat-button class="hero-cta">Start Free</a>
+          <a [routerLink]="signInRoute" mat-stroked-button class="hero-secondary">Sign In</a>
         </div>
       </section>
 
@@ -96,8 +142,15 @@ import { MatIconModule } from '@angular/material/icon';
       padding: 20px 40px;
       position: relative; z-index: 1;
     }
+    .logo-wrap {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 2px;
+      text-decoration: none;
+    }
     .logo {
       font-size: 22px; font-weight: 900; letter-spacing: 4px; color: var(--accent);
+      line-height: 1;
     }
     .header-nav { display: flex; align-items: center; gap: 16px; }
     .nav-link {
@@ -108,6 +161,78 @@ import { MatIconModule } from '@angular/material/icon';
     .cta-sm {
       background: var(--accent) !important; color: #0D0D0D !important;
       font-weight: 700; border-radius: 8px; font-size: 13px;
+    }
+    .profile-trigger {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+    }
+    .avatar-circle {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(200,241,53,0.15);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .avatar-circle-img {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .menu-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(200,241,53,0.14);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .menu-avatar-img {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .menu-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      min-width: 220px;
+    }
+    .menu-user-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .menu-name {
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .menu-email {
+      color: var(--text-muted);
+      font-size: 11px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .menu-divider {
+      height: 1px;
+      background: rgba(255,255,255,0.07);
+      margin: 4px 0;
     }
 
     .hero {
@@ -124,6 +249,7 @@ import { MatIconModule } from '@angular/material/icon';
       margin: 0 0 24px;
       letter-spacing: -1px;
     }
+    .accent { color: var(--accent); }
     .accent { color: var(--accent); }
     .hero-sub {
       font-size: 18px;
@@ -188,6 +314,10 @@ import { MatIconModule } from '@angular/material/icon';
   `],
 })
 export class HomeComponent {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly authService = inject(AuthService);
+  private userSnapshot: UserProfile | null = null;
+
   gridDots = Array.from({ length: 160 }, (_, i) => i);
 
   readonly features = [
@@ -198,4 +328,49 @@ export class HomeComponent {
     { icon: 'mx-chart-line', title: 'Analytics', description: 'Strength trends, macro patterns, and consistency charts to fuel your progress.' },
     { icon: 'mx-flame', title: 'Streaks', description: 'Build consistency with workout streaks. Stay motivated and never break the chain.' },
   ];
+
+  constructor() {
+    this.authService.currentUser$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(user => this.userSnapshot = user);
+  }
+
+  get isLoggedIn(): boolean {
+    return this.authService.isLoggedIn();
+  }
+
+  get brandRoute(): string {
+    return this.isLoggedIn ? '/dashboard' : '/';
+  }
+
+  get signInRoute(): string {
+    return this.isLoggedIn ? '/dashboard' : '/login';
+  }
+
+  get startRoute(): string {
+    return this.isLoggedIn ? '/dashboard' : '/register';
+  }
+
+  get avatarUrl(): string | null {
+    return localStorage.getItem('avatarUrl');
+  }
+
+  get userInitial(): string {
+    return (this.userSnapshot?.firstName?.[0] ?? this.userSnapshot?.displayName?.[0] ?? 'U').toUpperCase();
+  }
+
+  get userName(): string {
+    if (this.userSnapshot?.firstName && this.userSnapshot?.lastName) {
+      return `${this.userSnapshot.firstName} ${this.userSnapshot.lastName}`;
+    }
+    return this.userSnapshot?.displayName ?? 'User';
+  }
+
+  get userEmail(): string {
+    return this.userSnapshot?.email ?? '';
+  }
+
+  logout(): void {
+    this.authService.logout();
+  }
 }

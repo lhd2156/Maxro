@@ -11,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,7 +38,7 @@ class PersonalRecordServiceImplTest {
                     return pr;
                 });
 
-        List<PersonalRecord> newPRs = prService.checkAndUpdatePRs("u1", "wk-1", List.of(ex));
+        List<PersonalRecord> newPRs = prService.checkAndUpdatePRs("u1", "wk-1", LocalDate.now(), List.of(ex));
 
         assertEquals(1, newPRs.size());
         assertEquals("Bench Press", newPRs.get(0).getExerciseName());
@@ -55,7 +56,7 @@ class PersonalRecordServiceImplTest {
                 .thenReturn(Optional.of(existing));
         when(personalRecordRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        List<PersonalRecord> newPRs = prService.checkAndUpdatePRs("u1", "wk-1", List.of(ex));
+        List<PersonalRecord> newPRs = prService.checkAndUpdatePRs("u1", "wk-1", LocalDate.now(), List.of(ex));
 
         assertFalse(newPRs.isEmpty(), "Should detect new PR when estimated 1RM exceeds existing");
         assertTrue(newPRs.get(0).getOneRepMaxLbs() > 300.0);
@@ -69,7 +70,7 @@ class PersonalRecordServiceImplTest {
                 .thenReturn(Optional.empty());
         when(personalRecordRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        List<PersonalRecord> newPRs = prService.checkAndUpdatePRs("u1", "wk-1", List.of(ex));
+        List<PersonalRecord> newPRs = prService.checkAndUpdatePRs("u1", "wk-1", LocalDate.now(), List.of(ex));
 
         assertEquals(1, newPRs.size());
         assertEquals(0.0, newPRs.get(0).getWeightLbs());
@@ -88,7 +89,7 @@ class PersonalRecordServiceImplTest {
                 .thenReturn(Optional.of(existing));
         when(personalRecordRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        List<PersonalRecord> newPRs = prService.checkAndUpdatePRs("u1", "wk-1", List.of(ex));
+        List<PersonalRecord> newPRs = prService.checkAndUpdatePRs("u1", "wk-1", LocalDate.now(), List.of(ex));
 
         assertEquals(1, newPRs.size());
         assertEquals(22.0, newPRs.get(0).getOneRepMaxLbs());
@@ -104,7 +105,7 @@ class PersonalRecordServiceImplTest {
                 .findTopByUserIdAndExerciseNameOrderByOneRepMaxLbsDesc("u1", "Curl"))
                 .thenReturn(Optional.of(existing));
 
-        List<PersonalRecord> newPRs = prService.checkAndUpdatePRs("u1", "wk-1", List.of(ex));
+        List<PersonalRecord> newPRs = prService.checkAndUpdatePRs("u1", "wk-1", LocalDate.now(), List.of(ex));
 
         assertTrue(newPRs.isEmpty());
         verify(personalRecordRepository, never()).save(any());

@@ -22,7 +22,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { WaterService } from '../../core/services/water.service';
 import { ConfettiService } from '../../core/services/confetti.service';
 import { DashboardSummary } from '../../core/models/analytics.model';
-import { PersonalRecord } from '../../core/models/workout.model';
+import { PersonalRecord, WorkoutResult } from '../../core/models/workout.model';
 import { UserProfile } from '../../core/models/user.model';
 import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack } from '../../core/services/spotify.service';
 
@@ -52,7 +52,7 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
             <h1>Good {{ timeOfDay }}, {{ displayFirstName }}</h1>
             <div class="date-nav">
               <button mat-icon-button (click)="prevDay()"><mat-icon svgIcon="mx-chevron-left"></mat-icon></button>
-              <span class="date-display">{{ today | date:'EEE, MMM d' }}</span>
+              <span class="date-display">{{ today | date:'EEE, MMM d, y' }}</span>
               <button mat-icon-button (click)="nextDay()"><mat-icon svgIcon="mx-chevron-right"></mat-icon></button>
               <button mat-icon-button (click)="datePicker.open()" matTooltip="Pick date" class="calendar-btn">
                 <mat-icon svgIcon="mx-calendar"></mat-icon>
@@ -72,7 +72,7 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
           <app-stat-card svgIcon="mx-flame" label="Streak"
             [value]="summary.streak.currentStreak + 'd'"
             [subtitle]="'Best: ' + summary.streak.longestStreak + 'd'"
-            [highlight]="summary.streak.currentStreak > 0" />
+            [highlight]="!!summary.workoutToday" />
           <app-stat-card svgIcon="mx-dumbbell" label="Total Workouts"
             [value]="summary.streak.totalWorkouts" />
           <app-stat-card svgIcon="mx-utensils" label="Calories Today"
@@ -119,7 +119,7 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
                 [style.--f-pct]="fatPct + '%'">
                 <div class="pie-donut"></div>
                 <div class="pie-hole">
-                  <span class="pie-cal">{{ summary.nutritionToday?.totalCalories || 0 | number:'1.0-0' }}</span>
+                  <span class="pie-cal">{{ formatCalories(summary.nutritionToday?.totalCalories) }}</span>
                   <span class="pie-unit">cal</span>
                 </div>
               </div>
@@ -178,9 +178,9 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
               <h3>Recent PRs</h3>
               <a mat-button routerLink="/prs" class="section-link">View All</a>
             </div>
-            @if (summary.recentPRs.length > 0) {
+            @if (visibleRecentPRs.length > 0) {
               <div class="pr-list">
-                @for (pr of summary.recentPRs; track pr.id) {
+                @for (pr of visibleRecentPRs; track pr.id) {
                   <div class="pr-item">
                     <mat-icon class="pr-icon" svgIcon="mx-trophy"></mat-icon>
                     <div class="pr-details">
@@ -316,7 +316,7 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
         @if (workoutModalOpen) {
           <div class="modal-backdrop" (click)="closeWorkoutModal()">
             <div class="modal-panel workout-modal" (click)="$event.stopPropagation()">
-              <app-workout-quick-add [initialDate]="today" (saved)="onWorkoutSaved()" (cancelled)="closeWorkoutModal()" />
+              <app-workout-quick-add [initialDate]="today" (saved)="onWorkoutSaved($event)" (cancelled)="closeWorkoutModal()" />
             </div>
           </div>
         }
@@ -371,7 +371,7 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
     .bottom-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: stretch; min-height: 0; }
     .section-card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)), var(--bg-surface); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 12px 14px; min-height: 0; height: 100%; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
     .content-grid > .section-card { min-height: 202px; height: 202px; max-height: 202px; }
-    .bottom-grid > .section-card { min-height: clamp(252px, 32vh, 284px); height: clamp(252px, 32vh, 284px); max-height: clamp(252px, 32vh, 284px); }
+    .bottom-grid > .section-card { min-height: 330px; max-height: 330px; }
     .section-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
     .section-header h3 { font-size: 14.5px; font-weight: 700; color: var(--text-primary); margin: 0; }
     .section-link { color: var(--accent) !important; font-size: 11.5px; font-weight: 600; }
@@ -383,13 +383,13 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
     .empty-section mat-icon { font-size: 24px; width: 24px; height: 24px; opacity: 0.3; margin-bottom: 2px; }
     .empty-section p { font-size: 12.5px; margin: 0; }
     .macros-stacked { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; flex: 1; min-height: 0; width: 100%; }
-    .pie-wrapper { position: relative; width: 84px; height: 84px; flex-shrink: 0; }
-    .pie-donut { width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(from 0deg, #4fc3f7 0% var(--p-pct, 0%), #c8f135 var(--p-pct, 0%) var(--c-pct, 0%), #ff7043 var(--c-pct, 0%) var(--f-pct, 100%), rgba(255,255,255,0.04) var(--f-pct, 100%) 100%); }
-    .pie-hole { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 50px; height: 50px; border-radius: 50%; background: var(--bg-surface); display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .pie-cal { font-size: 16px; font-weight: 800; color: var(--text-primary); line-height: 1; }
-    .pie-unit { font-size: 10px; color: var(--text-muted); line-height: 1; margin-top: 2px; }
-    .pie-legend { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; justify-content: center; min-width: 0; width: min(100%, 156px); }
-    .legend-item { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; font-size: 11.5px; color: var(--text-muted); }
+    .pie-wrapper { position: relative; width: clamp(82px, 14vw, 100px); height: clamp(82px, 14vw, 100px); flex-shrink: 0; }
+    .pie-donut { width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(from 0deg, #4fc3f7 0% var(--p-pct, 0%), #c8f135 var(--p-pct, 0%) var(--c-pct, 0%), #ff7043 var(--c-pct, 0%) var(--f-pct, 100%), rgba(255,255,255,0.08) var(--f-pct, 100%) 100%); }
+    .pie-hole { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 58%; height: 58%; border-radius: 50%; background: var(--bg-surface); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .pie-cal { font-size: clamp(14px, 2.2vw, 22px); font-weight: 800; color: var(--text-primary); line-height: 1; }
+    .pie-unit { font-size: clamp(9px, 1vw, 11px); color: var(--text-muted); line-height: 1; margin-top: 2px; }
+    .pie-legend { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; justify-content: center; min-width: 0; width: min(100%, 156px); }
+    .legend-item { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; font-size: 11.5px; line-height: 1.2; color: var(--text-muted); }
     .legend-item strong { color: var(--text-primary); }
     .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .legend-dot.protein { background: #4fc3f7; }
@@ -413,6 +413,8 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
     .goal-met { font-size: 12px; font-weight: 800; color: var(--accent); }
     .prs-card { border-color: rgba(255,255,255,0.08); box-shadow: inset 0 0 0 1px rgba(200,241,53,0.05); }
     .pr-list { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 8px; overflow: auto; }
+    .exercise-list,.pr-list { scrollbar-width: none; }
+    .exercise-list::-webkit-scrollbar,.pr-list::-webkit-scrollbar { width:0; height:0; }
     .pr-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 12px; }
     .pr-icon { color: var(--accent); font-size: 16px; width: 16px; height: 16px; }
     .pr-details { flex: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -423,8 +425,7 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
     .spotify-card .section-header { margin-bottom: 8px; }
     .spotify-status-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 118px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(29,185,84,0.38); background: rgba(29,185,84,0.12); color: #d8ffe7; font-size: 10px; font-weight: 700; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; box-shadow: inset 0 1px 0 rgba(255,255,255,0.03); }
     .spotify-status-btn:hover { border-color: rgba(29,185,84,0.62); background: rgba(29,185,84,0.18); box-shadow: 0 10px 20px rgba(0,0,0,0.16); transform: translateY(-1px); }
-    .spotify-status-btn.connect { min-width: 118px; background: rgba(29,185,84,0.12); color: #d8ffe7; border-color: rgba(29,185,84,0.38); }
-    .spotify-status-btn.connect:hover { background: rgba(29,185,84,0.2); color: #effff5; border-color: rgba(29,185,84,0.62); }
+    .spotify-status-btn.connect:hover { background: rgba(29,185,84,0.2); border-color: rgba(29,185,84,0.62); }
     .spotify-status-label-wrap { position: relative; display: inline-grid; place-items: center; min-width: 70px; }
     .spotify-status-label { grid-area: 1 / 1; white-space: nowrap; transition: opacity 0.15s ease; }
     .spotify-status-label-hover { opacity: 0; }
@@ -436,9 +437,9 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
     .spotify-desc { font-size: 11.5px; color: var(--text-muted); margin: 0; max-width: 288px; line-height: 1.42; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
     .spotify-connect-btn { border: 1px solid rgba(29,185,84,0.38) !important; background: rgba(29,185,84,0.12) !important; color: #effff5 !important; font-weight: 800; font-size: 11.5px; border-radius: 999px; min-height: 34px; padding: 0 18px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.03); }
     .spotify-connect-btn:hover { background: rgba(29,185,84,0.2) !important; border-color: rgba(29,185,84,0.62) !important; color: #ffffff !important; }
-    .spotify-player { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 5px; text-align: center; min-height: 0; height: 100%; overflow: hidden; padding: 2px 0; }
+    .spotify-player { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 7px; text-align: center; min-height: 0; height: 100%; overflow: hidden; padding: 4px 0; max-width: 460px; margin: 0 auto; }
     .spotify-player-idle { justify-content: center; gap: 10px; }
-    .album-art-image { width: 68px; height: 68px; border-radius: 15px; object-fit: cover; border: 1px solid rgba(29,185,84,0.2); box-shadow: 0 10px 18px rgba(0,0,0,0.24); }
+    .album-art-image { width: 68px; height: 68px; border-radius: 15px; object-fit: contain; background: rgba(0,0,0,0.26); border: 1px solid rgba(29,185,84,0.2); box-shadow: 0 10px 18px rgba(0,0,0,0.24); }
     .album-art-placeholder { width: 68px; height: 68px; border-radius: 15px; background: radial-gradient(circle at top, rgba(29,185,84,0.18), rgba(29,185,84,0.06)); border: 1px solid rgba(29,185,84,0.18); display: flex; align-items: center; justify-content: center; }
     .album-art-placeholder mat-icon { color: var(--spotify-green); }
     .spotify-idle-placeholder { background: radial-gradient(circle at top, rgba(29,185,84,0.22), rgba(8,20,13,0.92)); }
@@ -629,8 +630,23 @@ export class DashboardComponent implements OnInit {
     this.workoutModalOpen = false;
   }
 
-  onWorkoutSaved(): void {
+  onWorkoutSaved(result?: WorkoutResult): void {
     this.workoutModalOpen = false;
+    const savedWorkout = result?.workout;
+    if (savedWorkout && this.summary && savedWorkout.date === this.dateStr) {
+      this.summary = {
+        ...this.summary,
+        workoutToday: savedWorkout,
+      };
+    }
+    if (result?.newPersonalRecords?.length && this.summary) {
+      const merged = [...result.newPersonalRecords, ...(this.summary.recentPRs ?? [])];
+      const deduped = merged.filter((pr, idx, arr) => arr.findIndex(x => x.id === pr.id) === idx);
+      this.summary = {
+        ...this.summary,
+        recentPRs: deduped,
+      };
+    }
     this.fetchDashboard(true);
     this.snackBar.open('Workout saved!', 'Close', { duration: 3000 });
   }
@@ -746,6 +762,10 @@ export class DashboardComponent implements OnInit {
     return this.waterCircumference * (1 - pct);
   }
 
+  get visibleRecentPRs(): PersonalRecord[] {
+    return this.selectBestPRPerExercise(this.summary?.recentPRs ?? []);
+  }
+
   get aiChatWelcomeMessage(): string {
     return this.aiSuggestion || this.aiFallbackSuggestion;
   }
@@ -789,9 +809,16 @@ export class DashboardComponent implements OnInit {
     const waterGoal = this.summary.waterToday?.goalOz || this.user?.dailyWaterGoalOz || 64;
     lines.push(`Water today: ${this.summary.waterToday?.totalOz || 0} oz out of ${waterGoal} oz`);
 
-    if (this.summary.recentPRs.length > 0) {
-      const pr = this.summary.recentPRs[0];
-      lines.push(`Latest PR: ${pr.exerciseName}, ${this.formatPRAttempt(pr)}, ${this.formatPRScore(pr)}`);
+    if (this.visibleRecentPRs.length > 0) {
+      lines.push(`Recent PR count in view: ${this.visibleRecentPRs.length}`);
+      const prLines = this.visibleRecentPRs
+        .slice(0, 20)
+        .map((pr, index) => {
+          const date = pr.workoutDate || (pr.achievedAt ? new Date(pr.achievedAt).toDateString() : 'unknown date');
+          return `${index + 1}. ${pr.exerciseName} - ${this.formatPRAttempt(pr)}, ${this.formatPRScore(pr)} (${date})`;
+        });
+      lines.push('Recent PR entries:');
+      lines.push(...prLines);
     } else {
       lines.push('Recent PRs: none yet');
     }
@@ -830,6 +857,10 @@ export class DashboardComponent implements OnInit {
     }
 
     return `${Math.round(pr.oneRepMaxLbs)} 1RM`;
+  }
+
+  formatCalories(value: number | null | undefined): string {
+    return String(Math.round(Number(value || 0)));
   }
 
   quickAddWater(amountOz: number): void {
@@ -1101,10 +1132,19 @@ export class DashboardComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: summary => {
-          this.summary = summary;
+          if (isRefreshAfterSave && this.summary?.recentPRs?.length) {
+            const mergedRecentPRs = [...this.summary.recentPRs, ...(summary.recentPRs ?? [])]
+              .filter((pr, idx, arr) => arr.findIndex(x => x.id === pr.id) === idx);
+            this.summary = {
+              ...summary,
+              recentPRs: mergedRecentPRs,
+            };
+          } else {
+            this.summary = summary;
+          }
           this.loading = false;
           this.loadError = false;
-          this.generateAiSuggestion(summary);
+          this.generateAiSuggestion(this.summary);
           const dateKey = this.dateStr;
           if (summary.waterToday?.goalMet && !this.confettiFiredThisSession.has('water-' + dateKey)) {
             this.confettiFiredThisSession.add('water-' + dateKey);
@@ -1113,9 +1153,13 @@ export class DashboardComponent implements OnInit {
         },
         error: () => {
           this.loading = false;
-          if (isRefreshAfterSave && this.summary) {
+          if (this.summary) {
             this.loadError = false;
-            this.snackBar.open('Workout saved. Could not refresh dashboard. Pull to retry.', 'OK', { duration: 4000 });
+            this.snackBar.open(
+              isRefreshAfterSave ? 'Workout saved. Could not refresh dashboard. Pull to retry.' : 'Could not refresh dashboard data. Pull to retry.',
+              'OK',
+              { duration: 4000 }
+            );
           } else {
             this.loadError = true;
           }
@@ -1291,8 +1335,10 @@ export class DashboardComponent implements OnInit {
   }
 
   private buildAiSuggestionText(summary: DashboardSummary): string {
-    if (summary.recentPRs.length > 0) {
-      const pr = summary.recentPRs[0];
+    const visiblePRs = this.selectBestPRPerExercise(summary.recentPRs ?? []);
+
+    if (visiblePRs.length > 0) {
+      const pr = visiblePRs[0];
       if (this.isBodyweightPR(pr)) {
         const nextReps = pr.reps + 1;
         return `Based on your ${pr.exerciseName} PR of ${pr.reps} reps, aim for ${nextReps} reps next session or keep the same reps with cleaner tempo and control.`;
@@ -1312,6 +1358,60 @@ export class DashboardComponent implements OnInit {
 
   private isBodyweightPR(pr: PersonalRecord): boolean {
     return pr.weightLbs <= 0;
+  }
+
+  private toLocalDateString(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  private selectBestPRPerExercise(prs: PersonalRecord[]): PersonalRecord[] {
+    const bestByExercise = new Map<string, PersonalRecord>();
+
+    for (const pr of prs) {
+      const prDate = this.toLocalDateString(pr.achievedAt);
+      if (prDate && prDate > this.dateStr) {
+        continue;
+      }
+
+      const key = (pr.exerciseName || '').trim().toLowerCase();
+      if (!key) {
+        continue;
+      }
+
+      const existing = bestByExercise.get(key);
+      if (!existing || this.isBetterPR(pr, existing)) {
+        bestByExercise.set(key, pr);
+      }
+    }
+
+    return Array.from(bestByExercise.values())
+      .sort((a, b) => {
+        const aTime = new Date(a.achievedAt).getTime();
+        const bTime = new Date(b.achievedAt).getTime();
+        return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
+      });
+  }
+
+  private isBetterPR(candidate: PersonalRecord, current: PersonalRecord): boolean {
+    if ((candidate.oneRepMaxLbs || 0) !== (current.oneRepMaxLbs || 0)) {
+      return (candidate.oneRepMaxLbs || 0) > (current.oneRepMaxLbs || 0);
+    }
+    if ((candidate.weightLbs || 0) !== (current.weightLbs || 0)) {
+      return (candidate.weightLbs || 0) > (current.weightLbs || 0);
+    }
+    if ((candidate.reps || 0) !== (current.reps || 0)) {
+      return (candidate.reps || 0) > (current.reps || 0);
+    }
+    const candidateTime = new Date(candidate.achievedAt).getTime();
+    const currentTime = new Date(current.achievedAt).getTime();
+    return (Number.isNaN(candidateTime) ? 0 : candidateTime) > (Number.isNaN(currentTime) ? 0 : currentTime);
   }
 
   private get carbsRawPct(): number {

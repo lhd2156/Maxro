@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +29,7 @@ public class PersonalRecordServiceImpl implements PersonalRecordService {
     }
 
     @Override
-    public List<PersonalRecord> checkAndUpdatePRs(String userId, String workoutId, List<Exercise> exercises) {
+    public List<PersonalRecord> checkAndUpdatePRs(String userId, String workoutId, LocalDate workoutDate, List<Exercise> exercises) {
         log.debug("Checking PRs for user: {} across {} exercises", userId, exercises.size());
         List<PersonalRecord> newPRs = new ArrayList<>();
 
@@ -40,7 +41,7 @@ public class PersonalRecordServiceImpl implements PersonalRecordService {
                 }
 
                 Optional<PersonalRecord> existingPR = personalRecordRepository
-                        .findTopByUserIdAndExerciseNameOrderByOneRepMaxLbsDesc(userId, exercise.getName());
+                    .findTopByUserIdAndExerciseNameIgnoreCaseOrderByOneRepMaxLbsDesc(userId, exercise.getName());
 
                 boolean isNewPR = existingPR.isEmpty() || performanceScore > existingPR.get().getOneRepMaxLbs();
 
@@ -53,6 +54,7 @@ public class PersonalRecordServiceImpl implements PersonalRecordService {
                     pr.setReps(set.getReps());
                     pr.setOneRepMaxLbs(performanceScore);
                     pr.setAchievedAt(Instant.now());
+                    pr.setWorkoutDate(workoutDate);
 
                     PersonalRecord saved = personalRecordRepository.save(pr);
                     newPRs.add(saved);
@@ -74,7 +76,7 @@ public class PersonalRecordServiceImpl implements PersonalRecordService {
     @Override
     public List<PersonalRecord> getPersonalRecordsByExercise(String userId, String exerciseName) {
         log.debug("Fetching PRs for user: {} on exercise: {}", userId, exerciseName);
-        return personalRecordRepository.findByUserIdAndExerciseNameOrderByAchievedAtDesc(userId, exerciseName);
+        return personalRecordRepository.findByUserIdAndExerciseNameIgnoreCaseOrderByAchievedAtDesc(userId, exerciseName);
     }
 
     @Override

@@ -139,7 +139,7 @@ import { UserProfile } from '../../core/models/user.model';
                 <mat-label>Protein (g)</mat-label>
                 <input matInput formControlName="dailyProteinTarget" type="number">
                 @if (nutritionForm.controls['dailyProteinTarget'].touched && nutritionForm.controls['dailyProteinTarget'].hasError('min')) {
-                  <mat-error>Protein cannot be negative</mat-error>
+                  <mat-error>Protein must be at least 10 g</mat-error>
                 }
                 @if (nutritionForm.controls['dailyProteinTarget'].touched && nutritionForm.controls['dailyProteinTarget'].hasError('max')) {
                   <mat-error>Protein must be at most 500 g</mat-error>
@@ -149,7 +149,7 @@ import { UserProfile } from '../../core/models/user.model';
                 <mat-label>Carbs (g)</mat-label>
                 <input matInput formControlName="dailyCarbTarget" type="number">
                 @if (nutritionForm.controls['dailyCarbTarget'].touched && nutritionForm.controls['dailyCarbTarget'].hasError('min')) {
-                  <mat-error>Carbs cannot be negative</mat-error>
+                  <mat-error>Carbs must be at least 10 g</mat-error>
                 }
                 @if (nutritionForm.controls['dailyCarbTarget'].touched && nutritionForm.controls['dailyCarbTarget'].hasError('max')) {
                   <mat-error>Carbs must be at most 1000 g</mat-error>
@@ -159,7 +159,7 @@ import { UserProfile } from '../../core/models/user.model';
                 <mat-label>Fat (g)</mat-label>
                 <input matInput formControlName="dailyFatTarget" type="number">
                 @if (nutritionForm.controls['dailyFatTarget'].touched && nutritionForm.controls['dailyFatTarget'].hasError('min')) {
-                  <mat-error>Fat cannot be negative</mat-error>
+                  <mat-error>Fat must be at least 10 g</mat-error>
                 }
                 @if (nutritionForm.controls['dailyFatTarget'].touched && nutritionForm.controls['dailyFatTarget'].hasError('max')) {
                   <mat-error>Fat must be at most 500 g</mat-error>
@@ -170,7 +170,7 @@ import { UserProfile } from '../../core/models/user.model';
               <mat-label>Daily Water Goal (oz)</mat-label>
               <input matInput formControlName="dailyWaterGoalOz" type="number">
               @if (nutritionForm.controls['dailyWaterGoalOz'].touched && nutritionForm.controls['dailyWaterGoalOz'].hasError('min')) {
-                <mat-error>Water goal cannot be negative</mat-error>
+                <mat-error>Water goal must be at least 8 oz</mat-error>
               }
               @if (nutritionForm.controls['dailyWaterGoalOz'].touched && nutritionForm.controls['dailyWaterGoalOz'].hasError('max')) {
                 <mat-error>Water goal must be at most 300 oz</mat-error>
@@ -563,10 +563,10 @@ export class SettingsComponent implements OnInit {
 
     this.nutritionForm = this.fb.group({
       dailyCalorieTarget: [2000, [Validators.required, Validators.min(1), Validators.max(10000)]],
-      dailyProteinTarget: [150, [Validators.required, Validators.min(0), Validators.max(500)]],
-      dailyCarbTarget: [250, [Validators.required, Validators.min(0), Validators.max(1000)]],
-      dailyFatTarget: [65, [Validators.required, Validators.min(0), Validators.max(500)]],
-      dailyWaterGoalOz: [64, [Validators.required, Validators.min(0), Validators.max(300)]],
+      dailyProteinTarget: [150, [Validators.required, Validators.min(10), Validators.max(500)]],
+      dailyCarbTarget: [250, [Validators.required, Validators.min(10), Validators.max(1000)]],
+      dailyFatTarget: [65, [Validators.required, Validators.min(10), Validators.max(500)]],
+      dailyWaterGoalOz: [64, [Validators.required, Validators.min(8), Validators.max(300)]],
     });
 
     this.passwordForm = this.fb.group({

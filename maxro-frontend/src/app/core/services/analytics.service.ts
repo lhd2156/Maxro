@@ -21,7 +21,7 @@ const GET_DASHBOARD_SUMMARY = gql`
         id date totalOz goalOz goalMet entries { amountOz loggedAt }
       }
       streak { currentStreak longestStreak totalWorkouts }
-      recentPRs { id exerciseName weightLbs reps oneRepMaxLbs achievedAt }
+      recentPRs { id exerciseName weightLbs reps oneRepMaxLbs achievedAt workoutDate }
     }
   }
 `;

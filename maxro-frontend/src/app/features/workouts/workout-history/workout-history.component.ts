@@ -172,6 +172,14 @@ export class WorkoutHistoryComponent implements OnInit {
     private readonly snackBar: MatSnackBar,
   ) {}
 
+  private getTodayLocalDateString(): string {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
   ngOnInit(): void {
     this.loadWorkouts();
     this.workoutService.workoutSaved$
@@ -198,7 +206,7 @@ export class WorkoutHistoryComponent implements OnInit {
   }
 
   private tryDashboardFallback(): void {
-    const today = new Date().toISOString().split('T')[0];
+    const today = this.getTodayLocalDateString();
     this.analyticsService.getDashboardSummary(today)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

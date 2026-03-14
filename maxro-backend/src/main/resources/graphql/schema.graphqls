@@ -173,6 +173,7 @@ type PersonalRecord {
     reps: Int!
     oneRepMaxLbs: Float!
     achievedAt: String!
+    workoutDate: String
 }
 
 # -- Nutrition --
@@ -194,13 +195,25 @@ input FoodEntryInput {
     fatG: Float!
     fiberG: Float
     sugarG: Float
+    addedSugarG: Float
     sodiumMg: Float
     cholesterolMg: Float
     saturatedFatG: Float
     potassiumMg: Float
+    caffeineMg: Float
+    electrolytesMg: Float
     vitaminAMcg: Float
     vitaminCMg: Float
     vitaminDMcg: Float
+    vitaminEMg: Float
+    vitaminKMcg: Float
+    thiaminMg: Float
+    riboflavinMg: Float
+    niacinMg: Float
+    vitaminB6Mg: Float
+    vitaminB12Mcg: Float
+    folateMcg: Float
+    zincMg: Float
     calciumMg: Float
     ironMg: Float
     magnesiumMg: Float
@@ -218,13 +231,25 @@ type NutritionLog {
     totalFatG: Float!
     totalFiberG: Float!
     totalSugarG: Float!
+    totalAddedSugarG: Float!
     totalSodiumMg: Float!
     totalCholesterolMg: Float!
     totalSaturatedFatG: Float!
     totalPotassiumMg: Float!
+    totalCaffeineMg: Float!
+    totalElectrolytesMg: Float!
     totalVitaminAMcg: Float!
     totalVitaminCMg: Float!
     totalVitaminDMcg: Float!
+    totalVitaminEMg: Float!
+    totalVitaminKMcg: Float!
+    totalThiaminMg: Float!
+    totalRiboflavinMg: Float!
+    totalNiacinMg: Float!
+    totalVitaminB6Mg: Float!
+    totalVitaminB12Mcg: Float!
+    totalFolateMcg: Float!
+    totalZincMg: Float!
     totalCalciumMg: Float!
     totalIronMg: Float!
     totalMagnesiumMg: Float!
@@ -243,13 +268,25 @@ type FoodEntry {
     fatG: Float!
     fiberG: Float!
     sugarG: Float!
+    addedSugarG: Float!
     sodiumMg: Float!
     cholesterolMg: Float!
     saturatedFatG: Float!
     potassiumMg: Float!
+    caffeineMg: Float!
+    electrolytesMg: Float!
     vitaminAMcg: Float!
     vitaminCMg: Float!
     vitaminDMcg: Float!
+    vitaminEMg: Float!
+    vitaminKMcg: Float!
+    thiaminMg: Float!
+    riboflavinMg: Float!
+    niacinMg: Float!
+    vitaminB6Mg: Float!
+    vitaminB12Mcg: Float!
+    folateMcg: Float!
+    zincMg: Float!
     calciumMg: Float!
     ironMg: Float!
     magnesiumMg: Float!
@@ -274,13 +311,25 @@ type FoodSearchResult {
     fatG: Float!
     fiberG: Float!
     sugarG: Float!
+    addedSugarG: Float!
     sodiumMg: Float!
     cholesterolMg: Float!
     saturatedFatG: Float!
     potassiumMg: Float!
+    caffeineMg: Float!
+    electrolytesMg: Float!
     vitaminAMcg: Float!
     vitaminCMg: Float!
     vitaminDMcg: Float!
+    vitaminEMg: Float!
+    vitaminKMcg: Float!
+    thiaminMg: Float!
+    riboflavinMg: Float!
+    niacinMg: Float!
+    vitaminB6Mg: Float!
+    vitaminB12Mcg: Float!
+    folateMcg: Float!
+    zincMg: Float!
     calciumMg: Float!
     ironMg: Float!
     magnesiumMg: Float!

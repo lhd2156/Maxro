@@ -48,7 +48,7 @@ import { PersonalRecord } from '../../../core/models/workout.model';
                   <span class="pr-label">{{ formatPRScoreLabel(group.best) }}</span>
                 </div>
               </div>
-              <span class="pr-date">{{ group.best.achievedAt | date:'mediumDate' }}</span>
+              <span class="pr-date">{{ displayPRDate(group.best) | date:'mediumDate' }}</span>
             </mat-card>
           }
         </div>
@@ -162,6 +162,10 @@ export class PrTrackerComponent implements OnInit {
 
   formatPRScoreLabel(pr: PersonalRecord): string {
     return this.isBodyweightPR(pr) ? 'rep PR' : 'est 1RM';
+  }
+
+  displayPRDate(pr: PersonalRecord): string {
+    return pr.workoutDate || pr.achievedAt;
   }
 
   private isBodyweightPR(pr: PersonalRecord): boolean {

@@ -19,7 +19,7 @@ import { UserProfile } from '../../../core/models/user.model';
   template: `
     <div class="app-shell">
       <nav class="sidenav" [style.width.px]="sidenavWidth">
-        <a class="brand" routerLink="/">
+        <a class="brand" [routerLink]="brandRoute">
           @if (sidenavWidth > 120) {
             <div class="brand-full">
               <img src="favicon.svg" alt="MAXRO" class="brand-logo" />
@@ -43,6 +43,18 @@ import { UserProfile } from '../../../core/models/user.model';
             </a>
           }
         </div>
+
+        <div class="legal-footer" [class.collapsed]="sidenavWidth <= 120">
+          @if (sidenavWidth > 120) {
+            <div class="legal-links">
+              <a routerLink="/terms" class="legal-link">Terms</a>
+              <span class="legal-sep">·</span>
+              <a routerLink="/privacy" class="legal-link">Privacy</a>
+            </div>
+            <div class="legal-copy">© {{ currentYear }} Maxro</div>
+          }
+        </div>
+
         <div class="resize-handle" (mousedown)="onResizeStart($event)"></div>
       </nav>
 
@@ -143,6 +155,65 @@ import { UserProfile } from '../../../core/models/user.model';
       flex-direction: column;
       gap: 2px;
       overflow-y: auto;
+    }
+
+    .legal-footer {
+      flex-shrink: 0;
+      padding: 10px 12px 12px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      text-align: center;
+    }
+    .legal-footer.collapsed {
+      flex-direction: row;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px;
+    }
+    .legal-links {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .legal-link {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+    .legal-link:hover {
+      color: var(--text-primary);
+    }
+    .legal-sep {
+      color: rgba(255,255,255,0.26);
+      font-size: 10px;
+    }
+    .legal-copy {
+      font-size: 10px;
+      color: rgba(255,255,255,0.44);
+      line-height: 1.2;
+    }
+    .legal-icon-link {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.14);
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .legal-icon-link:hover {
+      border-color: rgba(255,255,255,0.28);
+      color: var(--text-primary);
     }
 
     .nav-link {
@@ -326,6 +397,14 @@ export class LayoutComponent implements OnInit {
 
   get userEmail(): string {
     return this.userSnapshot?.email ?? '';
+  }
+
+  get brandRoute(): string {
+    return '/';
+  }
+
+  get currentYear(): number {
+    return new Date().getFullYear();
   }
 
   onResizeStart(event: MouseEvent): void {

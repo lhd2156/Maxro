@@ -271,7 +271,7 @@ import { UserProfile } from '../../../core/models/user.model';
       border-color: transparent;
       background: var(--accent);
       color: #0d0d0d;
-      box-shadow: 0 10px 20px rgba(200,241,53,0.18);
+      box-shadow: none;
     }
     .quick-mode-btn mat-icon {
       width: 16px;
@@ -318,7 +318,7 @@ import { UserProfile } from '../../../core/models/user.model';
       border-color: var(--accent);
       color: #0d0d0d;
       background: var(--accent);
-      box-shadow: 0 10px 20px rgba(200,241,53,0.16);
+      box-shadow: none;
     }
     .quick-custom-entry {
       display: flex;
@@ -342,7 +342,7 @@ import { UserProfile } from '../../../core/models/user.model';
     }
     .quick-custom-input:focus {
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(200,241,53,0.08);
+      box-shadow: none;
     }
     .quick-custom-input::placeholder {
       color: var(--text-muted);

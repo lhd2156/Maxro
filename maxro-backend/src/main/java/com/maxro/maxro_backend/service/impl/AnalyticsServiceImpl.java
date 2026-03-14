@@ -40,18 +40,33 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     public StreakInfoDto getWorkoutStreak(String userId) {
         log.debug("Calculating workout streak for user: {}", userId);
 
+                return buildWorkoutStreak(userId, LocalDate.now());
+        }
+
+        private StreakInfoDto buildWorkoutStreak(String userId, LocalDate referenceDate) {
+                log.debug("Calculating workout streak for user: {} with reference date: {}", userId, referenceDate);
+
         List<Workout> workouts = workoutRepository.findAllDatesByUserId(userId);
-        long totalWorkouts = workouts.size();
 
         if (workouts.isEmpty()) {
             return new StreakInfoDto(0, 0, 0);
         }
 
+                LocalDate anchorDate = referenceDate != null ? referenceDate : LocalDate.now();
+
         Set<LocalDate> workoutDates = workouts.stream()
                 .map(Workout::getDate)
+                                .filter(Objects::nonNull)
+                                .filter(date -> !date.isAfter(anchorDate))
                 .collect(Collectors.toCollection(TreeSet::new));
 
-        int currentStreak = calculateCurrentStreak(workoutDates);
+                long totalWorkouts = workoutDates.size();
+
+                if (workoutDates.isEmpty()) {
+                        return new StreakInfoDto(0, 0, 0);
+                }
+
+                int currentStreak = calculateCurrentStreak(workoutDates, anchorDate);
         int longestStreak = calculateLongestStreak(workoutDates);
 
         return new StreakInfoDto(currentStreak, longestStreak, totalWorkouts);
@@ -129,11 +144,56 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         log.debug("Building dashboard summary for user: {} on date: {}", userId, date);
 
         String dateStr = date.toString();
-        Workout workoutToday = workoutRepository.findByUserIdAndDateFlexible(userId, dateStr, date).orElse(null);
-        NutritionLog nutritionToday = nutritionLogRepository.findByUserIdAndDateFlexible(userId, dateStr, date).orElse(null);
-        WaterIntake waterToday = waterIntakeRepository.findByUserIdAndDateFlexible(userId, dateStr, date).orElse(null);
-        StreakInfoDto streak = getWorkoutStreak(userId);
-        List<PersonalRecord> recentPRs = personalRecordService.getRecentPRs(userId, 7);
+                Workout workoutToday = null;
+                NutritionLog nutritionToday = null;
+                WaterIntake waterToday = null;
+                StreakInfoDto streak = new StreakInfoDto(0, 0, 0);
+                List<PersonalRecord> recentPRs = List.of();
+
+                try {
+                        var workoutsToday = workoutRepository.findAllByUserIdAndDateFlexible(userId, dateStr, date);
+                        workoutToday = mergeWorkoutsForDay(userId, date, workoutsToday);
+                } catch (Exception ex) {
+                        log.warn("Failed loading workoutToday for user {} on {}", userId, dateStr, ex);
+                }
+
+                try {
+                        nutritionToday = nutritionLogRepository.findByUserIdAndDateFlexible(userId, dateStr, date).orElse(null);
+                } catch (Exception ex) {
+                        log.warn("Failed loading nutritionToday for user {} on {}", userId, dateStr, ex);
+                }
+
+                try {
+                        waterToday = waterIntakeRepository.findByUserIdAndDateFlexible(userId, dateStr, date).orElse(null);
+                } catch (Exception ex) {
+                        log.warn("Failed loading waterToday for user {} on {}", userId, dateStr, ex);
+                }
+
+                try {
+                        streak = buildWorkoutStreak(userId, date);
+                } catch (Exception ex) {
+                        log.warn("Failed loading streak for user {}", userId, ex);
+                }
+
+                try {
+                        var recent = personalRecordService.getRecentPRs(userId, 7);
+                        var workoutIds = recent.stream()
+                                        .map(PersonalRecord::getWorkoutId)
+                                        .filter(Objects::nonNull)
+                                        .map(String::trim)
+                                        .filter(id -> !id.isEmpty())
+                                        .collect(Collectors.toSet());
+
+                        var workoutDateById = workoutRepository.findAllById(workoutIds).stream()
+                                        .filter(w -> w.getId() != null && w.getDate() != null)
+                                        .collect(Collectors.toMap(Workout::getId, Workout::getDate, (a, b) -> a));
+
+                        recentPRs = recent.stream()
+                                        .filter(pr -> isVisibleOnDashboardDate(pr, date, workoutDateById))
+                                        .toList();
+                } catch (Exception ex) {
+                        log.warn("Failed loading recent PRs for user {} on {}", userId, dateStr, ex);
+                }
 
         return new DashboardSummaryDto(
                 dateStr, workoutToday, nutritionToday,
@@ -141,8 +201,57 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         );
     }
 
-    private int calculateCurrentStreak(Set<LocalDate> dates) {
-        LocalDate today = LocalDate.now();
+        private Workout mergeWorkoutsForDay(String userId, LocalDate date, List<Workout> workouts) {
+                if (workouts == null || workouts.isEmpty()) {
+                        return null;
+                }
+
+                var sorted = workouts.stream()
+                                .sorted(Comparator.comparing(Workout::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                                .toList();
+
+                var merged = new Workout();
+                var latest = sorted.get(sorted.size() - 1);
+                merged.setId(latest.getId());
+                merged.setUserId(userId);
+                merged.setDate(date);
+                merged.setCreatedAt(latest.getCreatedAt());
+
+                var combinedExercises = sorted.stream()
+                                .flatMap(w -> w.getExercises().stream())
+                                .toList();
+                merged.setExercises(new ArrayList<>(combinedExercises));
+
+                var notes = sorted.stream()
+                                .map(Workout::getNotes)
+                                .filter(Objects::nonNull)
+                                .map(String::trim)
+                                .filter(s -> !s.isEmpty())
+                                .collect(Collectors.joining(" | "));
+                merged.setNotes(notes.isEmpty() ? null : notes);
+
+                return merged;
+        }
+
+        private boolean isVisibleOnDashboardDate(PersonalRecord pr, LocalDate selectedDate, Map<String, LocalDate> workoutDateById) {
+                String workoutId = pr.getWorkoutId();
+                if (workoutId != null && !workoutId.isBlank()) {
+                        LocalDate workoutDate = workoutDateById.get(workoutId);
+                        if (workoutDate != null) {
+                                return !workoutDate.isAfter(selectedDate);
+                        }
+                }
+
+                if (pr.getAchievedAt() == null) {
+                        return false;
+                }
+
+                LocalDate achievedDate = pr.getAchievedAt().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+                return !achievedDate.isAfter(selectedDate);
+        }
+
+        private int calculateCurrentStreak(Set<LocalDate> dates, LocalDate referenceDate) {
+                LocalDate today = referenceDate != null ? referenceDate : LocalDate.now();
         int streak = 0;
         // Start from today if there's a workout, otherwise yesterday.
         // This avoids breaking the streak when the user hasn't worked out yet today.

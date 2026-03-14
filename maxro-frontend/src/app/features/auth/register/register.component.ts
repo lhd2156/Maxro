@@ -13,9 +13,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { switchMap, catchError, of } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
-import { UserService } from '../../../core/services/user.service';
 import { PublicConfigService } from '../../../core/services/public-config.service';
 
 @Component({
@@ -153,28 +151,43 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
               <div class="goals-grid">
                 <mat-form-field appearance="outline" class="goal-field auth-field">
                   <mat-label>Calories</mat-label>
-                  <input matInput formControlName="dailyCalorieTarget" type="number">
+                  <input matInput formControlName="dailyCalorieTarget" type="number" min="1" max="10000" step="1">
                   <span matSuffix class="goal-unit">kcal</span>
+                  @if (isGoalInvalid('dailyCalorieTarget')) {
+                    <mat-error>{{ goalErrorMessage('dailyCalorieTarget') }}</mat-error>
+                  }
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="goal-field auth-field">
                   <mat-label>Protein</mat-label>
-                  <input matInput formControlName="dailyProteinTarget" type="number">
+                  <input matInput formControlName="dailyProteinTarget" type="number" min="10" max="500" step="1">
                   <span matSuffix class="goal-unit">g</span>
+                  @if (isGoalInvalid('dailyProteinTarget')) {
+                    <mat-error>{{ goalErrorMessage('dailyProteinTarget') }}</mat-error>
+                  }
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="goal-field auth-field">
                   <mat-label>Carbs</mat-label>
-                  <input matInput formControlName="dailyCarbTarget" type="number">
+                  <input matInput formControlName="dailyCarbTarget" type="number" min="10" max="1000" step="1">
                   <span matSuffix class="goal-unit">g</span>
+                  @if (isGoalInvalid('dailyCarbTarget')) {
+                    <mat-error>{{ goalErrorMessage('dailyCarbTarget') }}</mat-error>
+                  }
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="goal-field auth-field">
                   <mat-label>Fat</mat-label>
-                  <input matInput formControlName="dailyFatTarget" type="number">
+                  <input matInput formControlName="dailyFatTarget" type="number" min="10" max="500" step="1">
                   <span matSuffix class="goal-unit">g</span>
+                  @if (isGoalInvalid('dailyFatTarget')) {
+                    <mat-error>{{ goalErrorMessage('dailyFatTarget') }}</mat-error>
+                  }
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="goal-field auth-field">
                   <mat-label>Water</mat-label>
-                  <input matInput formControlName="dailyWaterTarget" type="number">
+                  <input matInput formControlName="dailyWaterTarget" type="number" min="8" max="300" step="1">
                   <span matSuffix class="goal-unit">oz</span>
+                  @if (isGoalInvalid('dailyWaterTarget')) {
+                    <mat-error>{{ goalErrorMessage('dailyWaterTarget') }}</mat-error>
+                  }
                 </mat-form-field>
               </div>
             </div>
@@ -581,6 +594,7 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
   `],
 })
 export class RegisterComponent implements AfterViewInit {
+  private static readonly MIN_REGISTER_AGE = 13;
   private readonly destroyRef = inject(DestroyRef);
   private readonly ngZone = inject(NgZone);
   private readonly publicConfig = inject(PublicConfigService);
@@ -607,7 +621,6 @@ export class RegisterComponent implements AfterViewInit {
   constructor(
     private readonly fb: FormBuilder,
     private readonly authService: AuthService,
-    private readonly userService: UserService,
     private readonly router: Router,
     private readonly snackBar: MatSnackBar,
   ) {
@@ -617,16 +630,22 @@ export class RegisterComponent implements AfterViewInit {
       email: ['', [Validators.required, Validators.pattern(/^[^\s@]+@(?!\.)[^\s@]+$/)]],
       password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', Validators.required],
-      dateOfBirth: [null, Validators.required],
+      dateOfBirth: [null, [Validators.required, this.minAgeValidator(RegisterComponent.MIN_REGISTER_AGE)]],
       gender: ['', Validators.required],
-      dailyCalorieTarget: [2000],
-      dailyProteinTarget: [150],
-      dailyCarbTarget: [250],
-      dailyFatTarget: [65],
-      dailyWaterTarget: [64],
+      dailyCalorieTarget: [2000, [Validators.min(1), Validators.max(10000)]],
+      dailyProteinTarget: [150, [Validators.min(10), Validators.max(500)]],
+      dailyCarbTarget: [250, [Validators.min(10), Validators.max(1000)]],
+      dailyFatTarget: [65, [Validators.min(10), Validators.max(500)]],
+      dailyWaterTarget: [64, [Validators.min(8), Validators.max(300)]],
       agreedToTerms: [false, Validators.requiredTrue],
     }, {
       validators: this.passwordMatchValidator,
+    });
+
+    Object.keys(this.form.controls).forEach(key => {
+      this.form.controls[key].valueChanges
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => this.clearServerError(key));
     });
   }
 
@@ -647,6 +666,10 @@ export class RegisterComponent implements AfterViewInit {
     const control = this.form.controls[field];
     if (!this.isFieldInvalid(field)) {
       return '';
+    }
+
+    if (control.hasError('serverError')) {
+      return control.getError('serverError');
     }
 
     if (control.hasError('required')) {
@@ -686,6 +709,48 @@ export class RegisterComponent implements AfterViewInit {
 
     if (field === 'dateOfBirth' && control.hasError('matDatepickerMax')) {
       return 'Date of birth cannot be in the future';
+    }
+
+    if (field === 'dateOfBirth' && control.hasError('underage')) {
+      return `You must be at least ${RegisterComponent.MIN_REGISTER_AGE} years old`;
+    }
+
+    return '';
+  }
+
+  isGoalInvalid(field: string): boolean {
+    const control = this.form.controls[field];
+    return !!control && control.invalid && (control.touched || this.submitted);
+  }
+
+  goalErrorMessage(field: string): string {
+    const control = this.form.controls[field];
+    if (!control) {
+      return '';
+    }
+    if (control.hasError('serverError')) {
+      return control.getError('serverError');
+    }
+
+    if (field === 'dailyCalorieTarget') {
+      if (control.hasError('min')) return 'Calories must be at least 1 kcal';
+      if (control.hasError('max')) return 'Calories must be at most 10000 kcal';
+    }
+    if (field === 'dailyProteinTarget') {
+      if (control.hasError('min')) return 'Protein must be at least 10 g';
+      if (control.hasError('max')) return 'Protein must be at most 500 g';
+    }
+    if (field === 'dailyCarbTarget') {
+      if (control.hasError('min')) return 'Carbs must be at least 10 g';
+      if (control.hasError('max')) return 'Carbs must be at most 1000 g';
+    }
+    if (field === 'dailyFatTarget') {
+      if (control.hasError('min')) return 'Fat must be at least 10 g';
+      if (control.hasError('max')) return 'Fat must be at most 500 g';
+    }
+    if (field === 'dailyWaterTarget') {
+      if (control.hasError('min')) return 'Water must be at least 8 oz';
+      if (control.hasError('max')) return 'Water must be at most 300 oz';
     }
 
     return '';
@@ -820,6 +885,7 @@ export class RegisterComponent implements AfterViewInit {
 
   onSubmit(): void {
     this.submitted = true;
+    this.clearAllServerErrors();
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -827,7 +893,7 @@ export class RegisterComponent implements AfterViewInit {
     this.loading = true;
     const v = this.form.value;
     const dob = v.dateOfBirth instanceof Date
-      ? v.dateOfBirth.toISOString().split('T')[0]
+      ? this.toLocalDateString(v.dateOfBirth)
       : v.dateOfBirth;
 
     this.authService.register({
@@ -837,27 +903,142 @@ export class RegisterComponent implements AfterViewInit {
       lastName: (v.lastName || '').trim(),
       dateOfBirth: dob,
       gender: v.gender,
+      dailyCalorieTarget: this.toOptionalInteger(v.dailyCalorieTarget),
+      dailyProteinTarget: this.toOptionalInteger(v.dailyProteinTarget),
+      dailyCarbTarget: this.toOptionalInteger(v.dailyCarbTarget),
+      dailyFatTarget: this.toOptionalInteger(v.dailyFatTarget),
+      dailyWaterGoalOz: this.toOptionalNumber(v.dailyWaterTarget),
       agreedToTerms: true,
-    }).pipe(
-      switchMap(() => {
-        const goals = {
-          dailyCalorieTarget: v.dailyCalorieTarget || 2000,
-          dailyProteinTarget: v.dailyProteinTarget || 150,
-          dailyCarbTarget: v.dailyCarbTarget || 250,
-          dailyFatTarget: v.dailyFatTarget || 65,
-          dailyWaterGoalOz: v.dailyWaterTarget || 64,
-        };
-        return this.userService.updateProfile(goals).pipe(catchError(() => of(null)));
-      }),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe({
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => this.router.navigate(['/dashboard']),
       error: (err) => {
         this.loading = false;
-        const message = err?.message || 'Registration failed. Please try again.';
+        const mapped = this.applyServerValidationErrors(err);
+        const message = mapped
+          ? 'Please fix the highlighted fields.'
+          : this.extractFriendlyMessage(err, 'Registration failed. Please try again.');
         this.snackBar.open(message, 'Close', { duration: 4000 });
       },
     });
+  }
+
+  private toOptionalInteger(value: unknown): number | undefined {
+    const parsed = this.toOptionalNumber(value);
+    return parsed === undefined ? undefined : Math.round(parsed);
+  }
+
+  private toOptionalNumber(value: unknown): number | undefined {
+    if (value === null || value === undefined || value === '') {
+      return undefined;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  private minAgeValidator(minAge: number): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (!value) {
+        return null;
+      }
+
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        return null;
+      }
+
+      const cutoff = this.getLatestAllowedBirthDate(minAge);
+      return date > cutoff ? { underage: true } : null;
+    };
+  }
+
+  private getLatestAllowedBirthDate(minAge: number = RegisterComponent.MIN_REGISTER_AGE): Date {
+    const today = new Date();
+    return new Date(today.getFullYear() - minAge, today.getMonth(), today.getDate());
+  }
+
+  private toLocalDateString(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  private applyServerValidationErrors(error: any): boolean {
+    const fieldMap: Record<string, string> = {
+      firstName: 'firstName',
+      lastName: 'lastName',
+      email: 'email',
+      password: 'password',
+      dateOfBirth: 'dateOfBirth',
+      gender: 'gender',
+      dailyCalorieTarget: 'dailyCalorieTarget',
+      dailyProteinTarget: 'dailyProteinTarget',
+      dailyCarbTarget: 'dailyCarbTarget',
+      dailyFatTarget: 'dailyFatTarget',
+      dailyWaterGoalOz: 'dailyWaterTarget',
+    };
+
+    let applied = false;
+    const messages = this.collectErrorMessages(error);
+    for (const part of messages) {
+      const [rawPath, ...rest] = part.split(':');
+      if (!rawPath || rest.length === 0) {
+        continue;
+      }
+
+      const fieldToken = rawPath.trim().split('.').pop() ?? '';
+      const controlName = fieldMap[fieldToken];
+      const message = rest.join(':').trim();
+      if (!controlName || !message) {
+        continue;
+      }
+
+      const control = this.form.controls[controlName];
+      if (!control) {
+        continue;
+      }
+      control.setErrors({ ...(control.errors || {}), serverError: message });
+      control.markAsTouched();
+      applied = true;
+    }
+
+    return applied;
+  }
+
+  private extractFriendlyMessage(error: any, fallback: string): string {
+    const messages = this.collectErrorMessages(error);
+    if (!messages.length) {
+      return fallback;
+    }
+    return messages
+      .map(part => part.replace(/^[A-Za-z0-9_.]+:\s*/, '').trim())
+      .filter(Boolean)
+      .join('; ') || fallback;
+  }
+
+  private collectErrorMessages(error: any): string[] {
+    const fromGraphQl = Array.isArray(error?.graphQLErrors)
+      ? error.graphQLErrors.map((entry: any) => entry?.message).filter(Boolean)
+      : [];
+    const message = typeof error?.message === 'string' ? [error.message] : [];
+    return [...fromGraphQl, ...message]
+      .flatMap((entry: string) => entry.split(';'))
+      .map((entry: string) => entry.trim())
+      .filter(Boolean);
+  }
+
+  private clearServerError(controlName: string): void {
+    const control = this.form.controls[controlName];
+    if (!control?.hasError('serverError')) {
+      return;
+    }
+    const { serverError, ...rest } = control.errors || {};
+    control.setErrors(Object.keys(rest).length ? rest : null);
+  }
+
+  private clearAllServerErrors(): void {
+    Object.keys(this.form.controls).forEach(key => this.clearServerError(key));
   }
 }
 

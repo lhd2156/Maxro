@@ -15,7 +15,12 @@ public interface PersonalRecordRepository extends MongoRepository<PersonalRecord
 
     List<PersonalRecord> findByUserIdAndExerciseNameOrderByAchievedAtDesc(String userId, String exerciseName);
 
+        List<PersonalRecord> findByUserIdAndExerciseNameIgnoreCaseOrderByAchievedAtDesc(String userId, String exerciseName);
+
     Optional<PersonalRecord> findTopByUserIdAndExerciseNameOrderByOneRepMaxLbsDesc(
+            String userId, String exerciseName);
+
+    Optional<PersonalRecord> findTopByUserIdAndExerciseNameIgnoreCaseOrderByOneRepMaxLbsDesc(
             String userId, String exerciseName);
 
     List<PersonalRecord> findByUserIdAndAchievedAtAfterOrderByAchievedAtDesc(

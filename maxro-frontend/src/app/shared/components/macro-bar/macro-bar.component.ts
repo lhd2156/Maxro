@@ -12,7 +12,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
       <div class="macro-header">
         <span class="macro-label">{{ label }}</span>
         <span class="macro-values">
-          <span class="macro-current">{{ current | number:'1.0-0' }}</span>
+          <span class="macro-current">{{ label === 'Calories' ? formatPlainNumber(current) : (current | number:'1.0-0') }}</span>
           <span class="macro-separator">/</span>
           <span class="macro-goal">{{ goal }}{{ unit }}</span>
         </span>
@@ -33,14 +33,24 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
       display: flex;
       justify-content: space-between;
       align-items: baseline;
+      gap: 10px;
+      flex-wrap: wrap;
     }
     .macro-label {
-      font-size: 13px;
+      font-size: clamp(12px, 1.6vw, 13px);
       font-weight: 600;
       color: var(--text-primary);
     }
     .macro-values {
-      font-size: 13px;
+      font-size: clamp(12px, 1.7vw, 13px);
+      display: inline-flex;
+      align-items: baseline;
+      min-width: 0;
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-variant-numeric: tabular-nums;
     }
     .macro-current {
       color: var(--text-primary);
@@ -78,6 +88,10 @@ export class MacroBarComponent {
   @Input() current = 0;
   @Input() goal = 0;
   @Input() unit = 'g';
+
+  formatPlainNumber(value: number): string {
+    return String(Math.round(Number(value || 0)));
+  }
 
   get barColor(): string {
     if (this.percentage >= 100) return 'var(--accent)';

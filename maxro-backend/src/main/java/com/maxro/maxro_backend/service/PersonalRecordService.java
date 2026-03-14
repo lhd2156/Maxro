@@ -3,11 +3,12 @@ package com.maxro.maxro_backend.service;
 import com.maxro.maxro_backend.model.Exercise;
 import com.maxro.maxro_backend.model.PersonalRecord;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface PersonalRecordService {
 
-    List<PersonalRecord> checkAndUpdatePRs(String userId, String workoutId, List<Exercise> exercises);
+    List<PersonalRecord> checkAndUpdatePRs(String userId, String workoutId, LocalDate workoutDate, List<Exercise> exercises);
 
     List<PersonalRecord> getPersonalRecords(String userId);
 

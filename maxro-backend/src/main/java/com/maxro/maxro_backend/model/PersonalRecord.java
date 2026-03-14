@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 @Document(collection = "personal_records")
 @CompoundIndexes({
@@ -28,6 +29,7 @@ public class PersonalRecord {
     private int reps;
     private double oneRepMaxLbs;
     private Instant achievedAt;
+    private LocalDate workoutDate;
 
     @Indexed
     private String workoutId;
@@ -52,6 +54,9 @@ public class PersonalRecord {
 
     public Instant getAchievedAt() { return achievedAt; }
     public void setAchievedAt(Instant achievedAt) { this.achievedAt = achievedAt; }
+
+    public LocalDate getWorkoutDate() { return workoutDate; }
+    public void setWorkoutDate(LocalDate workoutDate) { this.workoutDate = workoutDate; }
 
     public String getWorkoutId() { return workoutId; }
     public void setWorkoutId(String workoutId) { this.workoutId = workoutId; }

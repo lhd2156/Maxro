@@ -19,12 +19,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.UUID;
 
 @Service
 public class AuthServiceImpl implements AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
+    private static final int MIN_REGISTER_AGE = 13;
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -49,6 +52,7 @@ public class AuthServiceImpl implements AuthService {
         String normalizedEmail = normalizeEmail(input.email());
         String firstName = input.firstName().trim();
         String lastName = input.lastName().trim();
+        String dateOfBirth = validateAndNormalizeDateOfBirth(input.dateOfBirth());
 
         log.info("Registering new user with email: {}", normalizedEmail);
 
@@ -62,7 +66,7 @@ public class AuthServiceImpl implements AuthService {
         user.setFirstName(firstName);
         user.setLastName(lastName);
         user.setDisplayName(firstName + " " + lastName);
-        user.setDateOfBirth(input.dateOfBirth());
+        user.setDateOfBirth(dateOfBirth);
         user.setGender(input.gender());
         user.setAgreedToTerms(input.agreedToTerms() != null && input.agreedToTerms());
         if (input.dailyCalorieTarget() != null) user.setDailyCalorieTarget(input.dailyCalorieTarget());
@@ -143,5 +147,30 @@ public class AuthServiceImpl implements AuthService {
 
     private String normalizeEmail(String email) {
         return email == null ? "" : email.trim().toLowerCase();
+    }
+
+    private String validateAndNormalizeDateOfBirth(String dobRaw) {
+        if (dobRaw == null || dobRaw.isBlank()) {
+            throw new IllegalArgumentException("dateOfBirth: Date of birth is required");
+        }
+
+        LocalDate dob;
+        try {
+            dob = LocalDate.parse(dobRaw);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("dateOfBirth: Enter a valid date (YYYY-MM-DD)");
+        }
+
+        LocalDate today = LocalDate.now();
+        if (dob.isAfter(today)) {
+            throw new IllegalArgumentException("dateOfBirth: Date of birth cannot be in the future");
+        }
+
+        LocalDate latestAllowedDob = today.minusYears(MIN_REGISTER_AGE);
+        if (dob.isAfter(latestAllowedDob)) {
+            throw new IllegalArgumentException("dateOfBirth: You must be at least " + MIN_REGISTER_AGE + " years old");
+        }
+
+        return dob.toString();
     }
 }
