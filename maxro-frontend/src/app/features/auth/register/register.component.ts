@@ -552,6 +552,13 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
     .auth-switch a { color: var(--accent); text-decoration: none; font-weight: 600; }
     .auth-switch a:hover { text-decoration: underline; }
     @media (max-width: 900px) {
+      .auth-page {
+        height: auto;
+        align-items: flex-start;
+        justify-content: center;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
       .split-row,
       .password-row,
       .password-field-grid,
@@ -590,6 +597,16 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
       .auth-card { padding: 16px 20px; }
       .auth-form { gap: 6px; }
       .field-note { min-height: 14px; }
+    }
+
+    @media (max-height: 700px) {
+      .auth-page {
+        height: auto;
+        align-items: flex-start;
+        justify-content: center;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
     }
   `],
 })
