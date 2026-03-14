@@ -224,6 +224,11 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
           <p class="auth-switch">
             Already have an account? <a routerLink="/login">Sign in</a>
           </p>
+          <p class="auth-legal">
+            <a routerLink="/terms">Terms of Service</a>
+            <span class="legal-divider">•</span>
+            <a routerLink="/privacy">Privacy Policy</a>
+          </p>
         </mat-card>
       </div>
     </div>
@@ -555,6 +560,21 @@ import { PublicConfigService } from '../../../core/services/public-config.servic
     .auth-switch { text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 10px; margin-bottom: 2px; }
     .auth-switch a { color: var(--accent); text-decoration: none; font-weight: 600; }
     .auth-switch a:hover { text-decoration: underline; }
+    .auth-legal {
+      margin-top: 6px;
+      margin-bottom: 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .auth-legal a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .auth-legal a:hover { color: var(--text-primary); text-decoration: underline; }
+    .legal-divider { display: inline-block; margin: 0 7px; opacity: 0.6; }
     @media (max-width: 900px) {
       .auth-page {
         height: 100dvh;

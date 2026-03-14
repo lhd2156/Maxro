@@ -96,6 +96,12 @@ import { UserProfile } from '../../core/models/user.model';
 
       <footer class="home-footer">
         <span class="footer-brand">MAXRO</span>
+        <nav class="footer-links" aria-label="Footer links">
+          <a routerLink="/login" class="footer-link">Login</a>
+          <a routerLink="/register" class="footer-link">Register</a>
+          <a routerLink="/terms" class="footer-link">Terms</a>
+          <a routerLink="/privacy" class="footer-link">Privacy</a>
+        </nav>
         <span class="footer-copy">&copy; 2026 MAXRO. Built for lifters.</span>
       </footer>
     </div>
@@ -321,14 +327,45 @@ import { UserProfile } from '../../core/models/user.model';
 
     .home-footer {
       display: flex; justify-content: space-between; align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
       padding: 24px 40px;
       border-top: 1px solid rgba(255,255,255,0.04);
       position: relative; z-index: 1;
+    }
+    .footer-links {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .footer-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      transition: color 0.16s ease;
+    }
+    .footer-link:hover {
+      color: var(--text-primary);
     }
     .footer-brand {
       font-size: 14px; font-weight: 800; letter-spacing: 3px; color: var(--accent);
     }
     .footer-copy { font-size: 13px; color: var(--text-muted); }
+
+    @media (max-width: 900px) {
+      .home-footer {
+        justify-content: center;
+        text-align: center;
+      }
+      .footer-brand,
+      .footer-copy,
+      .footer-links {
+        width: 100%;
+      }
+    }
   `],
 })
 export class HomeComponent {
