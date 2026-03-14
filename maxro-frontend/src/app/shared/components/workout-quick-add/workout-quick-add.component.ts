@@ -132,6 +132,19 @@ import { MUSCLE_GROUPS, WorkoutResult } from '../../../core/models/workout.model
     .popular-chip:hover { background: rgba(200,241,53,0.15); border-color: var(--accent); }
     .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
     .save-btn { background: var(--accent) !important; color: #0D0D0D !important; font-weight: 600; }
+    @media (max-width: 420px) {
+      .quick-add-header { gap: 8px; }
+      .quick-add-header h2 { font-size: 16px; }
+      .form-row { flex-direction: column; gap: 10px; }
+      .form-row mat-form-field { min-width: 0; width: 100%; }
+      .date-field { flex: none !important; max-width: 100% !important; }
+      .notes-field { flex: none !important; }
+      .exercise-block { padding: 10px; }
+      .sets-row { gap: 10px; }
+      .mini-input { width: 64px; }
+      .actions { flex-direction: column-reverse; align-items: stretch; gap: 10px; }
+      .actions button { width: 100%; }
+    }
   `],
 })
 export class WorkoutQuickAddComponent implements OnInit {

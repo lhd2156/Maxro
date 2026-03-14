@@ -82,6 +82,7 @@ interface SpeechRecognitionWindow extends Window {
             <div class="suggestion-header">
               <span class="suggestion-title">Quick Help</span>
               <span class="suggestion-subtitle">Pick a topic to see common questions.</span>
+              <button type="button" class="suggestion-close" aria-label="Close quick help" (click)="closeQuickPrompts()"><mat-icon svgIcon="mx-x"></mat-icon></button>
             </div>
             <div class="suggestion-categories" aria-label="Quick help topics">
               @for (group of quickPromptGroups; track group.label) {
@@ -244,6 +245,8 @@ interface SpeechRecognitionWindow extends Window {
       scrollbar-width: none;
       -ms-overflow-style: none;
     }
+    .suggestion-close { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
+    .suggestion-close mat-icon { width: 14px; height: 14px; font-size: 14px; }
     .suggestion-categories::-webkit-scrollbar { display: none; }
     .suggestion-category-btn {
       min-height: 30px;
@@ -354,12 +357,16 @@ interface SpeechRecognitionWindow extends Window {
     }
     @media (max-width: 640px) {
       .chat-bubble { max-width: 100%; }
-      .chat-actions { align-items: stretch; }
-      .chat-actions-left,
-      .chat-btn { width: 100%; }
-      .chat-actions-left { flex-direction: column; align-items: stretch; }
+      .chat-actions { flex-direction: column; align-items: stretch; }
+      .chat-actions-left { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+      .chat-actions-left .chat-btn { width: 100%; }
+      .chat-actions-right { display: flex; gap: 8px; justify-content: flex-end; width: 100%; }
+      .chat-actions-right .chat-btn-primary { width: auto; min-width: 84px; }
       .suggestion-panel { width: 100%; margin-left: 0; }
       .suggestion-categories { overflow: hidden; }
+      .suggestion-list { gap: 12px; }
+      .suggestion-item { min-height: 48px; padding: 12px 14px; }
+      .chat-input { min-height: 64px; }
     }
   `],
 })
@@ -683,6 +690,30 @@ export class AiChatPanelComponent implements OnChanges {
       this.quickPromptCloseTimer = null;
       onComplete();
     }, 180);
+  }
+
+  closeQuickPrompts(): void {
+    if (this.quickPromptClosing) {
+      return;
+    }
+
+    this.collapseQuickPrompts(() => {
+      this.quickPromptClosing = false;
+      this.selectedQuickCategory = '';
+      this.clearQuickPromptCloseTimer();
+
+      this.messages = [
+        {
+          id: this.nextMessageId(),
+          role: 'assistant',
+          text: this.initialPrompt?.trim() || 'Ask me about workouts, PRs, nutrition, recovery, or where something lives in Maxro.',
+          attachments: [],
+          seed: false,
+        },
+      ];
+
+      this.scrollToBottom();
+    });
   }
 
   private clearQuickPromptCloseTimer(): void {
