@@ -88,12 +88,6 @@ Google and Spotify client IDs are no longer compiled into the frontend bundle.
 | `CORS_ORIGINS` | Allowed origins for backend CORS |
 | `SERVER_PORT` | Backend server port |
 
-## Troubleshooting
-
-- `Http failure response: 0 Unknown Error`: backend or MongoDB is not running.
-- `Google Sign-In is not configured yet`: add `GOOGLE_CLIENT_ID` to your backend environment and restart Maxro.
-- `Spotify Client ID is missing`: add `SPOTIFY_CLIENT_ID` to your backend environment and restart Maxro.
-
 ## Launch Checklist
 
 See [docs/PRODUCTION_SMOKE_TESTS.md](docs/PRODUCTION_SMOKE_TESTS.md) for the final regression checklist before deployment.

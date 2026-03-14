@@ -46,4 +46,5 @@ maxro-backend/spring-boot.out
 .azurecli-fresh/
 
 .azurecli-run/
+.azurecli-clean/
 tmp-pipeline-auth.json
