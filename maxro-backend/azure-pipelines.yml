@@ -7,7 +7,7 @@ trigger:
       - maxro-backend/**
 
 pool:
-  name: 'Default'
+  vmImage: 'ubuntu-24.04'
 
 variables:
   - group: maxro-secrets
@@ -37,19 +37,29 @@ stages:
       - job: BuildAndTest
         displayName: 'Build and Test Spring Boot'
         steps:
-          - powershell: |
-              $javac = (Get-Command javac -ErrorAction Stop).Source
-              $javaHome = Split-Path (Split-Path $javac -Parent) -Parent
-              Write-Host "Using JAVA_HOME=$javaHome"
-              Write-Host "##vso[task.setvariable variable=JAVA_HOME]$javaHome"
-              Write-Host "##vso[task.setvariable variable=JAVA_TOOL_OPTIONS]$(javaToolOptions)"
-              Write-Host "##vso[task.setvariable variable=MAVEN_OPTS]$(mavenOpts)"
-              Write-Host "##vso[task.prependpath]$javaHome\bin"
-              $env:JAVA_TOOL_OPTIONS = '$(javaToolOptions)'
-              & "$javaHome\bin\java.exe" -version
-            displayName: 'Use Java 21 from agent'
+          - bash: |
+              javaHome="${JAVA_HOME_21_X64:-}"
+              if [ -z "$javaHome" ]; then
+                if java -version 2>&1 | head -n 1 | grep -q '"21'; then
+                  javaBin="$(readlink -f "$(command -v java)")"
+                  javaHome="$(dirname "$(dirname "$javaBin")")"
+                else
+                  echo "Java 21 is not available on this hosted agent."
+                  exit 1
+                fi
+              fi
 
-          - script: 'cmd /c mvnw.cmd -B test -DforkCount=1 -DreuseForks=true -DargLine="-Xms64m -Xmx256m -XX:+UseSerialGC"'
+              echo "Using JAVA_HOME=$javaHome"
+              echo "##vso[task.setvariable variable=JAVA_HOME]$javaHome"
+              echo "##vso[task.setvariable variable=JAVA_TOOL_OPTIONS]$(javaToolOptions)"
+              echo "##vso[task.setvariable variable=MAVEN_OPTS]$(mavenOpts)"
+              echo "##vso[task.prependpath]$javaHome/bin"
+              "$javaHome/bin/java" -version
+            displayName: 'Use Java 21 from hosted agent'
+
+          - bash: |
+              chmod +x mvnw
+              ./mvnw -B test -DforkCount=1 -DreuseForks=true -DargLine="-Xms64m -Xmx256m -XX:+UseSerialGC"
             displayName: 'Run Tests'
             workingDirectory: 'maxro-backend'
             env:
@@ -65,7 +75,9 @@ stages:
               testResultsFiles: 'maxro-backend/**/surefire-reports/TEST-*.xml'
               failTaskOnFailedTests: true
 
-          - script: cmd /c mvnw.cmd package -DskipTests
+          - bash: |
+              chmod +x mvnw
+              ./mvnw package -DskipTests
             displayName: 'Build JAR'
             workingDirectory: 'maxro-backend'
             env:
@@ -73,40 +85,33 @@ stages:
               JAVA_TOOL_OPTIONS: $(JAVA_TOOL_OPTIONS)
               MAVEN_OPTS: $(MAVEN_OPTS)
 
-          - powershell: |
-              $azureCliPath = 'C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin'
-              if (-not (Test-Path $azureCliPath)) {
-                throw "Azure CLI path not found: $azureCliPath"
-              }
-              Write-Host "##vso[task.prependpath]$azureCliPath"
-              & "$azureCliPath\az.cmd" version
-            displayName: 'Expose Azure CLI on PATH'
-
           - task: AzureCLI@2
             displayName: 'Build and Push Image with ACR'
             inputs:
               azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
-              scriptType: 'ps'
+              scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                $loginServer = az acr show --name $(ACR_NAME) --query loginServer -o tsv
-                $acrToken = az acr login --name $(ACR_NAME) --expose-token --query accessToken -o tsv
+                set -euo pipefail
 
-                docker login $loginServer `
-                  --username 00000000-0000-0000-0000-000000000000 `
-                  --password $acrToken
+                loginServer="$(az acr show --name $(ACR_NAME) --query loginServer -o tsv)"
+                acrToken="$(az acr login --name $(ACR_NAME) --expose-token --query accessToken -o tsv)"
 
-                docker build `
-                  --pull `
-                  --no-cache `
-                  --file maxro-backend/Dockerfile `
-                  --tag "${loginServer}/$(imageName):$(Build.BuildId)" `
-                  --tag "${loginServer}/$(imageName):latest" `
+                docker login "$loginServer" \
+                  --username 00000000-0000-0000-0000-000000000000 \
+                  --password "$acrToken"
+
+                docker build \
+                  --pull \
+                  --no-cache \
+                  --file maxro-backend/Dockerfile \
+                  --tag "${loginServer}/$(imageName):$(Build.BuildId)" \
+                  --tag "${loginServer}/$(imageName):latest" \
                   maxro-backend
 
                 docker push "${loginServer}/$(imageName):$(Build.BuildId)"
                 docker push "${loginServer}/$(imageName):latest"
-                docker logout $loginServer
+                docker logout "$loginServer"
 
   - stage: Deploy
     displayName: 'Deploy to Azure Container Apps'
@@ -116,20 +121,11 @@ stages:
       - job: DeployBackend
         displayName: 'Deploy Backend'
         steps:
-          - powershell: |
-              $azureCliPath = 'C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin'
-              if (-not (Test-Path $azureCliPath)) {
-                throw "Azure CLI path not found: $azureCliPath"
-              }
-              Write-Host "##vso[task.prependpath]$azureCliPath"
-              & "$azureCliPath\az.cmd" version
-            displayName: 'Expose Azure CLI on PATH'
-
           - task: AzureCLI@2
             displayName: 'Deploy to Container Apps'
             inputs:
               azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
-              scriptType: 'ps'
+              scriptType: 'pscore'
               scriptLocation: 'inlineScript'
               failOnStandardError: false
               powerShellIgnoreLASTEXITCODE: true
@@ -327,7 +323,7 @@ stages:
             displayName: 'Health Check'
             inputs:
               azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
-              scriptType: 'ps'
+              scriptType: 'pscore'
               scriptLocation: 'inlineScript'
               inlineScript: |
                 $expectedRevisionSuffix = "r$(Build.BuildId)"
