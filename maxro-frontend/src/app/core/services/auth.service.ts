@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Apollo, gql } from 'apollo-angular';
-import { BehaviorSubject, Observable, map, tap } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, finalize, map, of, shareReplay, tap } from 'rxjs';
 import { AuthPayload, LoginInput, RegisterInput, UserProfile } from '../models/user.model';
 import { Router } from '@angular/router';
 
@@ -47,6 +47,7 @@ const LOGOUT_MUTATION = gql`
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private currentUserSubject = new BehaviorSubject<UserProfile | null>(this.loadUser());
+  private sessionValidation$: Observable<boolean> | null = null;
   readonly currentUser$ = this.currentUserSubject.asObservable();
   readonly isAuthenticated$ = this.currentUser$.pipe(map(user => !!user));
 
@@ -83,7 +84,7 @@ export class AuthService {
   }
 
   refreshToken(): Observable<AuthPayload> {
-    const token = localStorage.getItem('refreshToken');
+    const token = this.getRefreshToken();
     return this.apollo.mutate<{ refreshToken: AuthPayload }>({
       mutation: REFRESH_TOKEN_MUTATION,
       variables: { token },
@@ -110,8 +111,46 @@ export class AuthService {
     return localStorage.getItem('accessToken');
   }
 
+  getRefreshToken(): string | null {
+    return localStorage.getItem('refreshToken');
+  }
+
   isLoggedIn(): boolean {
-    return !!this.getAccessToken();
+    const accessToken = this.getAccessToken();
+    if (accessToken && !this.isTokenExpired(accessToken)) {
+      return true;
+    }
+
+    return !!this.getRefreshToken() && !!this.currentUserSubject.value;
+  }
+
+  ensureValidSession(): Observable<boolean> {
+    const accessToken = this.getAccessToken();
+    if (accessToken && !this.isTokenExpired(accessToken)) {
+      return of(true);
+    }
+
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken) {
+      this.clearAuth();
+      return of(false);
+    }
+
+    if (!this.sessionValidation$) {
+      this.sessionValidation$ = this.refreshToken().pipe(
+        map(() => true),
+        catchError(() => {
+          this.clearAuth();
+          return of(false);
+        }),
+        finalize(() => {
+          this.sessionValidation$ = null;
+        }),
+        shareReplay(1),
+      );
+    }
+
+    return this.sessionValidation$;
   }
 
   updateCurrentUser(user: UserProfile): void {
@@ -178,5 +217,36 @@ export class AuthService {
     return compact
       .toLowerCase()
       .replace(/(^|[\s'-])([a-z])/g, (_match, prefix: string, letter: string) => `${prefix}${letter.toUpperCase()}`);
+  }
+
+  private isTokenExpired(token: string, bufferSeconds = 30): boolean {
+    const payload = this.parseJwtPayload(token);
+    const expiresAt = typeof payload?.['exp'] === 'number'
+      ? payload['exp'] * 1000
+      : null;
+
+    if (!expiresAt) {
+      return false;
+    }
+
+    return expiresAt <= Date.now() + (bufferSeconds * 1000);
+  }
+
+  private parseJwtPayload(token: string): Record<string, unknown> | null {
+    const segments = token.split('.');
+    if (segments.length < 2 || typeof atob !== 'function') {
+      return null;
+    }
+
+    try {
+      const base64 = segments[1]
+        .replace(/-/g, '+')
+        .replace(/_/g, '/')
+        .padEnd(Math.ceil(segments[1].length / 4) * 4, '=');
+
+      return JSON.parse(atob(base64)) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
   }
 }
