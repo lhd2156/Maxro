@@ -7,11 +7,103 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2">
   <link rel="shortcut icon" type="image/svg+xml" href="favicon.svg?v=2">
+  <style>
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: #0d0d0d;
+    }
+
+    #app-boot-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background:
+        radial-gradient(circle at top, rgba(200, 241, 53, 0.08), transparent 32%),
+        #0d0d0d;
+      color: #ffffff;
+      transition: opacity 240ms ease, visibility 240ms ease;
+    }
+
+    body.app-ready #app-boot-splash {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .boot-shell {
+      width: min(100%, 360px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      text-align: center;
+    }
+
+    .boot-logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .boot-wordmark {
+      color: #c8f135;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+    }
+
+    .boot-spinner {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.12);
+      border-top-color: #c8f135;
+      animation: boot-spin 0.9s linear infinite;
+    }
+
+    .boot-message {
+      margin: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .boot-subcopy {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.68);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    @keyframes boot-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  </style>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
+  <div id="app-boot-splash" role="status" aria-live="polite">
+    <div class="boot-shell">
+      <img src="favicon.svg" alt="" class="boot-logo">
+      <div class="boot-wordmark">MAXRO</div>
+      <div class="boot-spinner" aria-hidden="true"></div>
+      <p class="boot-message" data-boot-message>Loading Maxro.</p>
+      <p class="boot-subcopy">If the backend is waking up, this can take a moment.</p>
+    </div>
+  </div>
   <app-root></app-root>
 </body>
 </html>

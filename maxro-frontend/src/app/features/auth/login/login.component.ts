@@ -360,8 +360,13 @@ export class LoginComponent implements AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    if (!this.publicConfig.googleClientId) return;
-    this.waitForGoogleAndInit();
+    void this.publicConfig.load().then(() => {
+      if (!this.publicConfig.googleClientId) {
+        return;
+      }
+
+      this.waitForGoogleAndInit();
+    });
   }
 
   private waitForGoogleAndInit(retries = 20): void {
@@ -388,9 +393,22 @@ export class LoginComponent implements AfterViewInit {
 
   onCustomGoogleClick(): void {
     if (!this.publicConfig.googleClientId) {
-      this.snackBar.open('Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID on the backend so Maxro can load it.', 'Close', { duration: 5000 });
+      void this.publicConfig.load().then(() => {
+        if (!this.publicConfig.googleClientId) {
+          this.snackBar.open('Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID on the backend so Maxro can load it.', 'Close', { duration: 5000 });
+          return;
+        }
+
+        this.startGoogleSignIn();
+      });
+      this.snackBar.open('Google Sign-In is still loading. Try again in a second.', 'Close', { duration: 2500 });
       return;
     }
+
+    this.startGoogleSignIn();
+  }
+
+  private startGoogleSignIn(): void {
     this.waitForGoogleAndInit();
     setTimeout(() => {
       if (!this.clickGoogleButton('google-signin-btn')) {

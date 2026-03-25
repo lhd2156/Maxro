@@ -11,8 +11,10 @@ function initializeIcons(iconRegistry: IconRegistryService): () => void {
   return () => iconRegistry.registerAll();
 }
 
-function loadPublicConfig(publicConfigService: PublicConfigService): () => Promise<void> {
-  return () => publicConfigService.load();
+function warmPublicConfig(publicConfigService: PublicConfigService): () => void {
+  return () => {
+    void publicConfigService.load();
+  };
 }
 
 export const appConfig: ApplicationConfig = {
@@ -29,7 +31,7 @@ export const appConfig: ApplicationConfig = {
     },
     {
       provide: APP_INITIALIZER,
-      useFactory: loadPublicConfig,
+      useFactory: warmPublicConfig,
       deps: [PublicConfigService],
       multi: true,
     },

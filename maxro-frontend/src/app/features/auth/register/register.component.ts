@@ -802,8 +802,13 @@ export class RegisterComponent implements AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    if (!this.publicConfig.googleClientId) return;
-    this.waitForGoogleAndInit();
+    void this.publicConfig.load().then(() => {
+      if (!this.publicConfig.googleClientId) {
+        return;
+      }
+
+      this.waitForGoogleAndInit();
+    });
   }
 
   private waitForGoogleAndInit(retries = 20): void {
@@ -832,7 +837,25 @@ export class RegisterComponent implements AfterViewInit {
     if (this.useGisButton && this.clickGoogleButton('google-signup-btn')) {
       return;
     }
-    if (this.publicConfig.googleClientId && typeof (window as any).google !== 'undefined') {
+
+    if (this.publicConfig.googleClientId) {
+      this.startGoogleSignIn();
+      return;
+    }
+
+    void this.publicConfig.load().then(() => {
+      if (!this.publicConfig.googleClientId) {
+        this.snackBar.open('Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID on the backend so Maxro can load it.', 'Close', { duration: 5000 });
+        return;
+      }
+
+      this.startGoogleSignIn();
+    });
+    this.snackBar.open('Google Sign-In is still loading. Try again in a second.', 'Close', { duration: 2500 });
+  }
+
+  private startGoogleSignIn(): void {
+    if (typeof (window as any).google !== 'undefined') {
       this.waitForGoogleAndInit();
       setTimeout(() => {
         if (!this.clickGoogleButton('google-signup-btn')) {
@@ -841,7 +864,8 @@ export class RegisterComponent implements AfterViewInit {
       }, 150);
       return;
     }
-    this.snackBar.open('Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID on the backend so Maxro can load it.', 'Close', { duration: 5000 });
+
+    this.snackBar.open('Google Sign-In is still loading. Try again in a second.', 'Close', { duration: 3000 });
   }
 
   private clickGoogleButton(containerId: string): boolean {

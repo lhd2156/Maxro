@@ -263,6 +263,35 @@ select {
   z-index: 2200 !important;
 }
 
+/* Dashboard: extracted spotify + ai-toast styles moved here to reduce per-component CSS size */
+.spotify-card { position: relative; overflow: hidden; border-color: rgba(255,255,255,0.08); box-shadow: inset 0 0 0 1px rgba(29,185,84,0.06); }
+.spotify-card .section-header { margin-bottom: 8px; }
+.spotify-status-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 118px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(29,185,84,0.38); background: rgba(29,185,84,0.12); color: #d8ffe7; font-size: 10px; font-weight: 700; cursor: pointer; }
+.spotify-status-btn:hover { border-color: rgba(29,185,84,0.62); background: rgba(29,185,84,0.18); }
+.spotify-status-label-wrap { position: relative; display: inline-grid; place-items: center; min-width: 70px; }
+.spotify-status-label { grid-area: 1 / 1; white-space: nowrap; }
+.spotify-connect { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; min-height: 0; height: 100%; padding: 8px 10px 6px; gap: 10px; text-align: center; overflow: hidden; }
+.spotify-desc { font-size: 11.5px; color: var(--text-muted); margin: 0; max-width: 288px; line-height: 1.42; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.spotify-connect-btn { border: 1px solid rgba(29,185,84,0.38) !important; background: rgba(29,185,84,0.12) !important; color: #effff5 !important; font-weight: 800; font-size: 11.5px; border-radius: 999px; min-height: 34px; padding: 0 18px; }
+.spotify-player { padding: 6px; text-align: center; min-height: 0; }
+.album-art-image, .album-art-placeholder { width: 68px; height: 68px; border-radius: 12px; }
+.spotify-copy { width: 100%; max-width: 320px; }
+.track-name { font-size: 14px; font-weight: 800; color: var(--text-primary); display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.track-meta, .track-submeta { font-size: 11px; color: var(--text-muted); }
+.spotify-progress-row { width: 100%; max-width: 420px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.spotify-progress-track { position: relative; width: 100%; height: 6px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.08); }
+.spotify-progress-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--spotify-green) 0%, #37d36c 100%); transition: width 0.9s linear; }
+.spotify-chip { font-size: 10px; padding: 0 6px; border-radius: 999px; background: rgba(255,255,255,0.04); color: var(--text-primary); }
+
+@keyframes slide-in-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+.ai-toast { position: fixed; bottom: 24px; right: 24px; width: 340px; max-width: calc(100vw - 32px); background: var(--bg-surface); border: 1px solid rgba(200,241,53,0.2); border-radius: 16px; padding: 16px; z-index: 1000; animation: slide-in-up 0.4s ease-out; transition: opacity 0.4s ease, transform 0.4s ease; box-sizing: border-box; overflow: hidden; }
+.ai-toast.chat-open { width: min(460px, calc(100vw - 32px)); height: min(86vh, 760px); max-height: calc(100vh - 16px); display: flex; flex-direction: column; padding: 14px; overflow: auto; }
+.ai-toast-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ai-icon { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; }
+.ai-title { font-size: 13px; font-weight: 700; color: var(--accent); flex: 1; }
+.ai-close-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; color: var(--text-muted); border-radius: 50%; padding: 0; flex-shrink: 0; }
+.ai-close-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+
 .food-unit-select-panel {
   background: var(--bg-surface) !important;
   border: 1px solid rgba(255,255,255,0.12) !important;

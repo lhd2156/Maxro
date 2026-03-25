@@ -422,8 +422,8 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
     .pr-1rm { font-size: 12.5px; font-weight: 800; color: var(--accent); }
     .spotify-card { position: relative; overflow: hidden; border-color: rgba(255,255,255,0.08); box-shadow: inset 0 0 0 1px rgba(29,185,84,0.06); }
     .spotify-card .section-header { margin-bottom: 8px; }
-    .spotify-status-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 118px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(29,185,84,0.38); background: rgba(29,185,84,0.12); color: #d8ffe7; font-size: 10px; font-weight: 700; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; box-shadow: inset 0 1px 0 rgba(255,255,255,0.03); }
-    .spotify-status-btn:hover { border-color: rgba(29,185,84,0.62); background: rgba(29,185,84,0.18); box-shadow: 0 10px 20px rgba(0,0,0,0.16); transform: translateY(-1px); }
+    .spotify-status-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 118px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(29,185,84,0.38); background: rgba(29,185,84,0.12); color: #d8ffe7; font-size: 10px; font-weight: 700; cursor: pointer; }
+    .spotify-status-btn:hover { border-color: rgba(29,185,84,0.62); background: rgba(29,185,84,0.18); }
     .spotify-status-btn.connect:hover { background: rgba(29,185,84,0.2); border-color: rgba(29,185,84,0.62); }
     .spotify-status-label-wrap { position: relative; display: inline-grid; place-items: center; min-width: 70px; }
     .spotify-status-label { grid-area: 1 / 1; white-space: nowrap; transition: opacity 0.15s ease; }
@@ -432,13 +432,13 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
     .spotify-status-btn.connected:hover .spotify-status-label-default { opacity: 0; }
     .spotify-status-btn.connected:hover .spotify-status-label-hover { opacity: 1; }
     .spotify-connect { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; min-height: 0; height: 100%; padding: 8px 10px 6px; gap: 10px; text-align: center; overflow: hidden; }
-    .spotify-logo { opacity: 0.95; transform: scale(0.76); filter: drop-shadow(0 8px 16px rgba(29,185,84,0.16)); }
+    .spotify-logo { opacity: 0.95; transform: scale(0.76); }
     .spotify-desc { font-size: 11.5px; color: var(--text-muted); margin: 0; max-width: 288px; line-height: 1.42; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-    .spotify-connect-btn { border: 1px solid rgba(29,185,84,0.38) !important; background: rgba(29,185,84,0.12) !important; color: #effff5 !important; font-weight: 800; font-size: 11.5px; border-radius: 999px; min-height: 34px; padding: 0 18px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.03); }
+    .spotify-connect-btn { border: 1px solid rgba(29,185,84,0.38) !important; background: rgba(29,185,84,0.12) !important; color: #effff5 !important; font-weight: 800; font-size: 11.5px; border-radius: 999px; min-height: 34px; padding: 0 18px; }
     .spotify-connect-btn:hover { background: rgba(29,185,84,0.2) !important; border-color: rgba(29,185,84,0.62) !important; color: #ffffff !important; }
     .spotify-player { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 7px; text-align: center; min-height: 0; height: 100%; overflow: hidden; padding: 4px 0; max-width: 460px; margin: 0 auto; }
     .spotify-player-idle { justify-content: center; gap: 10px; }
-    .album-art-image { width: 68px; height: 68px; border-radius: 15px; object-fit: contain; background: rgba(0,0,0,0.26); border: 1px solid rgba(29,185,84,0.2); box-shadow: 0 10px 18px rgba(0,0,0,0.24); }
+    .album-art-image { width: 68px; height: 68px; border-radius: 12px; object-fit: cover; background: rgba(0,0,0,0.26); border: 1px solid rgba(29,185,84,0.2); }
     .album-art-placeholder { width: 68px; height: 68px; border-radius: 15px; background: radial-gradient(circle at top, rgba(29,185,84,0.18), rgba(29,185,84,0.06)); border: 1px solid rgba(29,185,84,0.18); display: flex; align-items: center; justify-content: center; }
     .album-art-placeholder mat-icon { color: var(--spotify-green); }
     .spotify-idle-placeholder { background: radial-gradient(circle at top, rgba(29,185,84,0.22), rgba(8,20,13,0.92)); }
@@ -452,8 +452,8 @@ import { SpotifyPlaybackState, SpotifyRepeatMode, SpotifyService, SpotifyTrack }
     .spotify-time { font-size: 10px; color: rgba(255,255,255,0.62); font-variant-numeric: tabular-nums; }
     .spotify-progress-end { display: flex; align-items: center; justify-content: flex-end; min-width: 34px; }
     .spotify-time-end { min-width: 0; }
-    .spotify-save-inline { display: inline-flex; align-items: center; justify-content: center; width: 92px; min-width: 92px; height: 30px; padding: 0 12px; box-sizing: border-box; border: 1px solid rgba(29,185,84,0.28); border-radius: 999px; background: rgba(29,185,84,0.14); color: #effff5; font-size: 10px; font-weight: 800; cursor: pointer; transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; flex-shrink: 0; justify-self: end; box-shadow: inset 0 1px 0 rgba(255,255,255,0.03); }
-    .spotify-save-inline:hover:not(:disabled) { background: rgba(29,185,84,0.24); border-color: rgba(29,185,84,0.54); color: #ffffff; box-shadow: 0 10px 20px rgba(0,0,0,0.16); }
+    .spotify-save-inline { display: inline-flex; align-items: center; justify-content: center; width: 92px; min-width: 92px; height: 30px; padding: 0 12px; box-sizing: border-box; border: 1px solid rgba(29,185,84,0.28); border-radius: 999px; background: rgba(29,185,84,0.14); color: #effff5; font-size: 10px; font-weight: 800; cursor: pointer; flex-shrink: 0; justify-self: end; }
+    .spotify-save-inline:hover:not(:disabled) { background: rgba(29,185,84,0.24); border-color: rgba(29,185,84,0.54); color: #ffffff; }
     .spotify-save-inline.saved { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12); color: var(--text-primary); }
     .spotify-save-inline:disabled { opacity: 0.38; cursor: not-allowed; }
     .spotify-controls-row { display: grid; grid-template-columns: 92px auto 92px; align-items: center; column-gap: 8px; width: 100%; max-width: 388px; margin: 0 auto; }

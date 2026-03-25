@@ -50,4 +50,24 @@ describe('PublicConfigService', () => {
     expect(service.googleClientId).toBe('');
     expect(service.spotifyClientId).toBe('');
   });
+
+  it('allows a later retry after an earlier failure', async () => {
+    const firstLoad = service.load();
+    const firstRequest = httpMock.expectOne('http://localhost:8080/api/public-config');
+
+    firstRequest.flush('boom', { status: 500, statusText: 'Server Error' });
+    await firstLoad;
+
+    const secondLoad = service.load();
+    const secondRequest = httpMock.expectOne('http://localhost:8080/api/public-config');
+
+    secondRequest.flush({
+      googleClientId: 'retry-google.apps.googleusercontent.com',
+      spotifyClientId: 'retry-spotify-client-id',
+    });
+    await secondLoad;
+
+    expect(service.googleClientId).toBe('retry-google.apps.googleusercontent.com');
+    expect(service.spotifyClientId).toBe('retry-spotify-client-id');
+  });
 });
