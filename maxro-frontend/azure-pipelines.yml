@@ -7,7 +7,7 @@ trigger:
       - maxro-frontend/**
 
 pool:
-  vmImage: 'ubuntu-24.04'
+  name: 'Default'
 
 variables:
   - group: maxro-secrets
@@ -63,7 +63,7 @@ stages:
               --env production
             displayName: 'Deploy to Static Web Apps'
 
-          - pwsh: |
+          - powershell: |
               $swaUrl = 'https://$(SWA_HOSTNAME)'
               Write-Host ('Checking health at ' + $swaUrl)
               for ($i = 1; $i -le 10; $i++) {

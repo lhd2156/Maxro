@@ -5,7 +5,8 @@ param(
     [string]$OrganizationUrl = "https://dev.azure.com/louisdo",
     [string]$Pool = "Default",
     [string]$AgentRoot = "C:\azagent",
-    [string]$AgentName = "$env:COMPUTERNAME-maxro"
+    [string]$AgentName = "$env:COMPUTERNAME-maxro",
+    [switch]$EnableAutoStart
 )
 
 $ErrorActionPreference = "Stop"
@@ -55,7 +56,18 @@ try {
     Write-Host ""
     Write-Host "Agent configured successfully."
     Write-Host "Start it with: $AgentRoot\run.cmd"
-    Write-Host "If you want it as a Windows service later, rerun config.cmd as Administrator and use the service options."
+    if ($EnableAutoStart) {
+        $autoStartScript = Join-Path $PSScriptRoot "register-azdo-agent-autostart.ps1"
+        if (-not (Test-Path $autoStartScript)) {
+            throw "Auto-start registration script not found at $autoStartScript"
+        }
+
+        Write-Host "Registering agent auto-start task..."
+        & $autoStartScript -AgentRoot $AgentRoot
+    }
+
+    Write-Host "If you want it to start automatically later, run: $PSScriptRoot\register-azdo-agent-autostart.ps1 -AgentRoot $AgentRoot"
+    Write-Host "If you want it as a Windows service instead, rerun config.cmd as Administrator and use the service options."
 }
 finally {
     Pop-Location
