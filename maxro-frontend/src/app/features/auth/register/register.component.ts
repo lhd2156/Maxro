@@ -14,6 +14,7 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../core/services/auth.service';
+import { UserProfile } from '../../../core/models/user.model';
 import { PublicConfigService } from '../../../core/services/public-config.service';
 
 @Component({
@@ -692,6 +693,10 @@ export class RegisterComponent implements AfterViewInit {
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe(() => this.clearServerError(key));
     });
+
+    this.authService.currentUser$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(user => this.redirectAuthenticatedUser(user));
   }
 
   isFieldInvalid(field: string): boolean {
@@ -904,6 +909,14 @@ export class RegisterComponent implements AfterViewInit {
           },
         });
     });
+  }
+
+  private redirectAuthenticatedUser(user: UserProfile | null): void {
+    if (!user || !this.authService.isLoggedIn()) {
+      return;
+    }
+
+    void this.router.navigate([user.profileComplete ? '/dashboard' : '/complete-profile']);
   }
 
   onDobInput(event: Event): void {

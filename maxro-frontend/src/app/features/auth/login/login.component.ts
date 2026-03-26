@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../core/services/auth.service';
+import { UserProfile } from '../../../core/models/user.model';
 import { PublicConfigService } from '../../../core/services/public-config.service';
 
 @Component({
@@ -339,6 +340,10 @@ export class LoginComponent implements AfterViewInit {
           this.authFailed = false;
         }
       });
+
+    this.authService.currentUser$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(user => this.redirectAuthenticatedUser(user));
   }
 
   isFieldInvalid(field: string): boolean {
@@ -456,6 +461,14 @@ export class LoginComponent implements AfterViewInit {
           },
         });
     });
+  }
+
+  private redirectAuthenticatedUser(user: UserProfile | null): void {
+    if (!user || !this.authService.isLoggedIn()) {
+      return;
+    }
+
+    void this.router.navigate([user.profileComplete ? '/dashboard' : '/complete-profile']);
   }
 
   onSubmit(): void {

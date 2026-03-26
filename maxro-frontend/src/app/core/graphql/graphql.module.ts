@@ -11,6 +11,37 @@ interface RefreshTokens {
   refreshToken: string;
 }
 
+function parseJwtPayload(token: string): Record<string, unknown> | null {
+  const segments = token.split('.');
+  if (segments.length < 2 || typeof atob !== 'function') {
+    return null;
+  }
+
+  try {
+    const base64 = segments[1]
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(Math.ceil(segments[1].length / 4) * 4, '=');
+
+    return JSON.parse(atob(base64)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function isTokenExpired(token: string, bufferSeconds = 30): boolean {
+  const payload = parseJwtPayload(token);
+  const expiresAt = typeof payload?.['exp'] === 'number'
+    ? payload['exp'] * 1000
+    : null;
+
+  if (!expiresAt) {
+    return false;
+  }
+
+  return expiresAt <= Date.now() + (bufferSeconds * 1000);
+}
+
 export function provideGraphQL(): EnvironmentProviders {
   return makeEnvironmentProviders([
     Apollo,
@@ -61,7 +92,7 @@ export function provideGraphQL(): EnvironmentProviders {
         const auth = setContext((_, context) => {
           const token = localStorage.getItem('accessToken');
           return {
-            headers: token
+            headers: token && !isTokenExpired(token)
               ? { ...(context['headers'] ?? {}), Authorization: `Bearer ${token}` }
               : { ...(context['headers'] ?? {}) },
           };

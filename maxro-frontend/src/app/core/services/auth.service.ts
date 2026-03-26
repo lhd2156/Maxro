@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Apollo, gql } from 'apollo-angular';
-import { BehaviorSubject, Observable, catchError, finalize, map, of, shareReplay, tap } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, finalize, firstValueFrom, map, of, shareReplay, tap } from 'rxjs';
 import { AuthPayload, LoginInput, RegisterInput, UserProfile } from '../models/user.model';
 import { Router } from '@angular/router';
 
@@ -48,6 +48,7 @@ const LOGOUT_MUTATION = gql`
 export class AuthService {
   private currentUserSubject = new BehaviorSubject<UserProfile | null>(this.loadUser());
   private sessionValidation$: Observable<boolean> | null = null;
+  private sessionWarmupStarted = false;
   readonly currentUser$ = this.currentUserSubject.asObservable();
   readonly isAuthenticated$ = this.currentUser$.pipe(map(user => !!user));
 
@@ -100,11 +101,8 @@ export class AuthService {
     });
 
     this.clearAuth();
-    void this.apollo.client.clearStore()
-      .catch(() => undefined)
-      .finally(() => {
-        void this.router.navigate(['/login']);
-      });
+    void this.router.navigate(['/login']);
+    void this.apollo.client.clearStore().catch(() => undefined);
   }
 
   getAccessToken(): string | null {
@@ -116,22 +114,25 @@ export class AuthService {
   }
 
   isLoggedIn(): boolean {
-    const accessToken = this.getAccessToken();
-    if (accessToken && !this.isTokenExpired(accessToken)) {
-      return true;
+    return this.hasValidAccessToken() && !!this.currentUserSubject.value;
+  }
+
+  warmSession(): void {
+    if (this.sessionWarmupStarted) {
+      return;
     }
 
-    return !!this.getRefreshToken() && !!this.currentUserSubject.value;
+    this.sessionWarmupStarted = true;
+    void firstValueFrom(this.ensureValidSession()).catch(() => false);
   }
 
   ensureValidSession(): Observable<boolean> {
-    const accessToken = this.getAccessToken();
-    if (accessToken && !this.isTokenExpired(accessToken)) {
+    if (this.hasValidAccessToken()) {
       return of(true);
     }
 
     const refreshToken = this.getRefreshToken();
-    if (!refreshToken) {
+    if (!refreshToken || !this.currentUserSubject.value) {
       this.clearAuth();
       return of(false);
     }
@@ -171,6 +172,7 @@ export class AuthService {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    this.sessionValidation$ = null;
     this.currentUserSubject.next(null);
   }
 
@@ -217,6 +219,11 @@ export class AuthService {
     return compact
       .toLowerCase()
       .replace(/(^|[\s'-])([a-z])/g, (_match, prefix: string, letter: string) => `${prefix}${letter.toUpperCase()}`);
+  }
+
+  private hasValidAccessToken(): boolean {
+    const accessToken = this.getAccessToken();
+    return !!accessToken && !this.isTokenExpired(accessToken);
   }
 
   private isTokenExpired(token: string, bufferSeconds = 30): boolean {

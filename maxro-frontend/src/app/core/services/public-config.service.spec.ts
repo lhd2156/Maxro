@@ -8,6 +8,8 @@ describe('PublicConfigService', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(() => {
+    localStorage.clear();
+
     TestBed.configureTestingModule({
       providers: [
         PublicConfigService,
@@ -22,11 +24,12 @@ describe('PublicConfigService', () => {
 
   afterEach(() => {
     httpMock.verify();
+    localStorage.clear();
   });
 
   it('loads and trims public client ids', async () => {
     const loadPromise = service.load();
-    const request = httpMock.expectOne('http://localhost:8080/api/public-config');
+    const request = httpMock.expectOne('/api/public-config');
 
     request.flush({
       googleClientId: ' test-google.apps.googleusercontent.com ',
@@ -41,7 +44,7 @@ describe('PublicConfigService', () => {
 
   it('falls back to blank ids when the endpoint is unavailable', async () => {
     const loadPromise = service.load();
-    const request = httpMock.expectOne('http://localhost:8080/api/public-config');
+    const request = httpMock.expectOne('/api/public-config');
 
     request.flush('boom', { status: 500, statusText: 'Server Error' });
 
@@ -53,13 +56,13 @@ describe('PublicConfigService', () => {
 
   it('allows a later retry after an earlier failure', async () => {
     const firstLoad = service.load();
-    const firstRequest = httpMock.expectOne('http://localhost:8080/api/public-config');
+    const firstRequest = httpMock.expectOne('/api/public-config');
 
     firstRequest.flush('boom', { status: 500, statusText: 'Server Error' });
     await firstLoad;
 
     const secondLoad = service.load();
-    const secondRequest = httpMock.expectOne('http://localhost:8080/api/public-config');
+    const secondRequest = httpMock.expectOne('/api/public-config');
 
     secondRequest.flush({
       googleClientId: 'retry-google.apps.googleusercontent.com',
