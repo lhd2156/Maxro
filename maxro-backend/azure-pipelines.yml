@@ -83,18 +83,42 @@ stages:
             displayName: 'Expose Azure CLI on PATH'
 
           - task: AzureCLI@2
-            displayName: 'Build and Push Image with ACR Tasks'
+            displayName: 'Build and Push Image with Jib'
             inputs:
               azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
               scriptType: 'ps'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                az acr build `
-                  --registry $(ACR_NAME) `
-                  --image $(imageName):$(Build.BuildId) `
-                  --image $(imageName):latest `
-                  --file maxro-backend/Dockerfile `
-                  maxro-backend
+                az acr update --name $(ACR_NAME) --admin-enabled true 1>$null
+                $acrUsername = az acr credential show --name $(ACR_NAME) --query username -o tsv
+                $acrPassword = az acr credential show --name $(ACR_NAME) --query "passwords[0].value" -o tsv
+
+                if ([string]::IsNullOrWhiteSpace($acrUsername) -or [string]::IsNullOrWhiteSpace($acrPassword)) {
+                  throw "Unable to resolve ACR admin credentials for $(ACR_NAME)"
+                }
+
+                Push-Location maxro-backend
+                try {
+                  & .\mvnw.cmd `
+                    -B `
+                    -DskipTests `
+                    "-Djib.to.image=$(containerRegistry)/$(imageName)" `
+                    "-Djib.to.tags=$(Build.BuildId),latest" `
+                    "-Djib.to.auth.username=$acrUsername" `
+                    "-Djib.to.auth.password=$acrPassword" `
+                    jib:build
+
+                  if ($LASTEXITCODE -ne 0) {
+                    exit $LASTEXITCODE
+                  }
+                }
+                finally {
+                  Pop-Location
+                }
+            env:
+              JAVA_HOME: $(JAVA_HOME)
+              JAVA_TOOL_OPTIONS: $(JAVA_TOOL_OPTIONS)
+              MAVEN_OPTS: $(MAVEN_OPTS)
 
   - stage: Deploy
     displayName: 'Deploy to Azure Container Apps'
