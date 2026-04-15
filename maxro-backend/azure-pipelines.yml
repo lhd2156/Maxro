@@ -19,6 +19,8 @@ variables:
     value: 'maxro-backend'
   - name: containerAppEnvironment
     value: 'maxro-env'
+  - name: apiHostname
+    value: 'api.gomaxro.com'
   - name: azureLocation
     value: 'centralus'
   - name: containerCpu
@@ -333,6 +335,65 @@ stages:
               GRAPHIQL_ENABLED: $(GRAPHIQL_ENABLED)
               AZURE_LOCATION: $(AZURE_LOCATION)
               CONTAINER_APP_ENVIRONMENT: $(CONTAINER_APP_ENVIRONMENT)
+              API_HOSTNAME: $(apiHostname)
+
+          - task: AzureCLI@2
+            displayName: 'Bind API Custom Domain'
+            inputs:
+              azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+              scriptType: 'ps'
+              scriptLocation: 'inlineScript'
+              failOnStandardError: false
+              powerShellIgnoreLASTEXITCODE: true
+              inlineScript: |
+                $appEnvironment = if ($env:CONTAINER_APP_ENVIRONMENT) { $env:CONTAINER_APP_ENVIRONMENT } else { '$(containerAppEnvironment)' }
+                $apiHostname = if ($env:API_HOSTNAME) { $env:API_HOSTNAME } else { '$(apiHostname)' }
+
+                if ([string]::IsNullOrWhiteSpace($apiHostname)) {
+                  Write-Host 'API custom-domain binding skipped because API_HOSTNAME is not set.'
+                  exit 0
+                }
+
+                $existingHostname = az containerapp hostname list `
+                  --name $(containerAppName) `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --query "[?name=='$apiHostname'].name | [0]" -o tsv
+
+                if ([string]::IsNullOrWhiteSpace($existingHostname)) {
+                  Write-Host "Adding hostname $apiHostname to $(containerAppName)"
+                  az containerapp hostname add `
+                    --name $(containerAppName) `
+                    --resource-group $(RESOURCE_GROUP) `
+                    --hostname $apiHostname
+                } else {
+                  Write-Host "Hostname $apiHostname is already registered on $(containerAppName)"
+                }
+
+                $maxAttempts = 6
+                $sleepSeconds = 20
+                for ($i = 1; $i -le $maxAttempts; $i++) {
+                  try {
+                    Write-Host "Binding hostname attempt ${i}/${maxAttempts}"
+                    az containerapp hostname bind `
+                      --name $(containerAppName) `
+                      --resource-group $(RESOURCE_GROUP) `
+                      --environment $appEnvironment `
+                      --hostname $apiHostname `
+                      --validation-method CNAME
+                    Write-Host 'API custom-domain binding succeeded.'
+                    exit 0
+                  } catch {
+                    if ($i -eq $maxAttempts) {
+                      throw
+                    }
+
+                    Write-Host "Bind attempt ${i} failed: $($_.Exception.Message)"
+                    Start-Sleep -Seconds $sleepSeconds
+                  }
+                }
+            env:
+              CONTAINER_APP_ENVIRONMENT: $(CONTAINER_APP_ENVIRONMENT)
+              API_HOSTNAME: $(apiHostname)
 
 
           - task: AzureCLI@2
@@ -451,3 +512,35 @@ stages:
                   --tail 100
 
                 exit 1
+
+          - powershell: |
+              $apiHostname = if ($env:API_HOSTNAME) { $env:API_HOSTNAME } else { '$(apiHostname)' }
+              if ([string]::IsNullOrWhiteSpace($apiHostname)) {
+                Write-Host 'API hostname health check skipped because API_HOSTNAME is not set.'
+                exit 0
+              }
+
+              $healthUrl = "https://$apiHostname/actuator/health"
+              Write-Host ("Checking branded API health at " + $healthUrl)
+
+              for ($i = 1; $i -le 20; $i++) {
+                try {
+                  $response = Invoke-RestMethod -Uri $healthUrl -UseBasicParsing -TimeoutSec 20
+                  if ($response.status -eq 'UP') {
+                    Write-Host 'Branded API health check passed'
+                    exit 0
+                  }
+                  $status = $response.status
+                } catch {
+                  $status = $_.Exception.Message
+                }
+
+                Write-Host ("Attempt " + $i + ": status " + $status + ', retrying...')
+                Start-Sleep -Seconds 15
+              }
+
+              Write-Host 'Branded API health check failed'
+              exit 1
+            displayName: 'Branded API Health Check'
+            env:
+              API_HOSTNAME: $(apiHostname)
