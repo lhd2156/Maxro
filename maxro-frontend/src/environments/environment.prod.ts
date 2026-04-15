@@ -1,6 +1,9 @@
+const apiOrigin =
+  'https://maxro-backend.victoriousstone-c0dd8b3d.centralus.azurecontainerapps.io';
+
 export const environment = {
   production: true,
-  apiBaseUrl: 'https://maxro-backend.niceforest-6825dc63.centralus.azurecontainerapps.io',
-  graphqlUrl: 'https://maxro-backend.niceforest-6825dc63.centralus.azurecontainerapps.io/graphql',
+  apiBaseUrl: apiOrigin,
+  graphqlUrl: `${apiOrigin}/graphql`,
   spotifyRedirectUri: '',
 };
