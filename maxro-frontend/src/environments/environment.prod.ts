@@ -1,5 +1,4 @@
-const apiOrigin =
-  'https://maxro-backend.victoriousstone-c0dd8b3d.centralus.azurecontainerapps.io';
+const apiOrigin = 'https://api.gomaxro.com';
 
 export const environment = {
   production: true,
