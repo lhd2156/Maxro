@@ -278,7 +278,7 @@ stages:
                     --target-port $serverPortValue `
                     --cpu $(containerCpu) `
                     --memory $(containerMemory) `
-                    --min-replicas 0 `
+                    --min-replicas 1 `
                     --max-replicas 1 `
                     --registry-server $(containerRegistry) `
                     --registry-username $acrUsername `
@@ -353,7 +353,7 @@ stages:
                     --revision-suffix r$(Build.BuildId) `
                     --cpu $(containerCpu) `
                     --memory $(containerMemory) `
-                    --min-replicas 0 `
+                    --min-replicas 1 `
                     --max-replicas 1 `
                     --set-env-vars $envArgs
                 } else {
@@ -364,7 +364,7 @@ stages:
                     --revision-suffix r$(Build.BuildId) `
                     --cpu $(containerCpu) `
                     --memory $(containerMemory) `
-                    --min-replicas 0 `
+                    --min-replicas 1 `
                     --max-replicas 1
                 }
 
