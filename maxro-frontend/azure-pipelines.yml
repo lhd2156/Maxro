@@ -11,6 +11,12 @@ pool:
 
 variables:
   - group: maxro-secrets
+  - name: AZURE_SERVICE_CONNECTION
+    value: 'maxro-azure-sc-v3'
+  - name: RESOURCE_GROUP
+    value: 'maxro-rg'
+  - name: SWA_HOSTNAME
+    value: 'yellow-bush-0621c1c10.7.azurestaticapps.net'
   - name: appName
     value: 'maxro-frontend'
 
@@ -56,12 +62,30 @@ stages:
           - download: current
             artifact: frontend-build
 
-          - script: >
-              npx @azure/static-web-apps-cli@2.0.8 deploy
-              "$(Pipeline.Workspace)/frontend-build"
-              --deployment-token "$(SWA_DEPLOYMENT_TOKEN)"
-              --env production
+          - task: AzureCLI@2
             displayName: 'Deploy to Static Web Apps'
+            inputs:
+              azureSubscription: 'maxro-azure-sc-v3'
+              scriptType: 'ps'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                $deploymentToken = az staticwebapp secrets list `
+                  --name $(appName) `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --query "properties.apiKey" -o tsv
+
+                if ([string]::IsNullOrWhiteSpace($deploymentToken)) {
+                  throw "Unable to resolve Static Web App deployment token for $(appName)"
+                }
+
+                & npx.cmd @azure/static-web-apps-cli@2.0.8 deploy `
+                  "$(Pipeline.Workspace)/frontend-build" `
+                  --deployment-token "$deploymentToken" `
+                  --env production
+
+                if ($LASTEXITCODE -ne 0) {
+                  exit $LASTEXITCODE
+                }
 
           - powershell: |
               $swaUrl = 'https://$(SWA_HOSTNAME)'
