@@ -416,6 +416,34 @@ stages:
                   exit 0
                 }
 
+                $backendHostname = az containerapp show `
+                  --name $(containerAppName) `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --query properties.configuration.ingress.fqdn -o tsv
+                $verificationId = az containerapp show `
+                  --name $(containerAppName) `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --query properties.customDomainVerificationId -o tsv
+
+                $currentCname = Resolve-DnsName $apiHostname -Type CNAME -ErrorAction SilentlyContinue |
+                  Select-Object -First 1 -ExpandProperty NameHost
+                $txtRecordName = "asuid.$apiHostname"
+                $currentTxtValues = @(Resolve-DnsName $txtRecordName -Type TXT -ErrorAction SilentlyContinue |
+                  ForEach-Object { ($_.Strings -join '') })
+
+                if (
+                  [string]::IsNullOrWhiteSpace($currentCname) -or
+                  $currentCname.TrimEnd('.').ToLowerInvariant() -ne $backendHostname.TrimEnd('.').ToLowerInvariant() -or
+                  $currentTxtValues -notcontains $verificationId
+                ) {
+                  Write-Host 'API custom-domain binding skipped because DNS is not cut over yet.'
+                  Write-Host "Required CNAME: $apiHostname -> $backendHostname"
+                  Write-Host "Current CNAME: $currentCname"
+                  Write-Host "Required TXT: $txtRecordName -> $verificationId"
+                  Write-Host "Current TXT: $($currentTxtValues -join ',')"
+                  exit 0
+                }
+
                 $existingHostname = az containerapp hostname list `
                   --name $(containerAppName) `
                   --resource-group $(RESOURCE_GROUP) `
@@ -427,6 +455,9 @@ stages:
                     --name $(containerAppName) `
                     --resource-group $(RESOURCE_GROUP) `
                     --hostname $apiHostname
+                  if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to add hostname $apiHostname to $(containerAppName)."
+                  }
                 } else {
                   Write-Host "Hostname $apiHostname is already registered on $(containerAppName)"
                 }
@@ -442,6 +473,9 @@ stages:
                       --environment $appEnvironment `
                       --hostname $apiHostname `
                       --validation-method CNAME
+                    if ($LASTEXITCODE -ne 0) {
+                      throw "Failed to bind hostname $apiHostname to $(containerAppName)."
+                    }
                     Write-Host 'API custom-domain binding succeeded.'
                     exit 0
                   } catch {
