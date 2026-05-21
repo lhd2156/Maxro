@@ -195,13 +195,13 @@ stages:
               powerShellIgnoreLASTEXITCODE: true
               inlineScript: |
                 function Add-SecretArg([string]$Key, [string]$Value) {
-                  if (-not [string]::IsNullOrWhiteSpace($Value)) {
+                  if (Test-ResolvedValue $Value) {
                     $script:secretArgs += "$Key=$Value"
                   }
                 }
 
                 function Add-EnvArg([string]$Key, [string]$Value) {
-                  if (-not [string]::IsNullOrWhiteSpace($Value)) {
+                  if (Test-ResolvedValue $Value) {
                     $script:envArgs += "$Key=$Value"
                   }
                 }
@@ -215,24 +215,19 @@ stages:
                 $serverPortValue = if ($env:SERVER_PORT) { $env:SERVER_PORT } else { '8080' }
                 $imageRef = "$(containerRegistry)/$(imageName):$(Build.BuildId)"
 
-                $mongoUri = if (Test-ResolvedValue $env:MONGODB_URI -and $env:MONGODB_URI -notmatch 'maxrocosmos97a69') {
-                  $env:MONGODB_URI
-                } else {
-                  Write-Host "Resolving Mongo URI from Cosmos account $(COSMOS_ACCOUNT_NAME)."
-                  $connectionStrings = az cosmosdb keys list `
-                    --name $(COSMOS_ACCOUNT_NAME) `
-                    --resource-group $(RESOURCE_GROUP) `
-                    --type connection-strings -o json | ConvertFrom-Json
-                  $connectionString = ($connectionStrings.connectionStrings |
-                    Where-Object { $_.description -match 'Primary.*MongoDB' } |
-                    Select-Object -First 1).connectionString
-                  if ([string]::IsNullOrWhiteSpace($connectionString)) {
-                    throw "Unable to resolve Mongo connection string for Cosmos account $(COSMOS_ACCOUNT_NAME)."
-                  }
-
-                  ($connectionString -replace '/\?', '/$(MONGO_DATABASE_NAME)?') -split '&' | Select-Object -First 1
+                Write-Host "Resolving Mongo URI from Cosmos account $(COSMOS_ACCOUNT_NAME)."
+                $connectionStrings = az cosmosdb keys list `
+                  --name $(COSMOS_ACCOUNT_NAME) `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --type connection-strings -o json | ConvertFrom-Json
+                $connectionString = ($connectionStrings.connectionStrings |
+                  Where-Object { $_.description -match 'Primary.*MongoDB' } |
+                  Select-Object -First 1).connectionString
+                if ([string]::IsNullOrWhiteSpace($connectionString)) {
+                  throw "Unable to resolve Mongo connection string for Cosmos account $(COSMOS_ACCOUNT_NAME)."
                 }
 
+                $mongoUri = ($connectionString -replace '/\?', '/$(MONGO_DATABASE_NAME)?') -split '&' | Select-Object -First 1
                 if ($mongoUri -notmatch '^mongodb(\+srv)?:\/\/') {
                   throw "Resolved Mongo URI must start with mongodb:// or mongodb+srv://"
                 }
@@ -334,19 +329,19 @@ stages:
                 $envArgs += 'MONGODB_URI=secretref:mongodb-uri'
                 $envArgs += 'SPRING_DATA_MONGODB_URI=secretref:mongodb-uri'
                 $envArgs += 'JWT_SECRET=secretref:jwt-secret'
-                if (-not [string]::IsNullOrWhiteSpace($env:SPOTIFY_CLIENT_SECRET)) {
+                if ((Test-ResolvedValue $env:SPOTIFY_CLIENT_SECRET) -or $existingSecretNames -contains 'spotify-client-secret') {
                   $envArgs += 'SPOTIFY_CLIENT_SECRET=secretref:spotify-client-secret'
                 }
-                if (-not [string]::IsNullOrWhiteSpace($env:GOOGLE_AI_API_KEY)) {
+                if ((Test-ResolvedValue $env:GOOGLE_AI_API_KEY) -or $existingSecretNames -contains 'google-ai-api-key') {
                   $envArgs += 'GOOGLE_AI_API_KEY=secretref:google-ai-api-key'
                 }
-                if (-not [string]::IsNullOrWhiteSpace($env:USDA_FOODDATA_API_KEY)) {
+                if ((Test-ResolvedValue $env:USDA_FOODDATA_API_KEY) -or $existingSecretNames -contains 'usda-fooddata-api-key') {
                   $envArgs += 'USDA_FOODDATA_API_KEY=secretref:usda-fooddata-api-key'
                 }
-                if (-not [string]::IsNullOrWhiteSpace($env:FATSECRET_CLIENT_ID)) {
+                if ((Test-ResolvedValue $env:FATSECRET_CLIENT_ID) -or $existingSecretNames -contains 'fatsecret-client-id') {
                   $envArgs += 'FATSECRET_CLIENT_ID=secretref:fatsecret-client-id'
                 }
-                if (-not [string]::IsNullOrWhiteSpace($env:FATSECRET_CLIENT_SECRET)) {
+                if ((Test-ResolvedValue $env:FATSECRET_CLIENT_SECRET) -or $existingSecretNames -contains 'fatsecret-client-secret') {
                   $envArgs += 'FATSECRET_CLIENT_SECRET=secretref:fatsecret-client-secret'
                 }
 
