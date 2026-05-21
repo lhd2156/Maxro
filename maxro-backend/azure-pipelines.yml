@@ -40,8 +40,36 @@ stages:
         displayName: 'Build and Test Spring Boot'
         steps:
           - powershell: |
-              $javac = (Get-Command javac -ErrorAction Stop).Source
-              $javaHome = Split-Path (Split-Path $javac -Parent) -Parent
+              $javaHomeCandidates = @(
+                $env:JAVA_HOME_21_X64,
+                'C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot',
+                'C:\Program Files\Java\jdk-21'
+              )
+
+              $javaHome = $javaHomeCandidates |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path (Join-Path $_ 'bin\javac.exe')) } |
+                Select-Object -First 1
+
+              if ([string]::IsNullOrWhiteSpace($javaHome)) {
+                $jdk21 = Get-ChildItem -Path 'C:\Program Files', 'C:\Program Files\Eclipse Adoptium' -Directory -Recurse -ErrorAction SilentlyContinue |
+                  Where-Object { $_.Name -like 'jdk-21*' -and (Test-Path (Join-Path $_.FullName 'bin\javac.exe')) } |
+                  Sort-Object FullName |
+                  Select-Object -First 1
+                if ($jdk21) {
+                  $javaHome = $jdk21.FullName
+                }
+              }
+
+              if ([string]::IsNullOrWhiteSpace($javaHome)) {
+                $javac = (Get-Command javac -ErrorAction Stop).Source
+                $javaHome = Split-Path (Split-Path $javac -Parent) -Parent
+              }
+
+              $javacVersion = & "$javaHome\bin\javac.exe" -version 2>&1
+              if ($javacVersion -notmatch 'javac\s+2[1-9]\.') {
+                throw "Java 21+ is required, but '$javaHome' reports '$javacVersion'."
+              }
+
               Write-Host "Using JAVA_HOME=$javaHome"
               Write-Host "##vso[task.setvariable variable=JAVA_HOME]$javaHome"
               Write-Host "##vso[task.setvariable variable=JAVA_TOOL_OPTIONS]$(javaToolOptions)"
