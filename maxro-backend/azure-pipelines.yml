@@ -23,6 +23,10 @@ variables:
     value: 'maxro-env'
   - name: CORS_ORIGINS
     value: 'https://gomaxro.com,https://www.gomaxro.com,https://yellow-bush-0621c1c10.7.azurestaticapps.net,http://localhost:4200,http://127.0.0.1:4200'
+  - name: COSMOS_ACCOUNT_NAME
+    value: 'maxrocosmos8db8c'
+  - name: MONGO_DATABASE_NAME
+    value: 'maxro'
   - name: imageName
     value: 'maxro-backend'
   - name: containerRegistry
@@ -33,6 +37,8 @@ variables:
     value: 'maxro-env'
   - name: apiHostname
     value: 'api.gomaxro.com'
+  - name: backendDefaultHostname
+    value: 'maxro-backend.lemonwave-ad7f10c5.centralus.azurecontainerapps.io'
   - name: azureLocation
     value: 'centralus'
   - name: containerCpu
@@ -200,25 +206,35 @@ stages:
                   }
                 }
 
+                function Test-ResolvedValue([string]$Value) {
+                  return -not ([string]::IsNullOrWhiteSpace($Value) -or $Value -match '^\$\(')
+                }
+
                 $location = if ($env:AZURE_LOCATION) { $env:AZURE_LOCATION } else { '$(azureLocation)' }
                 $appEnvironment = if ($env:CONTAINER_APP_ENVIRONMENT) { $env:CONTAINER_APP_ENVIRONMENT } else { '$(containerAppEnvironment)' }
                 $serverPortValue = if ($env:SERVER_PORT) { $env:SERVER_PORT } else { '8080' }
                 $imageRef = "$(containerRegistry)/$(imageName):$(Build.BuildId)"
 
-                $requiredSecrets = @('MONGODB_URI', 'JWT_SECRET')
-                foreach ($requiredSecret in $requiredSecrets) {
-                  $secretValue = (Get-Item -Path "env:$requiredSecret" -ErrorAction SilentlyContinue).Value
-                  if ([string]::IsNullOrWhiteSpace($secretValue)) {
-                    throw "Missing required pipeline secret variable: $requiredSecret"
+                $mongoUri = if (Test-ResolvedValue $env:MONGODB_URI -and $env:MONGODB_URI -notmatch 'maxrocosmos97a69') {
+                  $env:MONGODB_URI
+                } else {
+                  Write-Host "Resolving Mongo URI from Cosmos account $(COSMOS_ACCOUNT_NAME)."
+                  $connectionStrings = az cosmosdb keys list `
+                    --name $(COSMOS_ACCOUNT_NAME) `
+                    --resource-group $(RESOURCE_GROUP) `
+                    --type connection-strings -o json | ConvertFrom-Json
+                  $connectionString = ($connectionStrings.connectionStrings |
+                    Where-Object { $_.description -match 'Primary.*MongoDB' } |
+                    Select-Object -First 1).connectionString
+                  if ([string]::IsNullOrWhiteSpace($connectionString)) {
+                    throw "Unable to resolve Mongo connection string for Cosmos account $(COSMOS_ACCOUNT_NAME)."
                   }
+
+                  ($connectionString -replace '/\?', '/$(MONGO_DATABASE_NAME)?') -split '&' | Select-Object -First 1
                 }
 
-                if ($env:JWT_SECRET.Length -lt 32) {
-                  throw "JWT_SECRET must be at least 32 characters for HS256. Current length: $($env:JWT_SECRET.Length)"
-                }
-
-                if ($env:MONGODB_URI -notmatch '^mongodb(\+srv)?:\/\/') {
-                  throw "MONGODB_URI must start with mongodb:// or mongodb+srv://"
+                if ($mongoUri -notmatch '^mongodb(\+srv)?:\/\/') {
+                  throw "Resolved Mongo URI must start with mongodb:// or mongodb+srv://"
                 }
 
                 $existingEnv = az resource list `
@@ -241,6 +257,21 @@ stages:
                   --resource-group $(RESOURCE_GROUP) `
                   --resource-type Microsoft.App/containerApps `
                   --query "[?name=='$(containerAppName)'].name | [0]" -o tsv
+                $existingSecretNames = @()
+                if (-not [string]::IsNullOrWhiteSpace($existingApp)) {
+                  $existingSecretNames = @(az containerapp secret list `
+                    --name $(containerAppName) `
+                    --resource-group $(RESOURCE_GROUP) -o json | ConvertFrom-Json | ForEach-Object { $_.name })
+                }
+
+                $jwtSecretValue = if (Test-ResolvedValue $env:JWT_SECRET) { $env:JWT_SECRET } else { '' }
+                if (-not [string]::IsNullOrWhiteSpace($jwtSecretValue) -and $jwtSecretValue.Length -lt 32) {
+                  throw "JWT_SECRET must be at least 32 characters for HS256. Current length: $($jwtSecretValue.Length)"
+                }
+                if ([string]::IsNullOrWhiteSpace($jwtSecretValue) -and $existingSecretNames -notcontains 'jwt-secret') {
+                  throw "JWT_SECRET is not available from the pipeline and the container app does not already have a jwt-secret secret."
+                }
+
                 if ([string]::IsNullOrWhiteSpace($existingApp)) {
                   az containerapp create `
                     --name $(containerAppName) `
@@ -272,8 +303,8 @@ stages:
                   --password $acrPassword
 
                 $secretArgs = @()
-                Add-SecretArg 'mongodb-uri' $env:MONGODB_URI
-                Add-SecretArg 'jwt-secret' $env:JWT_SECRET
+                Add-SecretArg 'mongodb-uri' $mongoUri
+                Add-SecretArg 'jwt-secret' $jwtSecretValue
                 Add-SecretArg 'spotify-client-secret' $env:SPOTIFY_CLIENT_SECRET
                 Add-SecretArg 'google-ai-api-key' $env:GOOGLE_AI_API_KEY
                 Add-SecretArg 'usda-fooddata-api-key' $env:USDA_FOODDATA_API_KEY
@@ -300,13 +331,9 @@ stages:
                 Add-EnvArg 'SPOTIFY_CLIENT_ID' $env:SPOTIFY_CLIENT_ID
                 Add-EnvArg 'GOOGLE_AI_MODEL' $env:GOOGLE_AI_MODEL
 
-                if (-not [string]::IsNullOrWhiteSpace($env:MONGODB_URI)) {
-                  $envArgs += 'MONGODB_URI=secretref:mongodb-uri'
-                  $envArgs += 'SPRING_DATA_MONGODB_URI=secretref:mongodb-uri'
-                }
-                if (-not [string]::IsNullOrWhiteSpace($env:JWT_SECRET)) {
-                  $envArgs += 'JWT_SECRET=secretref:jwt-secret'
-                }
+                $envArgs += 'MONGODB_URI=secretref:mongodb-uri'
+                $envArgs += 'SPRING_DATA_MONGODB_URI=secretref:mongodb-uri'
+                $envArgs += 'JWT_SECRET=secretref:jwt-secret'
                 if (-not [string]::IsNullOrWhiteSpace($env:SPOTIFY_CLIENT_SECRET)) {
                   $envArgs += 'SPOTIFY_CLIENT_SECRET=secretref:spotify-client-secret'
                 }
@@ -555,8 +582,21 @@ stages:
 
           - powershell: |
               $apiHostname = if ($env:API_HOSTNAME) { $env:API_HOSTNAME } else { '$(apiHostname)' }
+              $expectedBackendHostname = if ($env:BACKEND_DEFAULT_HOSTNAME) { $env:BACKEND_DEFAULT_HOSTNAME } else { '$(backendDefaultHostname)' }
               if ([string]::IsNullOrWhiteSpace($apiHostname)) {
                 Write-Host 'API hostname health check skipped because API_HOSTNAME is not set.'
+                exit 0
+              }
+
+              $currentCname = Resolve-DnsName $apiHostname -Type CNAME -ErrorAction SilentlyContinue |
+                Select-Object -First 1 -ExpandProperty NameHost
+              if (
+                [string]::IsNullOrWhiteSpace($currentCname) -or
+                $currentCname.TrimEnd('.').ToLowerInvariant() -ne $expectedBackendHostname.TrimEnd('.').ToLowerInvariant()
+              ) {
+                Write-Host "Branded API health check skipped because DNS is not cut over yet."
+                Write-Host "Current CNAME: $currentCname"
+                Write-Host "Expected CNAME: $expectedBackendHostname"
                 exit 0
               }
 
@@ -584,3 +624,4 @@ stages:
             displayName: 'Branded API Health Check'
             env:
               API_HOSTNAME: $(apiHostname)
+              BACKEND_DEFAULT_HOSTNAME: $(backendDefaultHostname)
