@@ -368,16 +368,11 @@ stages:
                     --max-replicas 1
                 }
 
-                # Keep rollout deterministic: only latest revision should be active and receive traffic.
+                # Single mode automatically sends traffic to the latest ready revision.
                 az containerapp revision set-mode `
                   --name $(containerAppName) `
                   --resource-group $(RESOURCE_GROUP) `
                   --mode single
-
-                az containerapp ingress traffic set `
-                  --name $(containerAppName) `
-                  --resource-group $(RESOURCE_GROUP) `
-                  --revision-weight latest=100
             env:
               MONGODB_URI: $(MONGODB_URI)
               JWT_SECRET: $(JWT_SECRET)
