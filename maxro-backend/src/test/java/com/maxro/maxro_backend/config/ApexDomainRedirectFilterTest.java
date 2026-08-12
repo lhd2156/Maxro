@@ -31,7 +31,7 @@ class ApexDomainRedirectFilterTest {
     @Test
     void redirectsForwardedApexHost() throws ServletException, IOException {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/");
-        request.addHeader("Host", "maxro-backend.lemonwave-ad7f10c5.centralus.azurecontainerapps.io");
+        request.addHeader("Host", "maxro-backend.yellowmoss-96683f19.centralus.azurecontainerapps.io");
         request.addHeader("X-Forwarded-Host", "gomaxro.com");
         MockHttpServletResponse response = new MockHttpServletResponse();
 

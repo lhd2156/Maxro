@@ -1,24 +1,31 @@
 # Azure DevOps Secrets and Variables
 
-Use a variable group named `maxro-secrets`.
+Use the variable group `maxro-secrets` for application configuration. Azure infrastructure identifiers are defined in the pipeline YAML so an account swap is visible in code review.
 
-## Backend deployment variables
+## Current nonsecret values
 
-These are used by `maxro-backend/azure-pipelines.yml`.
+```text
+AZURE_SERVICE_CONNECTION=maxro-azure-sc-v5
+ACR_NAME=maxroacr1e506
+COSMOS_ACCOUNT_NAME=maxrocosmos1e506
+MONGO_DATABASE_NAME=maxro
+RESOURCE_GROUP=maxro-rg
+AZURE_LOCATION=centralus
+CONTAINER_APP_ENVIRONMENT=maxro-env
+BACKEND_APP_NAME=maxro-backend
+FRONTEND_APP_NAME=maxro-web
+CORS_ORIGINS=https://gomaxro.com,https://www.gomaxro.com,https://maxro-web.yellowmoss-96683f19.centralus.azurecontainerapps.io,https://witty-sea-090e02110.7.azurestaticapps.net,http://localhost:4200,http://127.0.0.1:4200
+```
 
-### Required Azure infrastructure values
+## Required backend secret
 
-- `ACR_NAME`
-- `AZURE_SERVICE_CONNECTION`
-- `RESOURCE_GROUP`
+- `JWT_SECRET`: at least 32 characters. Keep the existing value if sessions should remain valid.
 
-### Required backend app values
+The backend pipeline obtains the production Mongo URI from `COSMOS_ACCOUNT_NAME`; do not copy a local `localhost` URI into Azure.
 
-- `MONGODB_URI`
-- `JWT_SECRET`
-- `CORS_ORIGINS`
+## Integration values
 
-### Recommended auth and integration values
+Keep these in `maxro-secrets` when the corresponding feature is used:
 
 - `GOOGLE_CLIENT_ID`
 - `SPOTIFY_CLIENT_ID`
@@ -29,53 +36,22 @@ These are used by `maxro-backend/azure-pipelines.yml`.
 - `GOOGLE_AI_API_KEY`
 - `GOOGLE_AI_MODEL`
 
-### Optional backend overrides
+Optional overrides:
 
 - `JWT_ACCESS_EXPIRATION`
 - `JWT_REFRESH_EXPIRATION`
 - `SERVER_PORT`
 - `APP_LOG_LEVEL`
 - `GRAPHIQL_ENABLED`
-- `AZURE_LOCATION`
-- `CONTAINER_APP_ENVIRONMENT`
 
-## Frontend deployment variables
+## Frontend deployment
 
-These are used by `maxro-frontend/azure-pipelines.yml`.
+The frontend pipeline requires no Static Web Apps deployment token and no local container engine. It fetches short-lived ACR credentials through `maxro-azure-sc-v5`, publishes the Angular bundle as an OCI layer, and deploys `maxro-web`.
 
-- `SWA_DEPLOYMENT_TOKEN`
-- `SWA_HOSTNAME`
+Public Google and Spotify client IDs are loaded from the backend at runtime; they do not need separate frontend variables.
 
-## Safe placeholder example
+## Service connection
 
-Use temporary placeholders until you swap in real values:
+`maxro-azure-sc-v5` stores its service-principal credential inside Azure DevOps. The service principal is Contributor-scoped to `maxro-rg`. Never place that credential in this file, `.env`, a pipeline variable, or GitHub.
 
-```text
-ACR_NAME=replacewithacrname
-RESOURCE_GROUP=maxro-rg
-AZURE_LOCATION=centralus
-CONTAINER_APP_ENVIRONMENT=maxro-env
-MONGODB_URI=mongodb+srv://replace-me
-JWT_SECRET=replace-me-with-a-long-random-secret
-CORS_ORIGINS=https://replace-me.azurestaticapps.net
-GOOGLE_CLIENT_ID=replace-me.apps.googleusercontent.com
-SPOTIFY_CLIENT_ID=replace-me
-SPOTIFY_CLIENT_SECRET=replace-me
-USDA_FOODDATA_API_KEY=replace-me
-FATSECRET_CLIENT_ID=replace-me
-FATSECRET_CLIENT_SECRET=replace-me
-GOOGLE_AI_API_KEY=replace-me
-GOOGLE_AI_MODEL=gemini-2.5-flash
-JWT_ACCESS_EXPIRATION=900000
-JWT_REFRESH_EXPIRATION=604800000
-SERVER_PORT=8080
-APP_LOG_LEVEL=INFO
-GRAPHIQL_ENABLED=false
-```
-
-## Notes
-
-- The backend pipeline now builds images directly with Azure Container Registry using your Azure service connection, so a separate Docker service connection is no longer required.
-- The backend deploy step will create the Container Apps environment and the `maxro-backend` app if they do not already exist.
-- The frontend does not need Google or Spotify IDs in its own pipeline because Maxro loads those public client IDs from the backend at runtime.
-- Replace all placeholder values before production launch.
+During the next account swap, create a new service principal in the new Azure tenant and a new Azure Resource Manager service connection. Authorize the two real pipelines, then update the YAML's `AZURE_SERVICE_CONNECTION` value.

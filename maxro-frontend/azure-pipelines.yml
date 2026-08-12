@@ -5,6 +5,7 @@ trigger:
   paths:
     include:
       - maxro-frontend/**
+      - scripts/publish-frontend-container.ps1
 
 pool:
   name: 'Default'
@@ -12,13 +13,19 @@ pool:
 variables:
   - group: maxro-secrets
   - name: AZURE_SERVICE_CONNECTION
-    value: 'maxro-azure-sc-v3'
+    value: 'maxro-azure-sc-v5'
+  - name: ACR_NAME
+    value: 'maxroacr1e506'
   - name: RESOURCE_GROUP
     value: 'maxro-rg'
-  - name: SWA_HOSTNAME
-    value: 'yellow-bush-0621c1c10.7.azurestaticapps.net'
-  - name: appName
+  - name: CONTAINER_APP_NAME
+    value: 'maxro-web'
+  - name: CONTAINER_APP_ENVIRONMENT
+    value: 'maxro-env'
+  - name: IMAGE_NAME
     value: 'maxro-frontend'
+  - name: FRONTEND_HOSTNAME
+    value: 'www.gomaxro.com'
 
 stages:
   - stage: Build
@@ -40,59 +47,123 @@ stages:
             displayName: 'Build Production'
             workingDirectory: 'maxro-frontend'
 
-          - task: PublishBuildArtifacts@1
-            displayName: 'Publish Build Artifacts'
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish Frontend Artifact'
             inputs:
-              pathToPublish: 'maxro-frontend/dist/maxro-frontend/browser'
-              artifactName: 'frontend-build'
+              targetPath: 'maxro-frontend/dist/maxro-frontend/browser'
+              artifact: 'frontend-build'
 
   - stage: Deploy
-    displayName: 'Deploy to Azure Static Web Apps'
+    displayName: 'Deploy to Azure Container Apps'
     dependsOn: Build
     condition: succeeded()
     jobs:
       - job: DeployFrontend
         displayName: 'Deploy Frontend'
         steps:
-          - task: NodeTool@0
-            inputs:
-              versionSpec: '20.x'
-            displayName: 'Install Node.js'
-
           - download: current
             artifact: frontend-build
 
           - task: AzureCLI@2
-            displayName: 'Deploy to Static Web Apps'
+            displayName: 'Publish and Deploy Frontend Image'
             inputs:
-              azureSubscription: 'maxro-azure-sc-v3'
+              azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
               scriptType: 'ps'
               scriptLocation: 'inlineScript'
               inlineScript: |
-                $deploymentToken = az staticwebapp secrets list `
-                  --name $(appName) `
-                  --resource-group $(RESOURCE_GROUP) `
-                  --query "properties.apiKey" -o tsv
-
-                if ([string]::IsNullOrWhiteSpace($deploymentToken)) {
-                  throw "Unable to resolve Static Web App deployment token for $(appName)"
+                $ErrorActionPreference = 'Stop'
+                $imageTag = '$(Build.BuildId)'
+                $imageRef = & '$(Build.SourcesDirectory)/scripts/publish-frontend-container.ps1' `
+                  -ArtifactDirectory '$(Pipeline.Workspace)/frontend-build' `
+                  -NginxConfigPath '$(Build.SourcesDirectory)/maxro-frontend/nginx.conf' `
+                  -RegistryName '$(ACR_NAME)' `
+                  -Repository '$(IMAGE_NAME)' `
+                  -ImageTag $imageTag | Select-Object -Last 1
+                if ([string]::IsNullOrWhiteSpace($imageRef)) {
+                  throw 'Frontend image publisher did not return an image reference.'
                 }
 
-                & npx.cmd @azure/static-web-apps-cli@2.0.8 deploy `
-                  "$(Pipeline.Workspace)/frontend-build" `
-                  --deployment-token "$deploymentToken" `
-                  --env production
+                $existingApp = az containerapp show `
+                  --name $(CONTAINER_APP_NAME) `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --query name -o tsv 2>$null
+
+                az acr update --name $(ACR_NAME) --admin-enabled true 1>$null
+                $acrUsername = az acr credential show --name $(ACR_NAME) --query username -o tsv
+                $acrPassword = az acr credential show --name $(ACR_NAME) --query 'passwords[0].value' -o tsv
+                if ([string]::IsNullOrWhiteSpace($acrUsername) -or [string]::IsNullOrWhiteSpace($acrPassword)) {
+                  throw 'Unable to resolve Azure Container Registry credentials.'
+                }
+
+                if ([string]::IsNullOrWhiteSpace($existingApp)) {
+                  az containerapp create `
+                    --name $(CONTAINER_APP_NAME) `
+                    --resource-group $(RESOURCE_GROUP) `
+                    --environment $(CONTAINER_APP_ENVIRONMENT) `
+                    --image $imageRef `
+                    --ingress external `
+                    --target-port 80 `
+                    --min-replicas 1 `
+                    --max-replicas 1 `
+                    --registry-server '$(ACR_NAME).azurecr.io' `
+                    --registry-username $acrUsername `
+                    --registry-password $acrPassword
+                } else {
+                  az containerapp registry set `
+                    --name $(CONTAINER_APP_NAME) `
+                    --resource-group $(RESOURCE_GROUP) `
+                    --server '$(ACR_NAME).azurecr.io' `
+                    --username $acrUsername `
+                    --password $acrPassword 1>$null
+                  if ($LASTEXITCODE -ne 0) {
+                    throw 'Unable to refresh the Container App registry credential.'
+                  }
+
+                  az containerapp update `
+                    --name $(CONTAINER_APP_NAME) `
+                    --resource-group $(RESOURCE_GROUP) `
+                    --image $imageRef `
+                    --revision-suffix "r$(Build.BuildId)" `
+                    --min-replicas 1 `
+                    --max-replicas 1
+                }
 
                 if ($LASTEXITCODE -ne 0) {
-                  exit $LASTEXITCODE
+                  throw 'Azure Container Apps deployment failed.'
+                }
+                Remove-Variable acrPassword -ErrorAction SilentlyContinue
+
+                az containerapp revision set-mode `
+                  --name $(CONTAINER_APP_NAME) `
+                  --resource-group $(RESOURCE_GROUP) `
+                  --mode single
+                if ($LASTEXITCODE -ne 0) {
+                  throw 'Unable to set single-revision mode.'
+                }
+
+                for ($i = 1; $i -le 30; $i++) {
+                  $app = az containerapp show `
+                    --name $(CONTAINER_APP_NAME) `
+                    --resource-group $(RESOURCE_GROUP) -o json | ConvertFrom-Json
+                  if (
+                    $app.properties.runningStatus -eq 'Running' -and
+                    $app.properties.latestRevisionName -eq $app.properties.latestReadyRevisionName
+                  ) {
+                    Write-Host ('Ready revision: ' + $app.properties.latestReadyRevisionName)
+                    break
+                  }
+                  if ($i -eq 30) {
+                    throw 'The new frontend revision did not become ready.'
+                  }
+                  Start-Sleep -Seconds 10
                 }
 
           - powershell: |
-              $swaUrl = 'https://$(SWA_HOSTNAME)'
-              Write-Host ('Checking health at ' + $swaUrl)
+              $frontendUrl = 'https://$(FRONTEND_HOSTNAME)'
+              Write-Host ('Checking production health at ' + $frontendUrl)
               for ($i = 1; $i -le 10; $i++) {
                 try {
-                  $response = Invoke-WebRequest -Uri $swaUrl -UseBasicParsing -TimeoutSec 20
+                  $response = Invoke-WebRequest -Uri $frontendUrl -UseBasicParsing -TimeoutSec 20
                   if ($response.StatusCode -eq 200) {
                     Write-Host 'Health check passed'
                     exit 0

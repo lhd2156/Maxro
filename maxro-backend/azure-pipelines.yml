@@ -12,9 +12,9 @@ pool:
 variables:
   - group: maxro-secrets
   - name: AZURE_SERVICE_CONNECTION
-    value: 'maxro-azure-sc-v3'
+    value: 'maxro-azure-sc-v5'
   - name: ACR_NAME
-    value: 'maxroacr8db8c'
+    value: 'maxroacr1e506'
   - name: RESOURCE_GROUP
     value: 'maxro-rg'
   - name: AZURE_LOCATION
@@ -22,9 +22,9 @@ variables:
   - name: CONTAINER_APP_ENVIRONMENT
     value: 'maxro-env'
   - name: CORS_ORIGINS
-    value: 'https://gomaxro.com,https://www.gomaxro.com,https://yellow-bush-0621c1c10.7.azurestaticapps.net,http://localhost:4200,http://127.0.0.1:4200'
+    value: 'https://gomaxro.com,https://www.gomaxro.com,https://maxro-web.yellowmoss-96683f19.centralus.azurecontainerapps.io,https://witty-sea-090e02110.7.azurestaticapps.net,http://localhost:4200,http://127.0.0.1:4200'
   - name: COSMOS_ACCOUNT_NAME
-    value: 'maxrocosmos8db8c'
+    value: 'maxrocosmos1e506'
   - name: MONGO_DATABASE_NAME
     value: 'maxro'
   - name: imageName
@@ -38,7 +38,7 @@ variables:
   - name: apiHostname
     value: 'api.gomaxro.com'
   - name: backendDefaultHostname
-    value: 'maxro-backend.lemonwave-ad7f10c5.centralus.azurecontainerapps.io'
+    value: 'maxro-backend.yellowmoss-96683f19.centralus.azurecontainerapps.io'
   - name: azureLocation
     value: 'centralus'
   - name: containerCpu
@@ -133,7 +133,7 @@ stages:
           - task: AzureCLI@2
             displayName: 'Build and Push Image with Jib'
             inputs:
-              azureSubscription: 'maxro-azure-sc-v3'
+              azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
               scriptType: 'ps'
               scriptLocation: 'inlineScript'
               inlineScript: |
@@ -188,7 +188,7 @@ stages:
           - task: AzureCLI@2
             displayName: 'Deploy to Container Apps'
             inputs:
-              azureSubscription: 'maxro-azure-sc-v3'
+              azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
               scriptType: 'ps'
               scriptLocation: 'inlineScript'
               failOnStandardError: false
@@ -402,7 +402,7 @@ stages:
           - task: AzureCLI@2
             displayName: 'Bind API Custom Domain'
             inputs:
-              azureSubscription: 'maxro-azure-sc-v3'
+              azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
               scriptType: 'ps'
               scriptLocation: 'inlineScript'
               failOnStandardError: false
@@ -495,7 +495,7 @@ stages:
           - task: AzureCLI@2
             displayName: 'Health Check'
             inputs:
-              azureSubscription: 'maxro-azure-sc-v3'
+              azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
               scriptType: 'ps'
               scriptLocation: 'inlineScript'
               inlineScript: |
