@@ -12,19 +12,19 @@ pool:
 variables:
   - group: maxro-secrets
   - name: AZURE_SERVICE_CONNECTION
-    value: 'maxro-azure-sc-v5'
+    value: 'maxro-azure-sc-v6'
   - name: ACR_NAME
-    value: 'maxroacr1e506'
+    value: 'maxroacrc9f1a'
   - name: RESOURCE_GROUP
     value: 'maxro-rg'
   - name: AZURE_LOCATION
-    value: 'centralus'
+    value: 'eastus2'
   - name: CONTAINER_APP_ENVIRONMENT
-    value: 'maxro-env'
+    value: 'maxro-env-eastus2'
   - name: CORS_ORIGINS
-    value: 'https://gomaxro.com,https://www.gomaxro.com,https://maxro-web.yellowmoss-96683f19.centralus.azurecontainerapps.io,https://witty-sea-090e02110.7.azurestaticapps.net,http://localhost:4200,http://127.0.0.1:4200'
+    value: 'https://gomaxro.com,https://www.gomaxro.com,https://maxro-web.agreeablesky-2caf696b.eastus2.azurecontainerapps.io,http://localhost:4200,http://127.0.0.1:4200'
   - name: COSMOS_ACCOUNT_NAME
-    value: 'maxrocosmos1e506'
+    value: 'maxrocosmosc9f1a'
   - name: MONGO_DATABASE_NAME
     value: 'maxro'
   - name: imageName
@@ -34,13 +34,13 @@ variables:
   - name: containerAppName
     value: 'maxro-backend'
   - name: containerAppEnvironment
-    value: 'maxro-env'
+    value: 'maxro-env-eastus2'
   - name: apiHostname
     value: 'api.gomaxro.com'
   - name: backendDefaultHostname
-    value: 'maxro-backend.yellowmoss-96683f19.centralus.azurecontainerapps.io'
+    value: 'maxro-backend.agreeablesky-2caf696b.eastus2.azurecontainerapps.io'
   - name: azureLocation
-    value: 'centralus'
+    value: 'eastus2'
   - name: containerCpu
     value: '0.5'
   - name: containerMemory

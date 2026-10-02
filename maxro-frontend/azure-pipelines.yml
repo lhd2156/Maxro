@@ -13,15 +13,15 @@ pool:
 variables:
   - group: maxro-secrets
   - name: AZURE_SERVICE_CONNECTION
-    value: 'maxro-azure-sc-v5'
+    value: 'maxro-azure-sc-v6'
   - name: ACR_NAME
-    value: 'maxroacr1e506'
+    value: 'maxroacrc9f1a'
   - name: RESOURCE_GROUP
     value: 'maxro-rg'
   - name: CONTAINER_APP_NAME
     value: 'maxro-web'
   - name: CONTAINER_APP_ENVIRONMENT
-    value: 'maxro-env'
+    value: 'maxro-env-eastus2'
   - name: IMAGE_NAME
     value: 'maxro-frontend'
   - name: FRONTEND_HOSTNAME

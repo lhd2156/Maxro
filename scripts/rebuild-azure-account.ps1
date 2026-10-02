@@ -473,7 +473,13 @@ function Ensure-AzureLogin {
 }
 
 function Ensure-ResourceGroup {
-    Write-Step "Ensuring resource group '$ResourceGroup' exists in '$Location'."
+    $existingGroup = Try-AzJson -Arguments @('group', 'show', '--name', $ResourceGroup)
+    if ($null -ne $existingGroup) {
+        Write-Step "Using existing resource group '$ResourceGroup'."
+        return
+    }
+
+    Write-Step "Creating resource group '$ResourceGroup' in '$Location'."
     [void](Invoke-AzJson -Arguments @('group', 'create', '--name', $ResourceGroup, '--location', $Location))
 }
 
@@ -591,7 +597,7 @@ function Ensure-ProductionMongoUri {
         throw "Unable to resolve the MongoDB connection string for '$script:CosmosAccountName'."
     }
 
-    $script:ProductionMongoUri = (($connectionString -replace '/\?', "/$MongoDatabaseName?") -split '&' | Select-Object -First 1)
+    $script:ProductionMongoUri = (($connectionString -replace '/\?', "/${MongoDatabaseName}?") -split '&' | Select-Object -First 1)
     if ($script:ProductionMongoUri -notmatch '^mongodb(\+srv)?://') {
         throw 'Resolved Cosmos Mongo URI is invalid.'
     }
@@ -1121,7 +1127,9 @@ if (-not $SkipFrontend) {
 }
 
 Write-Step 'Ensuring the Container Apps CLI extension is available.'
-[void](Invoke-AzRaw -Arguments @('extension', 'add', '--name', 'containerapp', '--upgrade'))
+if ($null -eq (Try-AzJson -Arguments @('extension', 'show', '--name', 'containerapp'))) {
+    [void](Invoke-AzRaw -Arguments @('extension', 'add', '--name', 'containerapp'))
+}
 
 $script:Account = Ensure-AzureLogin
 Write-Step "Using Azure subscription '$($script:Account.name)' ($($script:Account.id))."
