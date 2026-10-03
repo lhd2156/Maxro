@@ -961,6 +961,28 @@ function Ensure-ContainerApp {
     return Invoke-AzJson -Arguments @('containerapp', 'show', '--name', $BackendAppName, '--resource-group', $ResourceGroup)
 }
 
+function Ensure-ContainerAppHostname {
+    param(
+        [Parameter(Mandatory = $true)][string]$AppName,
+        [Parameter(Mandatory = $true)][string]$Hostname
+    )
+
+    $existingHostname = Invoke-AzJson -Arguments @(
+        'containerapp', 'hostname', 'list',
+        '--name', $AppName,
+        '--resource-group', $ResourceGroup,
+        '--query', "[?name=='$Hostname'].name | [0]"
+    )
+    if ([string]::IsNullOrWhiteSpace([string]$existingHostname)) {
+        [void](Invoke-AzRaw -Arguments @(
+            'containerapp', 'hostname', 'add',
+            '--name', $AppName,
+            '--resource-group', $ResourceGroup,
+            '--hostname', $Hostname
+        ))
+    }
+}
+
 function Configure-ApiHostname {
     param(
         [Parameter(Mandatory = $true)][string]$BackendIngressHostname,
@@ -984,6 +1006,7 @@ function Configure-ApiHostname {
     Wait-DnsRecord -Name "asuid.$ApiHostname" -Type 'TXT' -ExpectedValue $VerificationCode
 
     Write-Step "Binding '$ApiHostname' to Container App '$BackendAppName'."
+    Ensure-ContainerAppHostname -AppName $BackendAppName -Hostname $ApiHostname
     [void](Invoke-AzRaw -Arguments @(
         'containerapp', 'hostname', 'bind',
         '--name', $BackendAppName,
@@ -1017,6 +1040,7 @@ function Configure-ApexHostname {
     Wait-DnsRecord -Name "asuid.$DomainName" -Type 'TXT' -ExpectedValue $VerificationCode
 
     Write-Step "Binding '$DomainName' to Container App '$BackendAppName'."
+    Ensure-ContainerAppHostname -AppName $BackendAppName -Hostname $DomainName
     [void](Invoke-AzRaw -Arguments @(
         'containerapp', 'hostname', 'bind',
         '--name', $BackendAppName,
@@ -1088,6 +1112,7 @@ function Configure-WwwHostname {
     Wait-DnsRecord -Name "asuid.$WwwHostname" -Type 'TXT' -ExpectedValue $VerificationCode
 
     Write-Step "Binding '$WwwHostname' to frontend Container App '$FrontendAppName'."
+    Ensure-ContainerAppHostname -AppName $FrontendAppName -Hostname $WwwHostname
     [void](Invoke-AzRaw -Arguments @(
         'containerapp', 'hostname', 'bind',
         '--name', $FrontendAppName,
